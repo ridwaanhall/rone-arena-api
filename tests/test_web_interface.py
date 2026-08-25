@@ -7,6 +7,7 @@ from collections import defaultdict
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from app.core.config import PROJECT_VERSION
 from app.main import app
 from app.web.openapi_catalog import get_group_operations
 
@@ -14,7 +15,7 @@ from app.web.openapi_catalog import get_group_operations
 client = TestClient(app)
 
 
-WEB_GROUPS = {"user", "mlbb", "academy", "addon"}
+WEB_GROUPS = {"user", "heroes", "academy", "addon"}
 
 
 def test_landing_page_has_docs_and_demo_options() -> None:
@@ -27,9 +28,9 @@ def test_landing_page_has_docs_and_demo_options() -> None:
     assert "/web/user" in response.text
     assert "family=Onest" in response.text
     assert "Space+Mono" in response.text
-    assert "mlbb-card.rone.dev/static/favicon.ico" in response.text
+    assert "rone.dev/static/img/favicon/favicon.ico" in response.text
     assert "application/ld+json" in response.text
-    assert "const AUTH_KEY = \"mlbb_user_auth\";" in response.text
+    assert "const AUTH_KEY = \"arena_user_auth\";" in response.text
     assert "renderNavbarState()" in response.text
     assert "Not Signed In" in response.text
     assert "Sign In" in response.text
@@ -40,8 +41,8 @@ def test_navbar_shows_api_version_badge() -> None:
     response = client.get("/web/user")
 
     assert response.status_code == 200
-    assert "MLBB API Web" in response.text
-    assert "v3.2.2" in response.text
+    assert "Rone Arena" in response.text
+    assert f"v{PROJECT_VERSION}" in response.text
     assert "https://buymeacoffee.com/ridwaanhall" in response.text
     assert "user-menu-trigger" in response.text
     assert "user-menu-panel" in response.text
@@ -94,7 +95,7 @@ def test_user_login_page_has_jwt_cache_script() -> None:
     response = client.get("/web/user/auth/login")
 
     assert response.status_code == 200
-    assert "mlbb_user_auth" in response.text
+    assert "arena_user_auth" in response.text
     assert "24 * 60 * 60 * 1000" in response.text
     assert "/api/user/auth/login" in response.text
     assert "hydrateUserInfoIfMissing" in response.text
@@ -238,7 +239,7 @@ def test_footer_contains_repository_link() -> None:
     response = client.get("/web/user")
 
     assert response.status_code == 200
-    assert "https://github.com/ridwaanhall/api-mobilelegends" in response.text
+    assert "https://github.com/ridwaanhall/rone-arena-api" in response.text
 
 
 def test_method_badges_are_colorized() -> None:
@@ -269,15 +270,15 @@ def test_blog_list_page_renders_tutorial_cards() -> None:
 
     assert response.status_code == 200
     assert "Tutorial &amp; Blog" in response.text or "Tutorial & Blog" in response.text
-    assert "MLBB API Web v3.2.2 Changelog" in response.text
-    assert "How to Use MLBB Public Data API Web Project" in response.text
+    assert "Rone Arena Web v3.2.2 Changelog" in response.text
+    assert "How to Use the Rone Arena API Web Project" in response.text
     assert "/blog/how-to-use-mlbb-public-data-api-web-project" in response.text
     assert "Read Featured Post" in response.text
     assert "High-priority reading" in response.text
 
 
 def test_blog_changelog_page_renders_release_scope() -> None:
-    response = client.get("/blog/mlbb-api-web-v3-2-2-changelog-v3-2-1-working-tree")
+    response = client.get("/blog/mlbb-api-web-v3-2-2-changelog-v3-2-1-v3-2-2")
 
     assert response.status_code == 200
     assert "754bac3f4c052fb181f272ae8933d2921b6f19be" in response.text
@@ -291,8 +292,7 @@ def test_blog_detail_page_uses_slug_url_and_shows_steps() -> None:
     assert response.status_code == 200
     assert "Step 1: Open the Website" in response.text
     assert "Mandatory for User Endpoints" in response.text
-    assert "Image placeholder path:" in response.text
-    assert "/images/blog/tutorial-step-1-home.png" in response.text
+    assert "/images/blog/tutorial-step-2-signin-send-vc.webp" in response.text
 
 
 def test_navbar_includes_tutorial_button() -> None:
@@ -303,87 +303,24 @@ def test_navbar_includes_tutorial_button() -> None:
     assert "href=\"/blog\"" in response.text
 
 
-def test_openmlbb_page_is_available() -> None:
-    home_response = client.get("/openmlbb")
-    assert home_response.status_code == 200
-    assert "OpenMLBB SDK" in home_response.text
-    assert "pip install OpenMLBB" in home_response.text
-    assert "npm install mlbb-sdk" in home_response.text
-    assert '/openmlbb/user' in home_response.text
-
-    response = client.get("/openmlbb/academy/meta/version")
-
-    assert response.status_code == 200
-    assert "OpenMLBB SDK Docs" in response.text
-    assert "client.academy.meta_version" in response.text
-    assert "Path and Query Parameters" in response.text
 
 
-def test_openmlbb_group_pages_cover_all_clients() -> None:
-    for group in WEB_GROUPS:
-        response = client.get(f"/openmlbb/{group}")
-        assert response.status_code == 200
-        assert "OpenMLBB" in response.text
-        assert f"/openmlbb/{group}" in response.text
 
-    user_page = client.get("/openmlbb/user")
-    assert user_page.status_code == 200
-    assert "client.user.login" in user_page.text
-
-    mlbb_page = client.get("/openmlbb/mlbb")
-    assert mlbb_page.status_code == 200
-    assert "client.mlbb.heroes" in mlbb_page.text
-
-    addon_page = client.get("/openmlbb/addon")
-    assert addon_page.status_code == 200
-    assert "client.addon.win_rate_calculator" in addon_page.text
-
-
-def test_openmlbb_hub_includes_group_cards_and_copy_button() -> None:
-    response = client.get("/openmlbb")
-
-    assert response.status_code == 200
-    assert 'data-copy-pip-install' in response.text
-    assert '/openmlbb/user' in response.text
-    assert '/openmlbb/mlbb' in response.text
-    assert '/openmlbb/academy' in response.text
-    assert '/openmlbb/addon' in response.text
-
-
-def test_openmlbb_endpoint_card_has_open_only_this_and_show_more() -> None:
-    response = client.get("/openmlbb/academy/meta/version")
-
-    assert response.status_code == 200
-    assert "Open Only This" in response.text
-    assert 'data-desc-toggle' in response.text
-    assert "overflow-hidden" in response.text
-    assert "Show more" in response.text
-
-
-def test_landing_page_highlights_openmlbb_install() -> None:
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert "pip install OpenMLBB" in response.text
-    assert "npm install mlbb-sdk" in response.text
-    assert "Official Python SDK" in response.text
-    assert 'data-copy-pip-install' in response.text
 
 
 def test_blog_list_includes_v4_0_4_release_notes() -> None:
     response = client.get("/blog")
 
     assert response.status_code == 200
-    assert "MLBB API Web v4.0.7 Release Notes (4.0.6 -&gt; 4.0.8)" in response.text or "MLBB API Web v4.0.7 Release Notes (4.0.6 -> 4.0.8)" in response.text
-    assert "MLBB API Web v4.0.4 Release Notes (3.2.3 -&gt; 4.0.4)" in response.text or "MLBB API Web v4.0.4 Release Notes (3.2.3 -> 4.0.4)" in response.text
+    assert "Rone Arena Web v4.0.7 Release Notes (4.0.6 to 4.0.8)" in response.text
+    assert "Rone Arena Web v4.0.4 Release Notes (3.2.3 -&gt; 4.0.4)" in response.text or "Rone Arena Web v4.0.4 Release Notes (3.2.3 -> 4.0.4)" in response.text
 
 
 def test_blog_detail_v4_0_7_release_notes_includes_typescript_alternative() -> None:
-    response = client.get("/blog/mlbb-api-web-v4-0-7-release-notes-4-0-6-4-0-7")
+    response = client.get("/blog/mlbb-api-web-v4-0-7-release-notes-4-0-6-to-4-0-8")
 
     assert response.status_code == 200
     assert "Version move: 4.0.6 -&gt; 4.0.8" in response.text or "Version move: 4.0.6 -> 4.0.8" in response.text
-    assert "npm install mlbb-sdk" in response.text
 
 
 def test_blog_detail_v4_0_4_release_notes_no_commit_hash() -> None:
@@ -395,27 +332,4 @@ def test_blog_detail_v4_0_4_release_notes_no_commit_hash() -> None:
     assert "799250329d76cefce207c7ed425f2606c5d57a62" not in response.text
 
 
-def test_navbar_includes_openmlbb_button_between_card_and_tutorial() -> None:
-    response = client.get("/web/user")
 
-    assert response.status_code == 200
-    card_idx = response.text.find('href="https://mlbb-card.rone.dev"')
-    openmlbb_idx = response.text.find('href="/openmlbb"')
-    tutorial_idx = response.text.find('href="/blog"')
-
-    assert card_idx != -1
-    assert openmlbb_idx != -1
-    assert tutorial_idx != -1
-    assert card_idx < openmlbb_idx < tutorial_idx
-    assert 'href="/openmlbb"' in response.text
-    assert "OpenMLBB" in response.text
-
-
-def test_navbar_group_links_follow_openmlbb_namespace() -> None:
-    response = client.get("/openmlbb/user")
-
-    assert response.status_code == 200
-    assert 'href="/openmlbb/user"' in response.text
-    assert 'href="/openmlbb/mlbb"' in response.text
-    assert 'href="/openmlbb/academy"' in response.text
-    assert 'href="/openmlbb/addon"' in response.text

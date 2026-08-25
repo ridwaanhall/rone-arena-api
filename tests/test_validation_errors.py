@@ -13,8 +13,8 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_mlbb_hero_rank_rejects_invalid_days_enum() -> None:
-    response = client.get("/api/hero-rank?days=2")
+def test_hero_rank_rejects_invalid_days_enum() -> None:
+    response = client.get("/api/heroes/rank?days=2")
 
     assert response.status_code == 422
     payload = response.json()
@@ -22,8 +22,8 @@ def test_mlbb_hero_rank_rejects_invalid_days_enum() -> None:
     assert payload["status"] == "error"
 
 
-def test_mlbb_hero_rank_rejects_size_below_minimum() -> None:
-    response = client.get("/api/hero-rank?size=0")
+def test_hero_rank_rejects_size_below_minimum() -> None:
+    response = client.get("/api/heroes/rank?size=0")
 
     assert response.status_code == 422
     payload = response.json()
@@ -89,7 +89,7 @@ def test_academy_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> 
     assert response.status_code == 200
 
 
-def test_mlbb_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
+def test_hero_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
     def fake_fetch(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
         if endpoint_id == "2756564":
             return {
@@ -108,7 +108,7 @@ def test_mlbb_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
         return {"code": 0, "message": "OK", "data": []}
 
     hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_mlbb_post", fake_fetch)
+    monkeypatch.setattr(hero_limits, "fetch_hero_post", fake_fetch)
 
     response = client.get("/api/heroes/133")
 
@@ -201,7 +201,7 @@ def test_win_rate_negative_required_matches_returns_standardized_error() -> None
     assert "support" in payload
     assert "required_no_lose_matches" in payload
 
-def test_mlbb_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> None:
+def test_hero_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> None:
     def fake_fetch(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
         if endpoint_id == "2756564":
             return {
@@ -220,7 +220,7 @@ def test_mlbb_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> Non
         return {"code": 0, "message": "OK", "data": []}
 
     hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_mlbb_post", fake_fetch)
+    monkeypatch.setattr(hero_limits, "fetch_hero_post", fake_fetch)
 
     response = client.get("/api/heroes/132")
 

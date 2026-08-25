@@ -1,5 +1,10 @@
 # CORS Fix & Configuration Update - Summary of Changes
 
+> **Historical note (2026-08-25):** this document records a CORS fix made *before* the
+> Rone Arena rebrand. The hostnames and the project name in the snippets below are the ones
+> that were in effect at the time and are kept as-is so the post-mortem stays accurate.
+> Current hosts are `arena.rone.dev` (standard) and `arena-hv.fastapicloud.dev` (high volume).
+
 ## Problem Statement
 When running the application locally with `DEBUG=True`, the web playground was making fetch requests to production URLs (e.g., `https://mlbb.rone.dev`), causing CORS errors because the requests were coming from `http://127.0.0.1:8000`.
 

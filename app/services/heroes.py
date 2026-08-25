@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 from app.core.config import RONE_DEV_ACCESS_KEY
-from app.core.http import MLBBHeaderBuilder, request_json
+from app.core.http import UpstreamHeaderBuilder, request_json
 from app.core.security import BasePathProvider
 from app.utils.client_ip import get_bound_client_ip
 
@@ -42,7 +42,7 @@ def get_hero_id_by_name(hero_name: str, lang: str = "en") -> int:
         method="POST",
         url=url,
         payload=_hero_list_payload(),
-        headers=MLBBHeaderBuilder.get_academy_mlbb_header(lang, client_ip=get_bound_client_ip()),
+        headers=UpstreamHeaderBuilder.get_academy_header(lang, client_ip=get_bound_client_ip()),
     )
     search_name = normalize_hero_name(hero_name)
 
@@ -61,8 +61,8 @@ def resolve_hero_id(hero_identifier: str, lang: str) -> int:
         return get_hero_id_by_name(hero_identifier, lang)
 
 
-def fetch_mlbb_post(endpoint_id: str, payload: dict[str, Any], lang: str) -> Any:
+def fetch_hero_post(endpoint_id: str, payload: dict[str, Any], lang: str) -> Any:
     base_path = BasePathProvider.get_base_path()
     url = f"{RONE_DEV_ACCESS_KEY}{base_path}/{endpoint_id}"
-    headers = MLBBHeaderBuilder.get_academy_mlbb_header(lang, client_ip=get_bound_client_ip())
+    headers = UpstreamHeaderBuilder.get_academy_header(lang, client_ip=get_bound_client_ip())
     return request_json(method="POST", url=url, payload=payload, headers=headers)

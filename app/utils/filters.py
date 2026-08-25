@@ -1,5 +1,5 @@
 """
-Reusable filter utilities for MLBB API input validation and mapping.
+Reusable filter utilities for Rone Arena API input validation and mapping.
 Provides DRY, auto-documented, and typo-tolerant mapping for roles, lanes, ranks, etc.
 """
 from fastapi import HTTPException

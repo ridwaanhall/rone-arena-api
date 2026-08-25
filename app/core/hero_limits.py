@@ -4,7 +4,7 @@ from time import monotonic
 
 from app.core.exceptions import AppError
 from app.services.academy import fetch_academy_post
-from app.services.mlbb import fetch_mlbb_post
+from app.services.heroes import fetch_hero_post
 
 _HERO_MAX_CACHE_TTL_SECONDS = 3600
 _hero_max_id_cache: dict[str, tuple[float, int]] = {}
@@ -67,8 +67,8 @@ def get_academy_hero_max_id(lang: str) -> int:
     return total
 
 
-def get_mlbb_hero_max_id(lang: str) -> int:
-    cached_value = _get_cached_max("mlbb", lang)
+def get_hero_max_id(lang: str) -> int:
+    cached_value = _get_cached_max("hero", lang)
     if cached_value is not None:
         return cached_value
 
@@ -79,7 +79,7 @@ def get_mlbb_hero_max_id(lang: str) -> int:
         "fields": ["hero_id"],
         "object": [],
     }
-    response = fetch_mlbb_post("2756564", payload, lang)
+    response = fetch_hero_post("2756564", payload, lang)
 
     max_hero_id: int | None = None
     if isinstance(response, dict):
@@ -102,10 +102,10 @@ def get_mlbb_hero_max_id(lang: str) -> int:
             status_code=502,
             code="UPSTREAM_REQUEST_FAILED",
             message="Failed to fetch data",
-            details="Unable to determine latest hero total from mlbb hero list source.",
+            details="Unable to determine latest hero total from hero list source.",
         )
 
-    _set_cached_max("mlbb", lang, max_hero_id)
+    _set_cached_max("hero", lang, max_hero_id)
     return max_hero_id
 
 
@@ -129,8 +129,8 @@ def validate_academy_hero_id(hero_id: int, lang: str) -> None:
         )
 
 
-def validate_mlbb_hero_id(hero_id: int, lang: str) -> None:
-    max_hero_id = get_mlbb_hero_max_id(lang)
+def validate_hero_id(hero_id: int, lang: str) -> None:
+    max_hero_id = get_hero_max_id(lang)
     if hero_id > max_hero_id:
         raise AppError(
             status_code=422,

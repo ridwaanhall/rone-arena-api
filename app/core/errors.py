@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 
 ## Removed circular import of AppError
 
-from app.core.hero_limits import validate_mlbb_hero_id
-from app.services.mlbb import resolve_hero_id
+from app.core.hero_limits import validate_hero_id
+from app.services.heroes import resolve_hero_id
 from app.core.config import LIVECHAT_LINK, CONTACT_FORM_LINK
 from app.core.exceptions import AppError
 
@@ -83,7 +83,7 @@ def _hero_id_or_404(hero_identifier: str, lang: str) -> int:
                 extra={"code": "VALIDATION_ERROR"},
             )
 
-        validate_mlbb_hero_id(numeric_hero_id, lang)
+        validate_hero_id(numeric_hero_id, lang)
         return numeric_hero_id
     except ValueError:
         pass

@@ -854,7 +854,7 @@ def emblems(
     response_model=AcademyCollectionResponse,
     summary="Ranks List",
     description=(
-        "Retrieve all rank information for MLBB. Supports query parameters for pagination and localization.\n\n"
+        "Retrieve all rank information for Mobile Legends: Bang Bang. Supports query parameters for pagination and localization.\n\n"
         "Query parameters:\n"
         "- **size**: Number of items per page (minimum: 1).\n"
         "- **index**: Page index (starting from 1).\n"
@@ -881,7 +881,7 @@ def emblems(
         "This endpoint is useful for:\n"
         "- Displaying the full rank progression system.\n"
         "- Explaining rank tiers and ranges.\n"
-        "- Guiding players in understanding MLBB's ranking structure."
+        "- Guiding players in understanding the game's ranking structure."
     ),
     responses={
         200: {
@@ -965,7 +965,7 @@ def ranks(
     response_model=AcademyCollectionResponse,
     summary="Ranks Details",
     description=(
-        "Retrieve details for a specific rank in MLBB by rank ID. "
+        "Retrieve details for a specific rank in Mobile Legends: Bang Bang by rank ID. "
         "Supports query parameter for localization.\n\n"
         "Path parameters:\n"
         "- **rank_id**: Rank ID (validated dynamically from current rank list). "
@@ -993,7 +993,7 @@ def ranks(
         "This endpoint is useful for:\n"
         "- Displaying detailed information about a single rank tier.\n"
         "- Explaining its position in the progression system.\n"
-        "- Guiding players in understanding MLBB's ranking structure."
+        "- Guiding players in understanding the game's ranking structure."
     ),
     responses={
         200: {
@@ -1455,7 +1455,7 @@ def recommended(
         "This endpoint is useful for:\n"
         "- Displaying full details of a single guide or build.\n"
         "- Explaining strategic recommendations.\n"
-        "- Surfacing community-generated content for MLBB players."
+        "- Surfacing community-generated content for Mobile Legends: Bang Bang players."
     ),
     responses={
         200: {
@@ -1691,7 +1691,7 @@ def recommended_detail(
         "This endpoint is useful for:\n"
         "- Filtering heroes by gameplay role.\n"
         "- Filtering heroes by lane assignment.\n"
-        "- Displaying customized hero lists in MLBB Academy."
+        "- Displaying customized hero lists in the in-game Academy."
     ),
     responses={
         200: {

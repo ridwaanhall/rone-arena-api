@@ -51,14 +51,14 @@ def test_addon_ip_ignores_private_only_forwarded_ip(monkeypatch) -> None:
     assert captured["client_ip"] is None
 
 
-def test_mlbb_service_header_uses_public_forwarded_ip(monkeypatch) -> None:
+def test_hero_service_header_uses_public_forwarded_ip(monkeypatch) -> None:
     captured_headers: dict[str, str] = {}
 
     def fake_request_json(*, method: str, url: str, headers: dict[str, str], payload: dict[str, object] | None = None, params: dict[str, object] | None = None) -> dict[str, object]:
         captured_headers.update(headers)
         return {"code": 0, "data": {"records": []}}
 
-    monkeypatch.setattr("app.services.mlbb.request_json", fake_request_json)
+    monkeypatch.setattr("app.services.heroes.request_json", fake_request_json)
 
     response = client.get(
         "/api/heroes?size=1&index=1",
