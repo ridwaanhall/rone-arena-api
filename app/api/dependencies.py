@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import ALTERNATIVE_ENDPOINT_URL, API_STATUS_MESSAGES, IS_AVAILABLE
 from app.core.exceptions import AppError
-from app.core.http import MLBBHeaderBuilder
+from app.core.http import UpstreamHeaderBuilder
 
 
 user_bearer = HTTPBearer(auto_error=False)
@@ -33,7 +33,7 @@ def require_user_jwt(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(user_bearer)],
 ) -> str:
     if credentials and credentials.credentials:
-        return MLBBHeaderBuilder.normalize_auth_token(credentials.credentials)
+        return UpstreamHeaderBuilder.normalize_auth_token(credentials.credentials)
 
     raise AppError(
         status_code=401,

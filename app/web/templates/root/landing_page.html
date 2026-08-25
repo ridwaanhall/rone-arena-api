@@ -44,76 +44,17 @@
 		<div class="pointer-events-none absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl"></div>
 		<div class="pointer-events-none absolute right-0 top-20 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl"></div>
 
-		<p class="relative z-10 text-xs uppercase tracking-[0.24em] text-zinc-500">MLBB Public Data API</p>
+		<p class="relative z-10 text-xs uppercase tracking-[0.24em] text-zinc-500">Rone Arena API</p>
 		<div class="relative z-10 mt-2 inline-flex border border-cyan-500/60 bg-cyan-950/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-cyan-200">
 			API Version {{ api_version }}
 		</div>
 		<h1 class="relative z-10 mt-3 max-w-4xl text-xl font-semibold tracking-tight text-zinc-100 sm:text-3xl md:text-4xl">
-			MLBB Public Data API & Interactive Web Playground
+			Rone Arena API &amp; Interactive Web Playground
 		</h1>
 		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-6 text-zinc-300 md:text-base md:leading-7">
 			Check endpoint docs or use the updated playground.
 			APIs include easy forms, response tables, previews, and cURL for quick integration.
 		</p>
-
-		<div class="relative z-10 mt-6">
-			<div class="grid gap-4 md:grid-cols-2">
-				<article class="relative overflow-hidden border border-cyan-700/60 bg-gradient-to-br from-cyan-950/45 via-zinc-950 to-zinc-950 p-4 sm:p-5">
-					<div class="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full bg-cyan-500/20 blur-3xl"></div>
-					<p class="relative z-10 text-[11px] uppercase tracking-[0.16em] text-cyan-200">Python SDK</p>
-					<h2 class="relative z-10 mt-2 text-lg font-semibold text-zinc-100">Official SDK Track</h2>
-					<p class="relative z-10 mt-2 text-xs leading-6 text-zinc-300">
-						Covers academy, mlbb, user, and addon routes with the same data shape as the API playground.
-					</p>
-					<div class="relative z-10 mt-4 flex flex-wrap items-center gap-2 border border-cyan-700/50 bg-black/35 p-2">
-						<code class="font-mono text-xs text-cyan-100 sm:text-sm">pip install OpenMLBB</code>
-						<button
-							type="button"
-							class="border border-cyan-500/70 px-3 py-1.5 text-[11px] text-cyan-200 hover:border-cyan-300 hover:text-cyan-100"
-							data-copy-command="pip install OpenMLBB"
-						>
-							Copy
-						</button>
-					</div>
-					<a
-						href="https://pypi.org/project/OpenMLBB/"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="relative z-10 mt-3 inline-flex text-[11px] uppercase tracking-[0.12em] text-cyan-300 underline decoration-cyan-500/60 underline-offset-4 hover:text-cyan-100"
-					>
-						View package on PyPI
-					</a>
-
-				</article>
-
-				<article class="relative overflow-hidden border border-emerald-700/60 bg-gradient-to-bl from-emerald-950/40 via-zinc-950 to-zinc-950 p-4 sm:p-5">
-					<div class="pointer-events-none absolute -right-16 -bottom-20 h-52 w-52 rounded-full bg-emerald-500/20 blur-3xl"></div>
-					<p class="relative z-10 text-[11px] uppercase tracking-[0.16em] text-emerald-200">TypeScript SDK</p>
-					<h2 class="relative z-10 mt-2 text-lg font-semibold text-zinc-100">JavaScript / TS Path</h2>
-					<p class="relative z-10 mt-2 text-xs leading-6 text-zinc-300">
-						Build frontend and Node integrations using the maintained npm package with fast setup.
-					</p>
-					<div class="relative z-10 mt-4 flex flex-wrap items-center gap-2 border border-emerald-700/50 bg-black/35 p-2">
-						<code class="font-mono text-xs text-emerald-100 sm:text-sm">npm install mlbb-sdk</code>
-						<button
-							type="button"
-							class="border border-emerald-500/70 px-3 py-1.5 text-[11px] text-emerald-200 hover:border-emerald-300 hover:text-emerald-100"
-							data-copy-command="npm install mlbb-sdk"
-						>
-							Copy
-						</button>
-					</div>
-					<a
-						href="https://www.npmjs.com/package/mlbb-sdk"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="relative z-10 mt-3 inline-flex text-[11px] uppercase tracking-[0.12em] text-emerald-300 underline decoration-emerald-500/60 underline-offset-4 hover:text-emerald-100"
-					>
-						View package on npm
-					</a>
-				</article>
-			</div>
-		</div>
 
 		<div class="relative z-10 mt-6 grid gap-3 sm:gap-4 md:mt-8 md:grid-cols-2">
 			<a href="/web/user" 
@@ -146,19 +87,19 @@
 		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-zinc-500">Request Routing</p>
 		<h2 class="relative z-10 mt-2 text-xl font-semibold text-zinc-100">Daily request-based host switch</h2>
 		<p class="relative z-10 mt-2 text-sm leading-6 text-zinc-300">
-			Under 500 requests per day, the playground routes to https://mlbb.rone.dev. Above 500 requests per day,
-			it switches to https://openmlbb.fastapicloud.dev (recommended).
+			Under 500 requests per day, the playground routes to {{ prod_url_standard }}. Above 500 requests per day,
+			it switches to {{ prod_url_high_volume }} (recommended).
 		</p>
 
 		<div class="relative z-10 mt-4 grid gap-3 sm:grid-cols-2">
 			<div class="border border-zinc-800 bg-black/40 px-3 py-2 text-xs">
 				<p class="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Standard</p>
-				<p class="mt-2 font-mono text-zinc-200">https://mlbb.rone.dev</p>
+				<p class="mt-2 font-mono text-zinc-200">{{ prod_url_standard }}</p>
 				<p class="mt-1 text-[11px] text-zinc-500">For 0 - 500 requests per day.</p>
 			</div>
 			<div class="border border-cyan-700/50 bg-cyan-950/25 px-3 py-2 text-xs">
 				<p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Recommended</p>
-				<p class="mt-2 font-mono text-cyan-200">https://openmlbb.fastapicloud.dev</p>
+				<p class="mt-2 font-mono text-cyan-200">{{ prod_url_high_volume }}</p>
 				<p class="mt-1 text-[11px] text-cyan-300/80">Best for 500+ requests per day.</p>
 			</div>
 		</div>
@@ -168,7 +109,7 @@
 		<div class="border border-zinc-800 p-4">
 			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Coverage</p>
 			<p class="mt-2 text-xl font-semibold text-zinc-100">4 Service Groups</p>
-			<p class="mt-1 text-xs text-zinc-400">user, mlbb, academy, addon</p>
+			<p class="mt-1 text-xs text-zinc-400">user, heroes, academy, addon</p>
 		</div>
 		<div class="border border-zinc-800 p-4">
 			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Execution</p>
@@ -193,9 +134,9 @@
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  "name": "MLBB Public Data API",
+  "name": "Rone Arena API",
   "url": "{{ request.url }}",
-  "description": "Interactive interface for MLBB Public Data API documentation and endpoint testing.",
+  "description": "Interactive interface for Rone Arena API documentation and endpoint testing.",
   "publisher": {
     "@type": "Organization",
     "name": "RoneAI"

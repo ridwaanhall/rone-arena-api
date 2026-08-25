@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from app.api.dependencies import require_api_available
 
-from app.services.mlbb import fetch_mlbb_post
-from app.schemas.mlbb import MlbbCollectionResponse
+from app.services.heroes import fetch_hero_post
+from app.schemas.heroes import HeroCollectionResponse
 
 from app.core.enums import LanguageEnum, RankEnum, SortOrderEnum, HeroRoleEnum, HeroLaneEnum
 from app.core.errors import _hero_id_or_404
@@ -16,13 +16,13 @@ from app.utils.filters import (
     ROLE_MAP, LANE_MAP, validate_and_map_multi, validate_and_map_rank
 )
 
-router = APIRouter(prefix="/api", tags=["mlbb"], dependencies=[Depends(require_api_available), Depends(bind_client_ip)])
+router = APIRouter(prefix="/api", tags=["heroes"], dependencies=[Depends(require_api_available), Depends(bind_client_ip)])
 
 
 @router.get(
     path="/heroes",
-    name="api.mlbb.hero_list",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_list",
+    response_model=HeroCollectionResponse,
     summary="List Heroes",
     description=(
         "Retrieve a paginated list of all heroes with basic information. "
@@ -147,13 +147,13 @@ def hero_list(
             "hero.data.smallmap"
         ],
     }
-    return fetch_mlbb_post("2756564", payload, lang)
+    return fetch_hero_post("2756564", payload, lang)
 
 
 @router.get(
     path="/heroes/rank",
-    name="api.mlbb.hero_rank",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_rank",
+    response_model=HeroCollectionResponse,
     summary="Hero Rank Statistics",
     description=(
         "Fetch rank statistics for heroes over a specified time window. "
@@ -348,13 +348,13 @@ def hero_rank(
     }
 
     url_key = url_map.get(days, "2756567")
-    return fetch_mlbb_post(url_key, payload, lang)
+    return fetch_hero_post(url_key, payload, lang)
 
 
 @router.get(
     path="/heroes/positions",
-    name="api.mlbb.hero_position",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_position",
+    response_model=HeroCollectionResponse,
     summary="Hero Position Filters",
     description=(
         "Filter heroes by their position on the map using role and lane criteria. "
@@ -597,13 +597,13 @@ def hero_position(
         ],
         "object": [],
     }
-    return fetch_mlbb_post("2756564", payload, lang)
+    return fetch_hero_post("2756564", payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}",
-    name="api.mlbb.hero_detail",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_detail",
+    response_model=HeroCollectionResponse,
     summary="Hero Detail",
     description=(
         "Get detailed information for a specific hero by ID or name. "
@@ -901,13 +901,13 @@ def hero_detail(
         "pageIndex": index,
         "object": [],
     }
-    return fetch_mlbb_post("2756564", payload, lang)
+    return fetch_hero_post("2756564", payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/stats",
-    name="api.mlbb.hero_detail_stats",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_detail_stats",
+    response_model=HeroCollectionResponse,
     summary="Hero Detail Statistics",
     description=(
         "Get detailed statistics for a specific hero by ID or name. "
@@ -1118,13 +1118,13 @@ def hero_detail_stats(
         "sorts": [],
         "pageIndex": index,
     }
-    return fetch_mlbb_post("2756567", payload, lang)
+    return fetch_hero_post("2756567", payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/skill-combos",
-    name="api.mlbb.hero_skill_combo",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_skill_combo",
+    response_model=HeroCollectionResponse,
     summary="Hero Skill Combos",
     description=(
         "Get the most effective skill combos for a specific hero by ID or name. "
@@ -1257,13 +1257,13 @@ def hero_skill_combo(
         "pageIndex": index,
         "object": [2684183],
     }
-    return fetch_mlbb_post("2674711", payload, lang)
+    return fetch_hero_post("2674711", payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/trends",
-    name="api.mlbb.hero_rate",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_rate",
+    response_model=HeroCollectionResponse,
     summary="Hero Performance Trends",
     description=(
         "Get rate trends for a specific hero by ID or name over a specified time window. "
@@ -1413,13 +1413,13 @@ def hero_rate(
         "sorts": [],
         "pageIndex": index,
     }
-    return fetch_mlbb_post(url_map.get(past_days, "2674709"), payload, lang)
+    return fetch_hero_post(url_map.get(past_days, "2674709"), payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/relations",
-    name="api.mlbb.hero_relation",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_relation",
+    response_model=HeroCollectionResponse,
     summary="Hero Relations",
     description=(
         "Get information about the relations of a specific hero by ID or name. "
@@ -1539,13 +1539,13 @@ def hero_relation(
         "fields": ["hero.data.name"],
         "object": [],
     }
-    return fetch_mlbb_post("2756564", payload, lang)
+    return fetch_hero_post("2756564", payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/counters",
-    name="api.mlbb.hero_counter",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_counter",
+    response_model=HeroCollectionResponse,
     summary="Hero Counters",
     description=(
         "Get information about heroes that counter a specific hero by ID or name. "
@@ -1765,13 +1765,13 @@ def hero_counter(
         "pageIndex": index,
     }
     url_key = url_map.get(days, "2756567")
-    return fetch_mlbb_post(url_key, payload, lang)
+    return fetch_hero_post(url_key, payload, lang)
 
 
 @router.get(
     path="/heroes/{hero_identifier}/compatibility",
-    name="api.mlbb.hero_compatibility",
-    response_model=MlbbCollectionResponse,
+    name="api.heroes.hero_compatibility",
+    response_model=HeroCollectionResponse,
     summary="Hero Compatibility",
     description=(
         "Get compatibility information for a specific hero by ID or name. "
@@ -1992,4 +1992,4 @@ def hero_compatibility(
         "pageIndex": index,
     }
     url_key = url_map.get(days, "2756567")
-    return fetch_mlbb_post(url_key, payload, lang)
+    return fetch_hero_post(url_key, payload, lang)

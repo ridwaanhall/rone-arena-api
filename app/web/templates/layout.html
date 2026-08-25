@@ -3,19 +3,19 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-	<title>{{ title if title else "Home / MLBB Public Data API & Web" }}</title>
-	<meta name="description" content="{{ seo_description if seo_description else 'Interactive web interface for MLBB Public Data API with docs, endpoint forms, readable responses, and cURL output.' }}" />
-	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'mlbb api, mobile legends api, fastapi, analytics, hero data, openapi, web interface' }}" />
+	<title>{{ title if title else "Home / Rone Arena API & Web" }}</title>
+	<meta name="description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API with docs, endpoint forms, readable responses, and cURL output.' }}" />
+	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'rone arena api, mobile legends data api, fastapi, analytics, hero data, openapi, web interface' }}" />
 	<meta name="robots" content="index, follow" />
 	<meta name="theme-color" content="#000000" />
 	<meta property="og:type" content="website" />
-	<meta property="og:title" content="{{ title if title else 'Home / MLBB Public Data API & Web' }}" />
-	<meta property="og:description" content="{{ seo_description if seo_description else 'Interactive web interface for MLBB Public Data API.' }}" />
+	<meta property="og:title" content="{{ title if title else 'Home / Rone Arena API & Web' }}" />
+	<meta property="og:description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API.' }}" />
 	<meta property="og:url" content="{{ request.url }}" />
 	<meta property="og:image" content="https://rone.dev/static/img/favicon/favicon.ico" />
 	<meta name="twitter:card" content="summary" />
-	<meta name="twitter:title" content="{{ title if title else 'Home / MLBB Public Data API & Web' }}" />
-	<meta name="twitter:description" content="{{ seo_description if seo_description else 'Interactive web interface for MLBB Public Data API.' }}" />
+	<meta name="twitter:title" content="{{ title if title else 'Home / Rone Arena API & Web' }}" />
+	<meta name="twitter:description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API.' }}" />
 	<link rel="canonical" href="{{ request.url }}" />
 	<link rel="icon" type="image/x-icon" href="https://rone.dev/static/img/favicon/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -129,7 +129,7 @@
             background: radial-gradient(120% 90% at 50% 50%, transparent 44%, rgba(0, 0, 0, 0.55) 100%);
         }
 	</style>
-	{% if is_openmlbb_fastapicloud %}
+	{% if is_analytics_host %}
 	<!-- Google tag (gtag.js) -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=G-CPMYRKG5XQ"></script>
 	<script>
@@ -153,8 +153,6 @@
 	<div class="mx-auto flex w-full max-w-[1600px] min-w-0 flex-1 gap-3 px-3 pb-8 pt-4 sm:px-4 sm:pt-5 lg:gap-4 lg:px-6 lg:pt-6">
 		{% if request.url.path.startswith('/web') %}
 			{% include "sidebar.html" %}
-		{% elif request.url.path.startswith('/openmlbb') %}
-			{% include "openmlbb_sidebar.html" %}
 		{% endif %}
 
 		<main class="w-full min-w-0">
@@ -268,9 +266,31 @@
 	</div>
 	<script>
 	(() => {
-		const AUTH_KEY = "mlbb_user_auth";
-		const USER_INFO_KEY = "mlbb_user_info";
+		const AUTH_KEY = "arena_user_auth";
+		const USER_INFO_KEY = "arena_user_info";
 		const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
+
+		// One-time migration from the pre-rebrand storage keys so signed-in
+		// visitors are not logged out by the rename. Safe to delete later.
+		(() => {
+			const renamed = [
+				["mlbb_user_auth", AUTH_KEY],
+				["mlbb_user_info", USER_INFO_KEY],
+			];
+			for (const [legacyKey, currentKey] of renamed) {
+				try {
+					const legacyValue = localStorage.getItem(legacyKey);
+					if (legacyValue !== null && localStorage.getItem(currentKey) === null) {
+						localStorage.setItem(currentKey, legacyValue);
+					}
+					if (legacyValue !== null) {
+						localStorage.removeItem(legacyKey);
+					}
+				} catch {
+					/* storage unavailable; nothing to migrate */
+				}
+			}
+		})();
 
 		function parseJson(value) {
 			try {
@@ -474,7 +494,7 @@
 			renderNavbarState();
 		}
 
-		window.MLBBWebAuth = {
+		window.ArenaWebAuth = {
 			readAuth,
 			readUserInfo,
 			writeAuth,
@@ -570,7 +590,7 @@
 		}
 
 		async function fetchAndCacheUserInfo() {
-			const auth = window.MLBBWebAuth.readAuth();
+			const auth = window.ArenaWebAuth.readAuth();
 			if (!auth || typeof auth.jwt !== "string") {
 				return;
 			}
@@ -588,7 +608,7 @@
 				}
 				const parsed = parseJson(await response.text());
 				if (parsed?.data && typeof parsed.data === "object") {
-					window.MLBBWebAuth.writeUserInfo(parsed.data, auth.expiresAt);
+					window.ArenaWebAuth.writeUserInfo(parsed.data, auth.expiresAt);
 				}
 			} catch {
 				// Keep auth state even if user info hydration fails.
@@ -665,7 +685,7 @@
 
 		function openSignOutModal() {
 			if (!signOutModal) {
-				window.MLBBWebAuth.clearAuth();
+				window.ArenaWebAuth.clearAuth();
 				return;
 			}
 			signOutModal.classList.remove("hidden");
@@ -696,9 +716,9 @@
 		signOutConfirm?.addEventListener("click", async () => {
 			signOutConfirm.disabled = true;
 			signOutConfirm.textContent = "Signing Out...";
-			const auth = window.MLBBWebAuth.readAuth();
+			const auth = window.ArenaWebAuth.readAuth();
 			await postLogout(auth);
-			window.MLBBWebAuth.clearAuth();
+			window.ArenaWebAuth.clearAuth();
 			closeSignOutModal();
 			signOutConfirm.textContent = "Sign Out";
 			signOutConfirm.disabled = false;
@@ -801,7 +821,7 @@
 					return;
 				}
 
-				window.MLBBWebAuth.writeAuth(parsed.data.jwt);
+				window.ArenaWebAuth.writeAuth(parsed.data.jwt);
 				await fetchAndCacheUserInfo();
 				setSignInStatus(`Sign in success (code: ${code}) - ${message}`, "success");
 				closeSignInModal();
@@ -856,7 +876,7 @@
 
 		document.getElementById("jwt-auth-action")?.addEventListener("click", () => {
 			closeUserMenu();
-			const auth = window.MLBBWebAuth.readAuth();
+			const auth = window.ArenaWebAuth.readAuth();
 			if (auth) {
 				openSignOutModal();
 				return;
@@ -869,7 +889,7 @@
 		});
 
 		copyJwtAction?.addEventListener("click", async () => {
-			const auth = window.MLBBWebAuth.readAuth();
+			const auth = window.ArenaWebAuth.readAuth();
 			if (!auth || typeof auth.jwt !== "string") {
 				copyJwtAction.textContent = "No JWT";
 				setTimeout(() => {
@@ -884,7 +904,7 @@
 				copyJwtAction.textContent = "Copy JWT";
 			}, 5000);
 		});
-		window.MLBBWebAuth.renderNavbarState();
+		window.ArenaWebAuth.renderNavbarState();
 	})();
 	</script>
 	{% block scripts %}{% endblock %}

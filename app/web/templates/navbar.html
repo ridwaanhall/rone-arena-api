@@ -4,7 +4,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex min-w-0 items-center gap-2">
                     <a href="/" class="inline-flex items-center gap-1.5 border border-zinc-700 px-2.5 py-1.5 text-xs font-semibold tracking-wide text-zinc-100 hover:border-cyan-400 hover:text-cyan-200 sm:text-sm">
-                        <span class="truncate">MLBB API Web</span>
+                        <span class="truncate">Rone Arena</span>
                         <span class="border border-cyan-500/40 px-1.5 py-0.5 text-[10px] text-cyan-200">v{{ api_version }}</span>
                     </a>
                     <span class="hidden text-[10px] uppercase tracking-[0.16em] text-zinc-500 lg:inline">Interactive Endpoint Workspace</span>
@@ -12,11 +12,6 @@
 
                 <div class="flex items-center gap-1.5 text-[11px] sm:text-xs">
                     <a href="https://mlbb-card.rone.dev" target="_blank" class="border border-cyan-700/70 px-2 py-1 text-cyan-300 hover:border-cyan-400 hover:text-cyan-200">MLBB Card</a>
-                    <a href="/openmlbb" class="border border-sky-700/70 px-2 py-1 hover:border-sky-400 hover:text-sky-200">
-                        <span class="text-sky-300 {{ 'underline' if request.url.path.startswith('/openmlbb') else '' }}">
-                            Install OpenMLBB
-                        </span>
-                    </a>
                     <a href="/blog" class="border border-emerald-700/70 px-2 py-1 hover:border-emerald-400 hover:text-emerald-200">
                         <span class="text-emerald-300 {{ 'underline' if request.scope['route'].name.startswith('web.blog') else '' }}">
                             Tutorial
@@ -26,12 +21,12 @@
                         class="border border-rose-700/70 px-2 py-1 hover:border-rose-400 hover:text-rose-200">
                         <span class="text-rose-300 animate-pulse">Donate</span>
                     </button>
-                    <a href="https://github.com/ridwaanhall/api-mobilelegends" 
+                    <a href="https://github.com/ridwaanhall/rone-arena-api" 
                         target="_blank" 
                         rel="noreferrer noopener" 
                         class="border border-zinc-700/70 px-0.5 py-0.5 text-zinc-300 hover:border-zinc-500 hover:text-zinc-200"
                     >
-                        <img src="https://img.shields.io/github/stars/ridwaanhall/api-mobilelegends?style=flat-square&logo=github&label=Stars&color=white&logoColor=white" 
+                        <img src="https://img.shields.io/github/stars/ridwaanhall/rone-arena-api?style=flat-square&logo=github&label=Stars&color=white&logoColor=white" 
                             alt="GitHub Stars">
                     </a>
                 </div>
@@ -39,8 +34,7 @@
 
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 text-[11px] sm:text-xs" aria-label="API groups">
-                    {% set is_openmlbb = request.url.path.startswith('/openmlbb') %}
-                    {% set group_base = '/openmlbb' if is_openmlbb else '/web' %}
+                    {% set group_base = '/web' %}
                     <a
                         href="/"
                         class="shrink-0 border px-2.5 py-1.5 {{ 'border-cyan-500/60 text-cyan-100' if request.url.path == '/' else 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100' }}"

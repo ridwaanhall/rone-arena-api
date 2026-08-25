@@ -56,7 +56,7 @@ IS_AVAILABLE: bool = env_bool("IS_AVAILABLE", default=False)
 DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Jul 30, 2026")
 ALTERNATIVE_ENDPOINT_URL: str = env_str(
     "ALTERNATIVE_ENDPOINT_URL",
-    default="https://openmlbb.fastapicloud.dev",
+    default="https://arena-hv.fastapicloud.dev",
 )
 
 # =========================
@@ -112,7 +112,7 @@ MAINTENANCE_INFO_URL: str = env_str(
 # =========================
 # URLs & Endpoints & SEO
 # =========================
-BASE_URL: str = env_str("BASE_URL", default="https://mlbb.rone.dev/")
+BASE_URL: str = env_str("BASE_URL", default="https://arena.rone.dev/")
 
 API_BASE_URL: str = env_str("API_BASE_URL", default=f"{BASE_URL}api/")
 DOCS_BASE_URL: str = env_str("DOCS_BASE_URL", default=f"{BASE_URL}docs")
@@ -121,17 +121,21 @@ DOCS_BASE_URL: str = env_str("DOCS_BASE_URL", default=f"{BASE_URL}docs")
 PROD_URL_STANDARD: str = (
     "http://127.0.0.1:8000/api/"
     if DEBUG
-    else env_str("PROD_URL_STANDARD", default="https://mlbb.rone.dev/api/")
+    else env_str("PROD_URL_STANDARD", default="https://arena.rone.dev/api/")
 )
 
 PROD_URL_HIGH_VOLUME: str = (
     "http://127.0.0.1:8000/api/"
     if DEBUG
-    else env_str("PROD_URL_HIGH_VOLUME", default="https://openmlbb.fastapicloud.dev/api/")
+    else env_str("PROD_URL_HIGH_VOLUME", default="https://arena-hv.fastapicloud.dev/api/")
 )
 
 # Backward compatibility
 PROD_URL: str = PROD_URL_STANDARD
+
+# Host that serves the high-volume deployment; analytics is only enabled there.
+# Empty in DEBUG so local runs never emit analytics hits.
+ANALYTICS_HOST: str = env_str("ANALYTICS_HOST", default="" if DEBUG else "arena-hv.fastapicloud.dev")
 
 LIVECHAT_LINK: str = env_str("LIVECHAT_LINK", default="https://ridwaanhall.com/guestbook/")
 CONTACT_FORM_LINK: str = env_str("CONTACT_FORM_LINK", default="https://ridwaanhall.com/contact/")

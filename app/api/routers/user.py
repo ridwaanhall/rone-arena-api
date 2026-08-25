@@ -5,7 +5,7 @@ from app.api.dependencies import require_api_available, require_user_jwt
 from app.services.user import fetch_user_post, fetch_user_actgateway, fetch_user_actgateway_post
 
 from app.core.exceptions import AppError
-from app.core.http import MLBBHeaderBuilder
+from app.core.http import UpstreamHeaderBuilder
 from app.core.errors import _hero_id_or_404
 from app.core.enums import LanguageEnum, VisibilityEnum
 from app.schemas.user import (
@@ -85,7 +85,7 @@ def _require_key(response_data: dict[str, object], key: str) -> None:
 def send_vc(
     body: UserSendVcRequest,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header()
+    headers = UpstreamHeaderBuilder.get_user_header()
     payload = {
         "roleId": body.role_id,
         "zoneId": body.zone_id,
@@ -145,7 +145,7 @@ def send_vc(
 def login(
     body: UserLoginRequest,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header()
+    headers = UpstreamHeaderBuilder.get_user_header()
     payload = {
         "roleId": body.role_id,
         "zoneId": body.zone_id,
@@ -195,7 +195,7 @@ def logout(
         Depends(require_user_jwt),
     ],
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         jwt=jwt
     )
     payload = {}
@@ -264,7 +264,7 @@ def user_info(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_actid="2728785",
         x_appid="2713644",
@@ -316,7 +316,7 @@ def user_info(
         "This endpoint is useful for:\n"
         "- Analyzing overall player performance.\n"
         "- Identifying favorite heroes.\n"
-        "- Showcasing personal achievements in MLBB."
+        "- Showcasing personal achievements in Mobile Legends: Bang Bang."
     ),
     deprecated=True,
     responses={
@@ -454,7 +454,7 @@ def user_stats(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -515,7 +515,7 @@ def user_privacy_settings(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -585,7 +585,7 @@ def user_update_privacy_settings(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -651,7 +651,7 @@ def user_season(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -787,7 +787,7 @@ def user_matches(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -945,7 +945,7 @@ def user_match_details(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -1077,7 +1077,7 @@ def user_frequent_heroes(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -1266,7 +1266,7 @@ def user_matches_by_hero(
         hero_identifier,
         lang
     )
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )
@@ -1376,7 +1376,7 @@ def user_friends(
         )
     ] = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = MLBBHeaderBuilder.get_user_header(
+    headers = UpstreamHeaderBuilder.get_user_header(
         lang=lang,
         x_token=jwt,
     )

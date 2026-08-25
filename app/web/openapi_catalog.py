@@ -8,15 +8,15 @@ from typing import Any
 
 from fastapi import FastAPI
 
-WEB_GROUPS: tuple[str, ...] = ("user", "mlbb", "academy", "addon")
+WEB_GROUPS: tuple[str, ...] = ("user", "heroes", "academy", "addon")
 
 GROUP_META: dict[str, dict[str, str]] = {
     "user": {
         "title": "User",
         "description": "Authentication and player profile APIs.",
     },
-    "mlbb": {
-        "title": "MLBB",
+    "heroes": {
+        "title": "Heroes",
         "description": "Hero analytics and gameplay data APIs.",
     },
     "academy": {
@@ -191,7 +191,7 @@ def _build_request_body(operation: dict[str, Any], component_schemas: dict[str, 
 
 
 def _to_web_path(group: str, api_path: str) -> str:
-    if group == "mlbb":
+    if group == "heroes":
         suffix = api_path.removeprefix("/api")
     else:
         suffix = api_path.removeprefix(f"/api/{group}")

@@ -15,24 +15,24 @@
         <p class="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Request Routing</p>
         <p class="mt-2 text-sm text-zinc-300">The playground switches API hosts based on your daily request count.</p>
         <p id="api-base-note" class="mt-2 text-xs leading-6 text-zinc-500">
-            Under 500 requests per day, the playground routes to https://mlbb.rone.dev. Above 500 requests per day, it switches to
-            https://openmlbb.fastapicloud.dev (recommended).
+            Under 500 requests per day, the playground routes to {{ prod_url_standard }}. Above 500 requests per day, it switches to
+            {{ prod_url_high_volume }} (recommended).
         </p>
         <div class="mt-4 grid gap-3 sm:grid-cols-2">
             <div class="border border-zinc-800 bg-black/30 px-3 py-2 text-xs">
                 <p class="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Standard</p>
-                <p class="mt-2 font-mono text-zinc-200">https://mlbb.rone.dev</p>
+                <p class="mt-2 font-mono text-zinc-200">{{ prod_url_standard }}</p>
                 <p class="mt-1 text-[11px] text-zinc-500">For 0 - 500 requests per day.</p>
             </div>
             <div class="border border-cyan-700/50 bg-cyan-950/20 px-3 py-2 text-xs">
                 <p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Recommended</p>
-                <p class="mt-2 font-mono text-cyan-200">https://openmlbb.fastapicloud.dev</p>
+                <p class="mt-2 font-mono text-cyan-200">{{ prod_url_high_volume }}</p>
                 <p class="mt-1 text-[11px] text-cyan-300/80">Best for 500+ requests per day.</p>
             </div>
         </div>
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
             <span>Active base:</span>
-            <span id="api-base-active" class="font-mono text-zinc-200">https://mlbb.rone.dev</span>
+            <span id="api-base-active" class="font-mono text-zinc-200">{{ prod_url_standard }}</span>
             <span id="api-base-mode" class="inline-flex border border-zinc-800 bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-400">Standard volume</span>
             <span class="text-zinc-600">Requests:</span>
             <span id="api-request-count" class="font-mono text-zinc-200">0</span>
@@ -92,8 +92,8 @@
 <script>
 (() => {
     const formValidationTimers = new WeakMap();
-    const REQUEST_COUNT_KEY = "mlbb_web_request_count";
-    const REQUEST_COUNT_DATE_KEY = "mlbb_web_request_count_date";
+    const REQUEST_COUNT_KEY = "arena_web_request_count";
+    const REQUEST_COUNT_DATE_KEY = "arena_web_request_count_date";
     const REQUEST_THRESHOLD = 500;
     const IS_DEBUG = {{ 'true' if is_debug else 'false' }};
     const DEBUG_API_BASE = IS_DEBUG ? "http://127.0.0.1:8000" : null;
@@ -159,7 +159,7 @@
     }
 
     function getAuthApi() {
-        return window.MLBBWebAuth || null;
+        return window.ArenaWebAuth || null;
     }
 
     function parseJson(text) {

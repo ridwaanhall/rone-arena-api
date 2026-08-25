@@ -1,8 +1,8 @@
 [project]
-name = "OpenMLBB"
-dynamic = ["version"]
-description = "Official Python SDK for the MLBB Public Data API"
-readme = "OpenMLBB/README.md"
+name = "rone-arena-api"
+version = "4.2.0"
+description = "Unofficial community data API for the game Mobile Legends: Bang Bang"
+readme = "README.md"
 license = { text = "BSD-3-Clause" }
 authors = [
     { name = "ridwaanhall" }
@@ -17,28 +17,16 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://mlbb.rone.dev"
-Documentation = "https://mlbb.rone.dev/api/docs"
-Repository = "https://github.com/ridwaanhall/api-mobilelegends"
-Issues = "https://github.com/ridwaanhall/api-mobilelegends/issues"
+Homepage = "https://arena.rone.dev"
+Documentation = "https://arena.rone.dev/api/docs"
+Repository = "https://github.com/ridwaanhall/rone-arena-api"
+Issues = "https://github.com/ridwaanhall/rone-arena-api/issues"
 
-[build-system]
-requires = ["setuptools>=75", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.dynamic]
-version = { attr = "OpenMLBB._version.__version__" }
-
-[tool.setuptools.package-dir]
-"" = "OpenMLBB/src"
-
-[tool.setuptools.packages.find]
-where = ["OpenMLBB/src"]
-include = ["OpenMLBB*"]
+[tool.uv]
+package = false
 
 [dependency-groups]
 dev = [
-    "build>=1.3.0",
     "httpx>=0.28.1",
     "pytest==9.0.3",
 ]

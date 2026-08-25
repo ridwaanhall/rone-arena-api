@@ -1,15 +1,15 @@
-# LLM Context: API MobileLegends
+# LLM Context: Rone Arena API
 
 ## Project Purpose
-- This repository provides a public FastAPI service for Mobile Legends data.
-- API surface includes four main groups: `user`, `mlbb`, `academy`, and `addon`.
+- This repository provides an unofficial, community-maintained FastAPI service for Mobile Legends: Bang Bang game data. The brand is "Rone Arena"; the game name is only ever used descriptively.
+- API surface includes four main groups: `user`, `heroes`, `academy`, and `addon`.
 - It also includes a `/web` demo interface that mirrors API operations.
 
 ## High-Level Structure
 - API app entrypoint: `app/main.py`
 - API routers: `app/api/routers/`
   - `user.py`
-  - `mlbb.py`
+  - `heroes.py`
   - `academy.py`
   - `addon.py`
   - `root.py`
@@ -33,7 +33,7 @@
 - Base web route: `/web`
 - Group routes:
   - `/web/user`
-  - `/web/mlbb`
+  - `/web/heroes`
   - `/web/academy`
   - `/web/addon`
 - Detail route pattern: `/web/{group}/{endpoint_path}`

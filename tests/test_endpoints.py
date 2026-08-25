@@ -44,7 +44,7 @@ def test_api_docs_redirects_to_swagger() -> None:
     assert response.headers["location"] == "/api/docs"
 
 
-def test_api_index_exposes_only_mlbb_and_academy_services() -> None:
+def test_api_index_exposes_only_hero_and_academy_services() -> None:
     response = client.get("/api")
     payload = response.json()
 
@@ -55,7 +55,7 @@ def test_api_index_exposes_only_mlbb_and_academy_services() -> None:
     assert all("mpl_id" not in endpoint for endpoint in payload["endpoints"])
 
 
-def test_openapi_documents_mlbb_query_constraints() -> None:
+def test_openapi_documents_hero_query_constraints() -> None:
     openapi = client.get("/api/openapi.json").json()
     params = openapi["paths"]["/api/heroes/rank"]["get"]["parameters"]
     hero_detail_params = openapi["paths"]["/api/heroes/{hero_identifier}"]["get"]["parameters"]

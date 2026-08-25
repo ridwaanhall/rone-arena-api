@@ -8,7 +8,7 @@ import requests
 from app.core.exceptions import AppError
 
 
-class MLBBHeaderBuilder:
+class UpstreamHeaderBuilder:
     USER_AGENTS = [
         # --- Android (Samsung, Pixel, Xiaomi, OnePlus) ---
         "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36",
@@ -50,12 +50,12 @@ class MLBBHeaderBuilder:
         return random.choice(cls.USER_AGENTS)
 
     @staticmethod
-    def get_academy_mlbb_header(lang: str, client_ip: str | None = None) -> dict[str, str]:
+    def get_academy_header(lang: str, client_ip: str | None = None) -> dict[str, str]:
         headers = {
             "Content-Type": "application/json",
             "Origin": "https://www.mobilelegends.com",
             "Referer": "https://www.mobilelegends.com/",
-            "User-Agent": MLBBHeaderBuilder.get_random_user_agent(),
+            "User-Agent": UpstreamHeaderBuilder.get_random_user_agent(),
             "DNT": "1",
         }
         if client_ip:
@@ -80,7 +80,7 @@ class MLBBHeaderBuilder:
         lang: str | None = None,
     ) -> dict[str, str]:
         headers = {
-            "User-Agent": MLBBHeaderBuilder.get_random_user_agent(),
+            "User-Agent": UpstreamHeaderBuilder.get_random_user_agent(),
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "Accept": "*/*",
             "Origin": "https://www.mobilelegends.com",
@@ -89,7 +89,7 @@ class MLBBHeaderBuilder:
         }
 
         if jwt:
-            normalized_jwt = MLBBHeaderBuilder.normalize_auth_token(jwt)
+            normalized_jwt = UpstreamHeaderBuilder.normalize_auth_token(jwt)
             headers["authorization"] = normalized_jwt
             headers["x-token"] = normalized_jwt
 
@@ -100,7 +100,7 @@ class MLBBHeaderBuilder:
             headers["x-appid"] = x_appid
 
         if x_token:
-            headers["x-token"] = MLBBHeaderBuilder.normalize_auth_token(x_token)
+            headers["x-token"] = UpstreamHeaderBuilder.normalize_auth_token(x_token)
 
         if lang:
             headers["x-lang"] = lang
@@ -110,7 +110,7 @@ class MLBBHeaderBuilder:
     @staticmethod
     def get_ip_check_header(client_ip: str | None = None) -> dict[str, str]:
         headers = {
-            "User-Agent": MLBBHeaderBuilder.get_random_user_agent(),
+            "User-Agent": UpstreamHeaderBuilder.get_random_user_agent(),
             "Accept": "*/*",
             "Origin": "https://www.mobilelegends.com",
             "Referer": "https://www.mobilelegends.com/",

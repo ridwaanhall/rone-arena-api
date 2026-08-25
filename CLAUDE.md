@@ -1,8 +1,8 @@
-# MLBB Public Data API & Web - Project Overview
+# Rone Arena API & Web - Project Overview
 
 ## Project Purpose
 
-**MLBB Public Data API & Web** is a comprehensive, production-grade REST API and web interface for **Mobile Legends: Bang Bang** game data. It provides developers, analysts, and fans with structured, reliable access to hero information, academy resources, player statistics, and utility tools.
+**Rone Arena API & Web** is a comprehensive, production-grade REST API and web interface for **Mobile Legends: Bang Bang** game data. It is an unofficial, community-maintained project with no affiliation to or endorsement by Moonton; the game name is used descriptively only, and the brand must never incorporate the "MLBB" or "Mobile Legends" marks. It provides developers, analysts, and fans with structured, reliable access to hero information, academy resources, player statistics, and utility tools.
 
 ## Key Features
 
@@ -22,12 +22,7 @@
 - **Authentication Modal**: Integrated sign-in flow with JWT caching
 - **User Profile Display**: JWT-aware navbar showing profile photo, username, country, role/zone
 
-### 3. **OpenMLBB SDK Docs** (`/openmlbb/*`)
-- **Structured Python SDK Documentation**: Endpoint cards with parameters, examples, request bodies
-- **Interactive Code Examples**: Runnable Python snippets using the OpenMLBB SDK
-- **Categorized by Service**: Academy, MLBB (heroes), User, and Addon endpoints
-
-### 4. **Blog & Tutorials** (`/blog/*`)
+### 3. **Blog & Tutorials** (`/blog/*`)
 - **SEO-Optimized Pages**: Markdown-based guides and release notes
 - **Step-by-Step Tutorials**: Getting started, authentication, integration examples
 
@@ -36,10 +31,10 @@
 ### Backend Stack
 - **Framework**: FastAPI (Python 3.12+)
 - **Async**: Built with async/await for high concurrency
-- **Database**: None (stateless API - all data fetched from upstream MLBB services)
+- **Database**: None (stateless API - all data fetched from upstream game-data services)
 - **Upstream Services**: 
-  - `https://mlbb.rone.dev` (Standard - 0-500 requests/day)
-  - `https://openmlbb.fastapicloud.dev` (High volume - 500+ requests/day)
+  - `https://arena.rone.dev` (Standard - 0-500 requests/day)
+  - `https://arena-hv.fastapicloud.dev` (High volume - 500+ requests/day)
 - **Templates**: Jinja2 for server-side rendering
 - **Static Files**: Tailwind CSS, Alpine.js or vanilla JavaScript
 
@@ -51,18 +46,18 @@
 
 ### Deployment
 - **Production**: Vercel (runs FastAPI via ASGI)
-- **Alternative High-Volume**: openmlbb.fastapicloud.dev (for 500+ requests/day)
+- **Alternative High-Volume**: arena-hv.fastapicloud.dev (for 500+ requests/day)
 - **Local Dev**: FastAPI dev server at `http://127.0.0.1:8000`
 
 ## Project Structure
 
 ```
-api-mobilelegends/
+rone-arena-api/
 ├── app/
 │   ├── api/                    # REST API endpoints
 │   │   ├── routers/
 │   │   │   ├── user.py         # Authentication & user profiles
-│   │   │   ├── mlbb.py         # Hero data, stats, analytics
+│   │   │   ├── heroes.py       # Hero data, stats, analytics
 │   │   │   ├── academy.py      # Game guides, builds, resources
 │   │   │   ├── addon.py        # Utility endpoints (IP lookup, etc.)
 │   │   │   └── root.py         # Root & metadata endpoints
@@ -85,11 +80,9 @@ api-mobilelegends/
 │   │   │   ├── root.py         # Landing page
 │   │   │   └── blog.py         # Blog pages
 │   │   ├── templates/          # Jinja2 templates
-│   │   ├── openapi_catalog.py  # Web endpoint metadata
-│   │   └── openmlbb_catalog.py # OpenMLBB docs metadata
+│   │   └── openapi_catalog.py  # Web endpoint metadata
 │   └── main.py                 # FastAPI app setup
 ├── tests/                      # Pytest suite
-├── OpenMLBB/                   # Python SDK package
 ├── pyproject.toml              # Dependencies & metadata
 ├── .env.example                # Environment template
 └── README.md                   # User documentation
@@ -106,15 +99,15 @@ api-mobilelegends/
 - `PROJECT_VERSION`: Current version string
 
 **API URLs** (automatically switched based on request volume):
-- `PROD_URL_STANDARD`: Standard endpoint (0-500 req/day), default: `https://mlbb.rone.dev/api/`
-- `PROD_URL_HIGH_VOLUME`: High-volume endpoint (500+ req/day), default: `https://openmlbb.fastapicloud.dev/api/`
+- `PROD_URL_STANDARD`: Standard endpoint (0-500 req/day), default: `https://arena.rone.dev/api/`
+- `PROD_URL_HIGH_VOLUME`: High-volume endpoint (500+ req/day), default: `https://arena-hv.fastapicloud.dev/api/`
 
-**Upstream Access** (for fetching MLBB data):
+**Upstream Access** (for fetching game data):
 - `RONE_DEV_ACCESS_KEY`: Key for rone.dev API
 - `RONE_DEV_ACCESS_KEY_V2`: Alternative key for v2 endpoints
 
 **Public Links**:
-- `BASE_URL`: Homepage URL (e.g., `https://mlbb.rone.dev/`)
+- `BASE_URL`: Homepage URL (e.g., `https://arena.rone.dev/`)
 - `API_BASE_URL`: API docs URL
 - `DOCS_BASE_URL`: Docs page URL
 
@@ -126,7 +119,7 @@ api-mobilelegends/
 
 ## CORS & Dev Mode Fix
 
-**Issue**: When `DEBUG=True`, the frontend was still trying to fetch from production URLs (`https://mlbb.rone.dev`), causing CORS errors.
+**Issue**: When `DEBUG=True`, the frontend was still trying to fetch from production URLs (`https://arena.rone.dev`), causing CORS errors.
 
 **Solution**:
 1. Added `is_debug`, `prod_url_standard`, `prod_url_high_volume` to template context in `app/web/routers/root.py`
@@ -153,7 +146,6 @@ uvicorn app.main:app --reload
 # Access:
 # - API Docs: http://127.0.0.1:8000/api/docs
 # - Web Playground: http://127.0.0.1:8000/web/
-# - OpenMLBB Docs: http://127.0.0.1:8000/openmlbb/
 ```
 
 ### Production
@@ -188,9 +180,25 @@ Test coverage includes:
 1. **Sync-Yield ContextVar Bug (Fixed)**: FastAPI sync-yield dependencies don't reset ContextVar across thread contexts; use async-yield instead
 2. **Enum String Rendering**: `str(MyStrEnum.MEMBER)` returns `MyStrEnum.MEMBER`, not the value; use `.value` or normalize with property
 3. **Jinja2 TemplateResponse Order**: Requires `(request, name, context)` order; using old order triggers TypeError
-4. **Two-Tier Prod URLs**: Standard for low traffic (mlbb.rone.dev), High-Volume for 500+ requests/day (openmlbb.fastapicloud.dev)
-5. **MLBB Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
+4. **Two-Tier Prod URLs**: Standard for low traffic (arena.rone.dev), High-Volume for 500+ requests/day (arena-hv.fastapicloud.dev)
+5. **Upstream Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
 6. **Debug Mode URL Switching**: When DEBUG=True, frontend automatically uses local dev server via template variables
+
+## Branding & Trademark Constraints
+
+The project was rebranded from "MLBB Public Data API" to **Rone Arena** because the MLBB /
+Mobile Legends marks belong to Moonton and cannot be used as this project's brand identity.
+
+- **Never** put `MLBB`, `Mobile Legends`, or `Bang Bang` in the product name, domain, repo name,
+  package name, OpenAPI tag, or any other source-identifying position.
+- Naming the game **descriptively** ("data for the game Mobile Legends: Bang Bang") is fine and
+  intentional - that is nominative fair use.
+- The `Origin`/`Referer` headers pointing at `https://www.mobilelegends.com` in `app/core/http.py`
+  are **required by the upstream service** - never rewrite them in a branding sweep.
+- Upstream CDN asset URLs (`akmweb.youngjoygame.com/.../mlbb/...`) inside OpenAPI response examples
+  are real upstream paths - leave them alone.
+- Blog post slugs are pinned explicitly in `app/web/routers/blog.py` so rebranded titles never change
+  a published URL. Add a `"slug"` key when adding a post whose title may later change.
 
 ## Future Enhancements
 
@@ -216,4 +224,4 @@ BSD 3-Clause License - See [LICENSE](LICENSE) file
 **Built by**: RoneAI  
 **Contact**: founder@rone.dev  
 **Website**: https://rone.dev  
-**API Status**: Check https://mlbb.rone.dev for current availability
+**API Status**: Check https://arena.rone.dev for current availability

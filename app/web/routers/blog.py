@@ -10,7 +10,8 @@ router = APIRouter(tags=["web"])
 
 _BLOG_POSTS: list[dict[str, object]] = [
     {
-        "title": "MLBB API Web v4.0.7 Release Notes (4.0.6 to 4.0.8)",
+        "title": "Rone Arena Web v4.0.7 Release Notes (4.0.6 to 4.0.8)",
+        "slug": "mlbb-api-web-v4-0-7-release-notes-4-0-6-to-4-0-8",
         "excerpt": "Version 4.0.8 extends the 4.0.6 maintenance hardening with clearer availability defaults, refreshed SDK versioning, and a TypeScript SDK alternative path for JavaScript/TypeScript projects.",
         "cover_image": "/images/blog/update-v4.0.7.webp",
         "published_at": "2026-04-19",
@@ -72,7 +73,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         ],
     },
     {
-        "title": "MLBB API Web v4.0.4 Release Notes (3.2.3 -> 4.0.4)",
+        "title": "Rone Arena Web v4.0.4 Release Notes (3.2.3 -> 4.0.4)",
+        "slug": "mlbb-api-web-v4-0-4-release-notes-3-2-3-4-0-4",
         "excerpt": "Version 4.0.4 is now released from 3.2.3, introducing the OpenMLBB SDK track, full web documentation coverage, and a refined release workflow aligned to manual config versioning.",
         "cover_image": "/images/blog/update-v4.0.4.webp",
         "published_at": "2026-04-11",
@@ -134,7 +136,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         ],
     },
     {
-        "title": "MLBB API Web v3.2.3 Changelog (3.2.2 -> 3.2.3)",
+        "title": "Rone Arena Web v3.2.3 Changelog (3.2.2 -> 3.2.3)",
+        "slug": "mlbb-api-web-v3-2-3-changelog-3-2-2-3-2-3",
         "excerpt": "Clear release notes for the 3.2.2 to 3.2.3 update, covering API docs, versioning, dependency refresh, UI polish, and documentation improvements.",
         "cover_image": "/images/blog/update-v3.2.3.webp",
         "published_at": "2026-04-10",
@@ -215,7 +218,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         ],
     },
     {
-        "title": "MLBB API Web v3.2.2 Changelog (v3.2.1 -> v3.2.2)",
+        "title": "Rone Arena Web v3.2.2 Changelog (v3.2.1 -> v3.2.2)",
+        "slug": "mlbb-api-web-v3-2-2-changelog-v3-2-1-v3-2-2",
         "excerpt": "Detailed release notes covering API additions, UI redesign, docs updates, and testing changes from commit 3.2.1 to 3.2.2.",
         "cover_image": "/images/blog/landing-page-v3.2.2.webp",
         "published_at": "2026-04-05",
@@ -292,7 +296,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         ],
     },
     {
-        "title": "How to Use MLBB Public Data API Web Project",
+        "title": "How to Use the Rone Arena API Web Project",
+        "slug": "how-to-use-mlbb-public-data-api-web-project",
         "excerpt": "Complete beginner tutorial to sign in, run endpoint requests, use snippets, read responses, and authorize API docs.",
         "cover_image": "/images/blog/landing-page-v3.2.2.webp",
         "published_at": "2026-04-04",
@@ -308,7 +313,7 @@ _BLOG_POSTS: list[dict[str, object]] = [
         "sections": [
             {
                 "heading": "Step 1: Open the Website",
-                "body": "Visit https://mlbb.rone.dev. On the home page you will see two options: Open Demo Website and Open API Docs. Start with Open Demo Website if you want the guided interactive flow.",
+                "body": "Visit https://arena.rone.dev. On the home page you will see two options: Open Demo Website and Open API Docs. Start with Open Demo Website if you want the guided interactive flow.",
                 "image": "/images/blog/landing-page-v3.2.2.webp",
                 "image_note": "Landing page with clear entry points to web playground and API docs.",
             },
@@ -331,7 +336,7 @@ _BLOG_POSTS: list[dict[str, object]] = [
             },
             {
                 "heading": "Step 4: Execute Endpoint Requests",
-                "body": "Choose a group and endpoint. For example, MLBB hero detail. Fill required parameters like hero_identifier (numeric ID or normalized name), plus optional size/index/lang.",
+                "body": "Choose a group and endpoint. For example, the hero detail endpoint. Fill required parameters like hero_identifier (numeric ID or normalized name), plus optional size/index/lang.",
                 "image": "/images/blog/tutorial-step-4-execute-endpoint.webp",
                 "image_note": "Endpoint execution interface with parameter inputs.",
             },
@@ -367,8 +372,10 @@ def _slugify_title(title: str) -> str:
 
 
 for post in _BLOG_POSTS:
+    # Slugs are pinned per post so rebranded titles never change a published URL.
+    # Posts without an explicit slug fall back to deriving one from the title.
     title = str(post.get("title") or "")
-    post["slug"] = _slugify_title(title)
+    post.setdefault("slug", _slugify_title(title))
 
 
 def _get_blog_post_or_404(slug: str) -> dict[str, object]:
@@ -392,11 +399,11 @@ def blog_list_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": "Tutorial & Blog / MLBB Public Data API Web",
+            "title": "Tutorial & Blog / Rone Arena API Web",
             "web_title": "Tutorial & Blog",
-            "subtitle": "Guides, release notes, and practical walkthroughs for MLBB Public Data API & Web.",
-            "seo_description": "Read MLBB Public Data API tutorials and changelogs: sign-in flow, endpoint execution, snippets, response rendering, and release updates.",
-            "seo_keywords": "mlbb api tutorial, mlbb changelog, mobile legends api guide, swagger authorization",
+            "subtitle": "Guides, release notes, and practical walkthroughs for the Rone Arena API & Web.",
+            "seo_description": "Read Rone Arena API tutorials and changelogs: sign-in flow, endpoint execution, snippets, response rendering, and release updates.",
+            "seo_keywords": "rone arena api tutorial, changelog, mobile legends data api guide, swagger authorization",
             "blog_posts": ordered_posts,
             "featured_posts": featured_posts,
             "pinned_posts": pinned_posts,
@@ -411,11 +418,11 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": f"{post['title']} / MLBB Public Data API Web",
+            "title": f"{post['title']} / Rone Arena API Web",
             "web_title": str(post["title"]),
             "subtitle": str(post["excerpt"]),
             "seo_description": str(post["excerpt"]),
-            "seo_keywords": "mlbb tutorial, mlbb changelog, endpoint guide, jwt login tutorial",
+            "seo_keywords": "rone arena tutorial, changelog, endpoint guide, jwt login tutorial",
             "blog_post": post,
         }
     )
