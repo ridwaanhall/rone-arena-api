@@ -13,6 +13,10 @@ from app.core.config import (
     API_STATUS_MESSAGES,
     DEBUG,
     IS_AVAILABLE,
+    IS_HIGH_TRAFFIC,
+    IS_MAINTENANCE,
+    DATE_AVAILABLE,
+    SERVICE_STATUS_KEY,
     PROJECT_VERSION,
     BASE_URL,
     PROD_URL_STANDARD,
@@ -35,8 +39,11 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "current_year": datetime.now(UTC).year,
         "api_version": PROJECT_VERSION,
         "is_available": IS_AVAILABLE,
+        "is_maintenance": IS_MAINTENANCE,
+        "is_high_traffic": IS_HIGH_TRAFFIC,
+        "date_available": DATE_AVAILABLE,
         "alternative_endpoint": ALTERNATIVE_ENDPOINT_URL,
-        "maintenance_message": API_STATUS_MESSAGES["limited"]["message"],
+        "maintenance_message": API_STATUS_MESSAGES[SERVICE_STATUS_KEY]["message"],
         "seo_description": "Interactive web interface for the Rone Arena API with endpoint forms, readable response tables, and cURL output.",
         "seo_keywords": "rone arena api, mobile legends data api, web ui, fastapi, openapi, response table",
         "base_url": BASE_URL,
@@ -67,14 +74,24 @@ def landing_page(request: Request) -> HTMLResponse:
         )
         return templates.TemplateResponse(request, "root/landing_page.html", context)
 
-    context.update(
-        {
-            "title": "503 Service Unavailable / Rone Arena API",
-            "web_title": "Service Unavailable",
-            "seo_description": "Rone Arena API is temporarily unavailable due to high traffic.",
-            "seo_keywords": "rone arena api status, service unavailable, high traffic",
-        }
-    )
+    if IS_MAINTENANCE:
+        context.update(
+            {
+                "title": "Under Maintenance / Rone Arena API",
+                "web_title": "Under Maintenance",
+                "seo_description": "Rone Arena API is temporarily unavailable while under maintenance.",
+                "seo_keywords": "rone arena api status, maintenance, service unavailable",
+            }
+        )
+    else:
+        context.update(
+            {
+                "title": "503 Service Unavailable / Rone Arena API",
+                "web_title": "Service Unavailable",
+                "seo_description": "Rone Arena API is temporarily unavailable due to high traffic.",
+                "seo_keywords": "rone arena api status, service unavailable, high traffic",
+            }
+        )
     return templates.TemplateResponse(request, "root/landing_page.html", context, status_code=503)
 
 

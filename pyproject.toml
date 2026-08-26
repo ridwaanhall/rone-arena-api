@@ -1,6 +1,6 @@
 [project]
 name = "rone-arena-api"
-version = "1.0.0"
+version = "1.0.1"
 description = "Unofficial community data API for the game Mobile Legends: Bang Bang"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
