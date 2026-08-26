@@ -59,7 +59,7 @@ PROJECT_VERSION: str = env_str("PROJECT_VERSION", default="1.0.1")
 #   IS_HIGH_TRAFFIC - this host is shedding load; callers are pointed at the
 #                     high-volume host instead.
 # Maintenance wins when both are set, since it is the more fundamental state.
-IS_MAINTENANCE: bool = env_bool("IS_MAINTENANCE", default=True)
+IS_MAINTENANCE: bool = env_bool("IS_MAINTENANCE", default=False)
 IS_HIGH_TRAFFIC: bool = env_bool("IS_HIGH_TRAFFIC", default=False)
 
 # Derived: the service only serves normally when neither restriction applies.
