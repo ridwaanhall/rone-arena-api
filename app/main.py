@@ -15,6 +15,7 @@ from app.core.config import (
     API_STATUS_MESSAGES,
     DEBUG,
     IS_AVAILABLE,
+    SERVICE_STATUS_KEY,
     PROJECT_VERSION,
 )
 
@@ -265,15 +266,14 @@ async def maintenance_mode_guard(request: Request, call_next):
     if IS_AVAILABLE or request.url.path == "/" or request.url.path.startswith(allowed_when_limited_prefixes):
         return await call_next(request)
 
-    status_info = API_STATUS_MESSAGES["limited"]
+    status_info = API_STATUS_MESSAGES[SERVICE_STATUS_KEY]
     available_endpoints = status_info.get("available_endpoints", ["/"])
     if not isinstance(available_endpoints, list):
         available_endpoints = ["/"]
 
-    details = {
-        "available_endpoints": available_endpoints,
-        "alternative_endpoint": ALTERNATIVE_ENDPOINT_URL,
-    }
+    details: dict[str, object] = {"available_endpoints": available_endpoints}
+    if SERVICE_STATUS_KEY == "limited":
+        details["alternative_endpoint"] = ALTERNATIVE_ENDPOINT_URL
 
     if request.url.path.startswith("/api"):
         payload = safe_error_payload(str(status_info["message"]), 503, details)

@@ -52,7 +52,24 @@ DEBUG: bool = env_bool("DEBUG", default=False)
 # Availability Settings
 # =========================
 PROJECT_VERSION: str = env_str("PROJECT_VERSION", default="1.0.0")
-IS_AVAILABLE: bool = env_bool("IS_AVAILABLE", default=False)
+
+# Two independent reasons the service may be restricted.
+#   IS_MAINTENANCE  - the service is being worked on; no alternative host to
+#                     send callers to, and the home page explains the outage.
+#   IS_HIGH_TRAFFIC - this host is shedding load; callers are pointed at the
+#                     high-volume host instead.
+# Maintenance wins when both are set, since it is the more fundamental state.
+IS_MAINTENANCE: bool = env_bool("IS_MAINTENANCE", default=True)
+IS_HIGH_TRAFFIC: bool = env_bool("IS_HIGH_TRAFFIC", default=False)
+
+# Derived: the service only serves normally when neither restriction applies.
+IS_AVAILABLE: bool = not (IS_MAINTENANCE or IS_HIGH_TRAFFIC)
+
+# Which entry of API_STATUS_MESSAGES / SUPPORT_STATUS_MESSAGES applies.
+SERVICE_STATUS_KEY: str = (
+    "maintenance" if IS_MAINTENANCE else "limited" if IS_HIGH_TRAFFIC else "available"
+)
+
 DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Jul 30, 2026")
 ALTERNATIVE_ENDPOINT_URL: str = env_str(
     "ALTERNATIVE_ENDPOINT_URL",
@@ -80,6 +97,14 @@ DONATION_CURRENCY: str = env_str("DONATION_CURRENCY", default="USD")
 # API Status Messages
 # =========================
 API_STATUS_MESSAGES: dict[str, dict[str, str | list[str]]] = {
+    "maintenance": {
+        "status": "maintenance",
+        "message": (
+            "Service is temporarily unavailable while the API is under maintenance. "
+            "Endpoints will return once the work is complete."
+        ),
+        "available_endpoints": ["/"],
+    },
     "limited": {
         "status": "limited",
         "message": "Service is temporarily unavailable due to high traffic. Please use the alternative endpoint.",
@@ -94,6 +119,10 @@ API_STATUS_MESSAGES: dict[str, dict[str, str | list[str]]] = {
 }
 
 SUPPORT_STATUS_MESSAGES: dict[str, str] = {
+    "maintenance": env_str(
+        "SUPPORT_MESSAGE_MAINTENANCE",
+        default="API is under maintenance. Donations help cover hosting and ongoing development.",
+    ),
     "limited": env_str(
         "SUPPORT_MESSAGE_LIMITED",
         default="API is currently in maintenance mode. Donations help cover hosting and performance scaling.",

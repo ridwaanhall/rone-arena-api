@@ -95,7 +95,10 @@ rone-arena-api/
 **Core Settings**:
 - `DEBUG`: Set to `true` in dev; when true, API playground uses `http://127.0.0.1:8000/api` locally
 - `SECRET_KEY`: Secret for signing JWTs (required)
-- `IS_AVAILABLE`: Set to `false` to show maintenance page
+- `IS_MAINTENANCE`: Set to `true` to restrict the API and show the maintenance page on `/`
+- `IS_HIGH_TRAFFIC`: Set to `true` to restrict the API and point callers at the high-volume host
+  (both default to a restricted service when unset; maintenance wins when both are true, and
+  `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment)
 - `PROJECT_VERSION`: Current version string
 
 **API URLs** (automatically switched based on request volume):

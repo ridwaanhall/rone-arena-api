@@ -15,6 +15,7 @@ from app.core.config import (
     DONATION_TARGET,
     DOCS_BASE_URL,
     IS_AVAILABLE,
+    SERVICE_STATUS_KEY,
     MAINTENANCE_INFO_URL,
     SUPPORT_DETAILS,
     SUPPORT_STATUS_MESSAGES,
@@ -103,7 +104,7 @@ def api_docs_redirect() -> RedirectResponse:
 async def api_index(request: Request) -> dict:
     from fastapi import FastAPI
     app: FastAPI = request.app
-    status_key = "available" if IS_AVAILABLE else "limited"
+    status_key = SERVICE_STATUS_KEY
     status_info = API_STATUS_MESSAGES[status_key]
     timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     base_api_url = API_BASE_URL.rstrip("/")
