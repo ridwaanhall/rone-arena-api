@@ -70,7 +70,11 @@ SERVICE_STATUS_KEY: str = (
     "maintenance" if IS_MAINTENANCE else "limited" if IS_HIGH_TRAFFIC else "available"
 )
 
+<<<<<<< HEAD
 DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Sep 15, 2026")
+=======
+DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Jul 30, 2026")
+>>>>>>> 74e563b9f4fc846963c2f050f3168b4de82903c9
 ALTERNATIVE_ENDPOINT_URL: str = env_str(
     "ALTERNATIVE_ENDPOINT_URL",
     default="https://arena-hv.fastapicloud.dev",
