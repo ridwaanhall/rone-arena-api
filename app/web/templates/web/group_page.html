@@ -12,30 +12,14 @@
     </div>
 
     <div class="border border-zinc-800 p-4 md:p-5" data-api-base-panel>
-        <p class="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Request Routing</p>
-        <p class="mt-2 text-sm text-zinc-300">The playground switches API hosts based on your daily request count.</p>
-        <p id="api-base-note" class="mt-2 text-xs leading-6 text-zinc-500">
-            Under 500 requests per day, the playground routes to {{ prod_url_standard }}. Above 500 requests per day, it switches to
-            {{ prod_url_high_volume }} (recommended).
-        </p>
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-            <div class="border border-zinc-800 bg-black/30 px-3 py-2 text-xs">
-                <p class="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Standard</p>
-                <p class="mt-2 font-mono text-zinc-200">{{ prod_url_standard }}</p>
-                <p class="mt-1 text-[11px] text-zinc-500">For 0 - 500 requests per day.</p>
-            </div>
-            <div class="border border-cyan-700/50 bg-cyan-950/20 px-3 py-2 text-xs">
-                <p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Recommended</p>
-                <p class="mt-2 font-mono text-cyan-200">{{ prod_url_high_volume }}</p>
-                <p class="mt-1 text-[11px] text-cyan-300/80">Best for 500+ requests per day.</p>
-            </div>
-        </div>
+        <p class="text-[10px] uppercase tracking-[0.22em] text-zinc-500">API Base</p>
+        <p class="mt-2 text-sm text-zinc-300">Every request from this playground goes to a single API base.</p>
         <div class="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
             <span>Active base:</span>
-            <span id="api-base-active" class="font-mono text-zinc-200">{{ prod_url_standard }}</span>
-            <span id="api-base-mode" class="inline-flex border border-zinc-800 bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-400">Standard volume</span>
-            <span class="text-zinc-600">Requests:</span>
-            <span id="api-request-count" class="font-mono text-zinc-200">0</span>
+            <span id="api-base-active" class="font-mono text-zinc-200">{{ api_url }}</span>
+            {% if is_debug %}
+                <span class="inline-flex border border-amber-700/50 bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-400">Debug</span>
+            {% endif %}
         </div>
     </div>
 
@@ -92,71 +76,7 @@
 <script>
 (() => {
     const formValidationTimers = new WeakMap();
-    const REQUEST_COUNT_KEY = "arena_web_request_count";
-    const REQUEST_COUNT_DATE_KEY = "arena_web_request_count_date";
-    const REQUEST_THRESHOLD = 500;
-    const IS_DEBUG = {{ 'true' if is_debug else 'false' }};
-    const DEBUG_API_BASE = IS_DEBUG ? "http://127.0.0.1:8000" : null;
-    const STANDARD_API_BASE = IS_DEBUG ? DEBUG_API_BASE : "{{ prod_url_standard }}";
-    const RECOMMENDED_API_BASE = IS_DEBUG ? DEBUG_API_BASE : "{{ prod_url_high_volume }}";
-
-    function getTodayKey() {
-        const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, "0");
-        const day = String(now.getDate()).padStart(2, "0");
-        return `${now.getFullYear()}-${month}-${day}`;
-    }
-
-    function getStoredRequestCount() {
-        const today = getTodayKey();
-        const storedDate = localStorage.getItem(REQUEST_COUNT_DATE_KEY);
-        if (storedDate !== today) {
-            localStorage.setItem(REQUEST_COUNT_DATE_KEY, today);
-            localStorage.setItem(REQUEST_COUNT_KEY, "0");
-            return 0;
-        }
-        const rawValue = localStorage.getItem(REQUEST_COUNT_KEY);
-        const parsed = rawValue ? Number.parseInt(rawValue, 10) : 0;
-        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-    }
-
-    function setStoredRequestCount(value) {
-        localStorage.setItem(REQUEST_COUNT_DATE_KEY, getTodayKey());
-        const safeValue = Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
-        localStorage.setItem(REQUEST_COUNT_KEY, String(safeValue));
-        return safeValue;
-    }
-
-    function resolveApiBase(count) {
-        return count > REQUEST_THRESHOLD ? RECOMMENDED_API_BASE : STANDARD_API_BASE;
-    }
-
-    function updateApiBaseNotice(count = getStoredRequestCount()) {
-        const resolvedBase = resolveApiBase(count);
-        const modeLabel = count > REQUEST_THRESHOLD ? "High volume" : "Standard volume";
-        const debugNote = IS_DEBUG ? " (Debug Mode - using local server)" : "";
-        const note = count > REQUEST_THRESHOLD
-            ? `You are above 500 requests per day. The playground routes to ${RECOMMENDED_API_BASE} (recommended)${debugNote}.`
-            : `Under 500 requests per day, the playground routes to ${STANDARD_API_BASE}. Above 500 requests per day, it switches to ${RECOMMENDED_API_BASE} (recommended)${debugNote}.`;
-
-        const activeBase = document.getElementById("api-base-active");
-        const activeMode = document.getElementById("api-base-mode");
-        const requestCount = document.getElementById("api-request-count");
-        const noteEl = document.getElementById("api-base-note");
-
-        if (activeBase) {
-            activeBase.textContent = resolvedBase;
-        }
-        if (activeMode) {
-            activeMode.textContent = modeLabel + (IS_DEBUG ? " (DEBUG)" : "");
-        }
-        if (requestCount) {
-            requestCount.textContent = count.toLocaleString("en-US");
-        }
-        if (noteEl) {
-            noteEl.textContent = note;
-        }
-    }
+    const API_BASE = "{{ api_url }}";
 
     function getAuthApi() {
         return window.ArenaWebAuth || null;
@@ -952,7 +872,6 @@
     setupCopyButtons();
     setupLanguageTabs();
     setupReadableModeToggles();
-    updateApiBaseNotice();
 
     document.querySelectorAll(".api-operation-form").forEach((formElement) => {
         const form = formElement;
@@ -991,9 +910,7 @@
                 apiPath = apiPath.replace(`{${parameterName}}`, encodeURIComponent(values[0]));
             }
 
-            const nextRequestCount = getStoredRequestCount() + 1;
-            const apiBase = resolveApiBase(nextRequestCount);
-            const url = new URL(apiPath, apiBase);
+            const url = new URL(apiPath, API_BASE);
 
             const queryInputs = form.querySelectorAll('[data-param-in="query"]');
             for (const input of queryInputs) {
@@ -1090,9 +1007,6 @@
                 const message = error instanceof Error ? error.message : "Request failed.";
                 showFormValidationError(form, message);
                 setResponse(form, "Request Error", message, emptySnippets());
-            } finally {
-                const savedCount = setStoredRequestCount(nextRequestCount);
-                updateApiBaseNotice(savedCount);
             }
         });
     });

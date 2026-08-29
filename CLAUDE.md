@@ -32,9 +32,7 @@
 - **Framework**: FastAPI (Python 3.12+)
 - **Async**: Built with async/await for high concurrency
 - **Database**: None (stateless API - all data fetched from upstream game-data services)
-- **Upstream Services**: 
-  - `https://arena.rone.dev` (Standard - 0-500 requests/day)
-  - `https://arena-hv.fastapicloud.dev` (High volume - 500+ requests/day)
+- **Upstream Services**: game-data services reached via `RONE_DEV_ACCESS_KEY` / `RONE_DEV_ACCESS_KEY_V2`
 - **Templates**: Jinja2 for server-side rendering
 - **Static Files**: Tailwind CSS, Alpine.js or vanilla JavaScript
 
@@ -46,7 +44,6 @@
 
 ### Deployment
 - **Production**: Vercel (runs FastAPI via ASGI)
-- **Alternative High-Volume**: arena-hv.fastapicloud.dev (for 500+ requests/day)
 - **Local Dev**: FastAPI dev server at `http://127.0.0.1:8000`
 
 ## Project Structure
@@ -101,9 +98,9 @@ rone-arena-api/
   `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment)
 - `PROJECT_VERSION`: Current version string
 
-**API URLs** (automatically switched based on request volume):
-- `PROD_URL_STANDARD`: Standard endpoint (0-500 req/day), default: `https://arena.rone.dev/api/`
-- `PROD_URL_HIGH_VOLUME`: High-volume endpoint (500+ req/day), default: `https://arena-hv.fastapicloud.dev/api/`
+**API URL** (single endpoint):
+- `API_URL` in `config.py` is derived, not read from the environment: `http://127.0.0.1:8000/api/`
+  when `DEBUG=True`, otherwise `{BASE_URL}api/` - so a deployment automatically calls its own host
 
 **Upstream Access** (for fetching game data):
 - `RONE_DEV_ACCESS_KEY`: Key for rone.dev API
@@ -116,16 +113,16 @@ rone-arena-api/
 
 ### Key Settings in `app/core/config.py`
 
-- `PROD_URL_STANDARD` & `PROD_URL_HIGH_VOLUME`: Automatically uses local dev server when `DEBUG=True`
+- `API_URL`: single API base; local dev server when `DEBUG=True`, else derived from `BASE_URL`
 - All URL configs stripped of trailing slashes for consistency
-- Request threshold: 500 requests/day before switching to high-volume endpoint
+- `ANALYTICS_HOST` defaults to the `BASE_URL` hostname (empty in `DEBUG`)
 
 ## CORS & Dev Mode Fix
 
 **Issue**: When `DEBUG=True`, the frontend was still trying to fetch from production URLs (`https://arena.rone.dev`), causing CORS errors.
 
 **Solution**:
-1. Added `is_debug`, `prod_url_standard`, `prod_url_high_volume` to template context in `app/web/routers/root.py`
+1. Added `is_debug` and `api_url` to template context in `app/web/routers/root.py`
 2. Updated JavaScript in `app/web/templates/web/group_page.html` to use local URL (`http://127.0.0.1:8000`) when DEBUG mode is active
 3. API playground now respects the `IS_DEBUG` flag and routes all requests to localhost in dev mode
 4. No more CORS errors when running locally with `DEBUG=True`
@@ -155,7 +152,6 @@ uvicorn app.main:app --reload
 - Deployed to Vercel (uses `prod/index.py` as ASGI handler)
 - Environment variables set in Vercel dashboard
 - Automatic CORS handling for production domain
-- Request routing based on daily volume
 
 ## Key Dependencies
 
@@ -183,7 +179,7 @@ Test coverage includes:
 1. **Sync-Yield ContextVar Bug (Fixed)**: FastAPI sync-yield dependencies don't reset ContextVar across thread contexts; use async-yield instead
 2. **Enum String Rendering**: `str(MyStrEnum.MEMBER)` returns `MyStrEnum.MEMBER`, not the value; use `.value` or normalize with property
 3. **Jinja2 TemplateResponse Order**: Requires `(request, name, context)` order; using old order triggers TypeError
-4. **Two-Tier Prod URLs**: Standard for low traffic (arena.rone.dev), High-Volume for 500+ requests/day (arena-hv.fastapicloud.dev)
+4. **Single API Base**: `API_URL` follows `BASE_URL` in production and the local dev server in `DEBUG`; there is no request-volume host switch
 5. **Upstream Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
 6. **Debug Mode URL Switching**: When DEBUG=True, frontend automatically uses local dev server via template variables
 

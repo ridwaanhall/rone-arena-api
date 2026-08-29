@@ -58,12 +58,9 @@ It provides access to hero analytics, in-game performance data, academy resource
 ## Base URLs
 
 > [!NOTE]
-> Recommended for 500+ requests per day: https://arena-hv.fastapicloud.dev
-> Standard for 0 - 500 requests per day: https://arena.rone.dev
+> All traffic uses a single base URL: https://arena.rone.dev
 
 ```txt
-https://arena-hv.fastapicloud.dev/     # Recommended base for high-volume traffic
-https://arena-hv.fastapicloud.dev/api  # API base (fastapicloud)
 https://arena.rone.dev/                 # Landing page
 https://arena.rone.dev/blog             # Tutorial and blog list
 https://arena.rone.dev/blog/{slug}      # Blog detail page
