@@ -251,7 +251,8 @@ def win_rate(
                 }
             }
         }
-    }
+    },
+    deprecated=True,
 )
 async def ip(request: Request):
     client_ip = extract_client_ip(request, public_only=True)

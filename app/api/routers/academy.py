@@ -3239,6 +3239,7 @@ def heroes_recommended(
         "- Tracking popularity trends.\n"
         "- Surfacing thematic polls such as 'Most Charismatic Hero' or 'Top Jungler'."
     ),
+    deprecated=True,
     responses={
         200: {
             "description": "Successful Response",
@@ -3320,6 +3321,7 @@ def heroes_ratings(
         "- Allowing players to explore community sentiment.\n"
         "- Surfacing popularity for heroes in specific categories (e.g., 'Top Jungler', 'Most Charismatic Hero')."
     ),
+    deprecated=True,
     responses={
         200: {
             "description": "Successful Response",
