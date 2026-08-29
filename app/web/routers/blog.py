@@ -10,6 +10,127 @@ router = APIRouter(tags=["web"])
 
 _BLOG_POSTS: list[dict[str, object]] = [
     {
+        "title": "Migrating to Rone Arena: What Changed and What You Need to Update",
+        "slug": "migrating-to-rone-arena",
+        "excerpt": "The MLBB Public Data API is now Rone Arena. Every endpoint path is unchanged, but the hostname moved and the Python package was renamed and republished. Here is everything you need to update.",
+        "cover_image": "/images/blog/rebrand.webp",
+        "published_at": "2026-08-29",
+        "read_time": "7 min read",
+        "category": "Announcement",
+        "is_featured": True,
+        "is_pinned": True,
+        "key_points": [
+            "Every API endpoint path is unchanged - only the hostname moved",
+            "pip install OpenMLBB no longer works; the package is now rone-arena",
+            "The SDK version restarts at 1.0.0 after the old package reached 4.2.0",
+        ],
+        "sections": [
+            {
+                "heading": "What Changed at a Glance",
+                "body": "The project formerly published as the MLBB Public Data API is now Rone Arena. Four public names moved, and the rest of this post covers exactly what each one means for your integration.",
+                "bullets": [
+                    "API host: mlbb.rone.dev -> arena.rone.dev",
+                    "Python package: OpenMLBB -> rone-arena",
+                    "Hero data site: MLBB Academy -> arena-academy.rone.dev",
+                    "Player profile: MLBB Identity Card -> arena-card.rone.dev",
+                ],
+            },
+            {
+                "heading": "Updating Your API Calls",
+                "body": "Every endpoint path is identical to before, so a single find-and-replace on your base URL is the whole migration. Replace the host and everything after /api/ stays exactly as it was.",
+                "bullets": [
+                    "Old: https://mlbb.rone.dev/api/heroes",
+                    "New: https://arena.rone.dev/api/heroes",
+                    "No path, parameter, or response shape changed in this move.",
+                ],
+                "callout": "The old host currently redirects, but a 301 will not carry an authenticated POST through - most HTTP clients downgrade it to a GET. Point write requests at the new host directly rather than relying on the redirect.",
+            },
+            {
+                "heading": "Regenerating Typed Clients",
+                "body": "The OpenAPI tag mlbb was renamed to heroes. Tags become class and method names in generated clients, so anything built from the schema needs regenerating even though no URL moved. The full tag set is now user, heroes, academy, and addon.",
+                "bullets": [
+                    "Only the tag changed - the paths behind it are untouched.",
+                    "Hand-written clients that call URLs directly need no change beyond the hostname.",
+                    "Generated clients will see renamed classes or methods wherever the mlbb tag was used.",
+                ],
+            },
+            {
+                "heading": "Reading Service Status",
+                "body": "A 503 previously meant one undifferentiated unavailable state. The response body now distinguishes two independent conditions, so retry logic can tell them apart.",
+                "bullets": [
+                    "Maintenance: the service is being worked on and there is no alternative host to try.",
+                    "High traffic: this host is shedding load and names a failover endpoint in alternative_endpoint.",
+                    "If you retry on 503, read alternative_endpoint rather than assuming a host.",
+                ],
+            },
+            {
+                "heading": "Migrating the Python Package",
+                "body": "OpenMLBB has been removed from PyPI. Installs of the old name will fail, so this is a breaking change - there is no transitional shim package. Install rone-arena and update your imports.",
+                "bullets": [
+                    "Install: pip install rone-arena (was: pip install OpenMLBB)",
+                    "Import: from rone_arena import RoneArena (was: from OpenMLBB import OpenMLBB)",
+                    "Construct: client = RoneArena() (was: client = OpenMLBB())",
+                ],
+                "callout": "The version number goes backwards. The old package had reached 4.2.0; the renamed one restarts at 1.0.0, because it is a new package rather than a continuation. A rone-arena 4.2.0 was briefly published by mistake and has been yanked, so a fresh install resolves to 1.0.0. Avoid a >=4 style pin.",
+            },
+            {
+                "heading": "New: Typed Service Errors",
+                "body": "A 503 from the API now raises ServiceUnavailableError instead of failing during response parsing, so maintenance windows are catchable rather than surfacing as a confusing decode error. Import it alongside the client and handle it where you already handle network failures.",
+                "bullets": [
+                    "from rone_arena import RoneArena, ServiceUnavailableError",
+                    "The exception carries the status message and any failover endpoint the API named.",
+                ],
+            },
+            {
+                "heading": "If You Use the Websites",
+                "body": "Both companion sites moved to new addresses, but nothing is lost in the move.",
+                "bullets": [
+                    "You stay signed in. Saved sessions, theme, and language carry across the rename automatically the first time you load the new address.",
+                    "Update bookmarks to arena-academy.rone.dev and arena-card.rone.dev.",
+                    "Sign-in on the player profile is working again. It had been failing because every API host it was configured against had been retired.",
+                ],
+            },
+            {
+                "heading": "Deprecated Endpoints",
+                "body": "These still respond and are not being removed on a published date, but they are marked deprecated in the schema and will not receive further work. Plan to move off them.",
+                "bullets": [
+                    "GET /api/academy/heroes/catalog",
+                    "GET /api/academy/heroes/ratings",
+                    "GET /api/academy/heroes/ratings/{subject}",
+                    "GET /api/addon/ip",
+                    "GET /api/user/stats",
+                    "GET /api/user/season",
+                    "GET /api/user/friends",
+                    "GET /api/user/matches",
+                    "GET /api/user/matches/{match_id}",
+                    "GET /api/user/matches/hero/{hero_identifier}",
+                    "GET /api/user/heroes/frequent",
+                    "GET /api/user/privacy/settings",
+                    "POST /api/user/privacy/settings",
+                ],
+            },
+            {
+                "heading": "Why the Rename",
+                "body": "MLBB and Mobile Legends: Bang Bang are trademarks of Shanghai Moonton Technology. Using them as this project's own name - in a package name, a domain, or a product title - puts someone else's mark in the position that identifies who made the software. That is the use trademark law restricts, and it was never something this project was entitled to.",
+                "bullets": [
+                    "Describing what the data covers has not changed: this is still an API for Mobile Legends: Bang Bang game data, and it still says so.",
+                    "What moved is the branding. The project is Rone Arena; the game is named only as a description of the data it serves.",
+                    "Rone Arena is unofficial and community-maintained, with no affiliation to or endorsement by Moonton.",
+                ],
+            },
+            {
+                "heading": "Where the Code Lives",
+                "body": "All four repositories were renamed to match the new brand. Existing GitHub links redirect, but update your remotes when convenient.",
+                "bullets": [
+                    "rone-arena-api - REST API and web playground",
+                    "rone-arena-python - Python SDK",
+                    "arena-academy - hero data, stats and builds",
+                    "arena-card - player profile cards",
+                ],
+            },
+        ],
+    },
+    {
         "title": "Rone Arena Web v4.0.7 Release Notes (4.0.6 to 4.0.8)",
         "slug": "mlbb-api-web-v4-0-7-release-notes-4-0-6-to-4-0-8",
         "excerpt": "Version 4.0.8 extends the 4.0.6 maintenance hardening with clearer availability defaults, refreshed SDK versioning, and a TypeScript SDK alternative path for JavaScript/TypeScript projects.",
@@ -17,8 +138,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         "published_at": "2026-04-19",
         "read_time": "6 min read",
         "category": "Release Notes",
-        "is_featured": True,
-        "is_pinned": True,
+        "is_featured": False,
+        "is_pinned": False,
         "key_points": [
             "Range: 4.0.6 -> 4.0.8",
             "Version move: 4.0.6 -> 4.0.8",
