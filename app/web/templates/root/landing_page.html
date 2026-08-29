@@ -117,24 +117,16 @@
 		<div class="pointer-events-none absolute -left-24 -top-16 h-52 w-52 rounded-full bg-cyan-500/15 blur-3xl"></div>
 		<div class="pointer-events-none absolute -right-24 -bottom-20 h-60 w-60 rounded-full bg-sky-500/10 blur-3xl"></div>
 
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-zinc-500">Request Routing</p>
-		<h2 class="relative z-10 mt-2 text-xl font-semibold text-zinc-100">Daily request-based host switch</h2>
+		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-zinc-500">API Base</p>
+		<h2 class="relative z-10 mt-2 text-xl font-semibold text-zinc-100">One endpoint for every request</h2>
 		<p class="relative z-10 mt-2 text-sm leading-6 text-zinc-300">
-			Under 500 requests per day, the playground routes to {{ prod_url_standard }}. Above 500 requests per day,
-			it switches to {{ prod_url_high_volume }} (recommended).
+			The docs and the playground both call {{ api_url }}. Local runs use the dev server; every
+			other deployment follows its own base URL.
 		</p>
 
-		<div class="relative z-10 mt-4 grid gap-3 sm:grid-cols-2">
-			<div class="border border-zinc-800 bg-black/40 px-3 py-2 text-xs">
-				<p class="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Standard</p>
-				<p class="mt-2 font-mono text-zinc-200">{{ prod_url_standard }}</p>
-				<p class="mt-1 text-[11px] text-zinc-500">For 0 - 500 requests per day.</p>
-			</div>
-			<div class="border border-cyan-700/50 bg-cyan-950/25 px-3 py-2 text-xs">
-				<p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Recommended</p>
-				<p class="mt-2 font-mono text-cyan-200">{{ prod_url_high_volume }}</p>
-				<p class="mt-1 text-[11px] text-cyan-300/80">Best for 500+ requests per day.</p>
-			</div>
+		<div class="relative z-10 mt-4 border border-cyan-700/50 bg-cyan-950/25 px-3 py-2 text-xs">
+			<p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Base URL</p>
+			<p class="mt-2 font-mono break-all text-cyan-200">{{ api_url }}</p>
 		</div>
 	</div>
 

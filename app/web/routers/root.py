@@ -19,8 +19,7 @@ from app.core.config import (
     SERVICE_STATUS_KEY,
     PROJECT_VERSION,
     BASE_URL,
-    PROD_URL_STANDARD,
-    PROD_URL_HIGH_VOLUME,
+    API_URL,
 )
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 
@@ -48,9 +47,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "seo_keywords": "rone arena api, mobile legends data api, web ui, fastapi, openapi, response table",
         "base_url": BASE_URL,
         "is_debug": DEBUG,
-        "debug_api_base": "http://127.0.0.1:8000/api" if DEBUG else None,
-        "prod_url_standard": PROD_URL_STANDARD.rstrip("/"),
-        "prod_url_high_volume": PROD_URL_HIGH_VOLUME.rstrip("/"),
+        "api_url": API_URL.rstrip("/"),
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
     }
 

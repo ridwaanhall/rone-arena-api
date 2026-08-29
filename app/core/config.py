@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import Callable, TypeVar
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -51,7 +52,7 @@ DEBUG: bool = env_bool("DEBUG", default=False)
 # =========================
 # Availability Settings
 # =========================
-PROJECT_VERSION: str = env_str("PROJECT_VERSION", default="1.0.1")
+PROJECT_VERSION: str = env_str("PROJECT_VERSION", default="1.0.2")
 
 # Two independent reasons the service may be restricted.
 #   IS_MAINTENANCE  - the service is being worked on; no alternative host to
@@ -146,25 +147,18 @@ BASE_URL: str = env_str("BASE_URL", default="https://arena.rone.dev/")
 API_BASE_URL: str = env_str("API_BASE_URL", default=f"{BASE_URL}api/")
 DOCS_BASE_URL: str = env_str("DOCS_BASE_URL", default=f"{BASE_URL}docs")
 
-# Production URLs for different request volumes
-PROD_URL_STANDARD: str = (
-    "http://127.0.0.1:8000/api/"
-    if DEBUG
-    else env_str("PROD_URL_STANDARD", default="https://arena.rone.dev/api/")
+# The single API base the web playground calls. Local runs talk to the dev
+# server; every other deployment follows BASE_URL, so the playground always
+# targets the host the project is actually served from.
+LOCAL_BASE_URL: str = "http://127.0.0.1:8000"
+API_URL: str = f"{LOCAL_BASE_URL if DEBUG else BASE_URL.rstrip('/')}/api/"
+
+# Analytics only fires on the canonical host, so preview deployments never
+# pollute the stats. Empty in DEBUG so local runs never emit analytics hits.
+ANALYTICS_HOST: str = env_str(
+    "ANALYTICS_HOST",
+    default="" if DEBUG else (urlsplit(BASE_URL).hostname or ""),
 )
-
-PROD_URL_HIGH_VOLUME: str = (
-    "http://127.0.0.1:8000/api/"
-    if DEBUG
-    else env_str("PROD_URL_HIGH_VOLUME", default="https://arena-hv.fastapicloud.dev/api/")
-)
-
-# Backward compatibility
-PROD_URL: str = PROD_URL_STANDARD
-
-# Host that serves the high-volume deployment; analytics is only enabled there.
-# Empty in DEBUG so local runs never emit analytics hits.
-ANALYTICS_HOST: str = env_str("ANALYTICS_HOST", default="" if DEBUG else "arena-hv.fastapicloud.dev")
 
 LIVECHAT_LINK: str = env_str("LIVECHAT_LINK", default="https://ridwaanhall.com/guestbook/")
 CONTACT_FORM_LINK: str = env_str("CONTACT_FORM_LINK", default="https://ridwaanhall.com/contact/")
