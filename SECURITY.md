@@ -11,7 +11,7 @@ If you are using older versions, we strongly recommend upgrading to the latest s
 The security of our users and community is a top priority. If you discover a security vulnerability in this project, please follow these steps:
 
 1. **Confidential Disclosure:**  
-   Please do **not** create a public GitHub issue for security vulnerabilities. Instead, email us directly at [hi@ridwaanhall.com] with the details.
+   Please do **not** create a public GitHub issue for security vulnerabilities. Instead, email us directly at <founder@rone.dev> with the details.
 
 2. **Information to Include:**  
    - A clear and concise description of the vulnerability.
@@ -28,4 +28,18 @@ The security of our users and community is a top priority. If you discover a sec
    - Please act in good faith and avoid exploiting or sharing the vulnerability before it is resolved.
    - We value and appreciate responsible disclosure to protect the entire community.
 
+## Full policy
+
+Scope, safe-harbour terms, and what is explicitly out of scope are published at
+<https://rone.dev/security>, along with machine-readable contact details at
+<https://rone.dev/.well-known/security.txt> (RFC 9116).
+
+There is no bug bounty and no payment — this is a micro enterprise, and offering
+a reward we could not reliably honour would waste your time. What we can offer
+is a fast, human reply and public credit.
+
 Thank you for helping keep this project and its users safe!
+
+---
+
+Maintained by RoneAI (PT RoneAI Teknologi Internasional).
