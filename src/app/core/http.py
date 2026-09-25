@@ -132,11 +132,28 @@ def _get_client() -> httpx.Client:
     return httpx.Client(timeout=30.0, follow_redirects=True)
 
 
+def _is_waf_block(response: httpx.Response) -> bool:
+    # The upstream's WAF (Tengine) answers bursts from one address with an HTML
+    # "405" page instead of a rate-limit status. The API itself only speaks JSON.
+    return response.status_code == 405 and "text/html" in response.headers.get("content-type", "")
+
+
 def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
     try:
         response = _get_client().request(method, url, headers=headers, **kwargs)
+        if _is_waf_block(response):
+            # One retry: on Workers the next request often leaves from another address.
+            response = _get_client().request(method, url, headers=headers, **kwargs)
     except httpx.HTTPError as exc:
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data", details=str(exc)) from exc
+
+    if _is_waf_block(response):
+        raise AppError(
+            status_code=429,
+            code="UPSTREAM_RATE_LIMITED",
+            message="The upstream service is rate-limiting requests right now. Try again in a minute.",
+            details="Upstream firewall blocked the request",
+        )
 
     if response.status_code != 200:
         raise AppError(

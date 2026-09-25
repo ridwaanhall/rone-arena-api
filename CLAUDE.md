@@ -55,6 +55,8 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
 2. **Enum String Rendering**: `str(MyStrEnum.MEMBER)` returns `MyStrEnum.MEMBER`, not the value; use `.value` or normalize with property
 3. **Jinja2 TemplateResponse Order**: Requires `(request, name, context)` order; using old order triggers TypeError
 4. **Upstream Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
+5. **Upstream WAF answers bursts with an HTML 405**: `core/http.py` retries once, then returns 429 `UPSTREAM_RATE_LIMITED`. Don't fire many parallel upstream calls when testing; the block lasts minutes per address
+6. **The upstream IP lookup is IPv4-only**: it answers an IPv6 address with `code: -1, data: ""`. `/api/addon/ip` answers IPv6 visitors from Cloudflare's `request.cf` geolocation instead (handed to the app by `src/worker.py` through a ContextVar)
 
 ## Branding & Trademark Constraints
 
