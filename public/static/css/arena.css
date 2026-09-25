@@ -195,14 +195,14 @@ ul, ol { margin: 0; padding: 0; }
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	min-height: 40px;
-	padding: 8px 16px;
+	min-height: 38px;
+	padding: 7px 14px;
 	border: 1.5px solid var(--ink);
 	border-radius: var(--radius);
 	background: transparent;
 	color: var(--ink);
 	font-weight: 600;
-	font-size: 0.9375rem;
+	font-size: 0.875rem;
 	line-height: 1.2;
 	text-decoration: none;
 	white-space: nowrap;
@@ -215,14 +215,14 @@ ul, ol { margin: 0; padding: 0; }
 .button--mark:hover:not(:disabled) { background: var(--mark-ink); border-color: var(--mark); color: var(--mark); }
 .button--danger { border-color: var(--loss); color: var(--loss); }
 .button--danger:hover:not(:disabled) { background: var(--loss); color: var(--paper); }
-.button--small { min-height: 32px; padding: 4px 10px; font-size: 0.875rem; }
+.button--small { min-height: 32px; padding: 4px 10px; font-size: 0.8125rem; }
 .button--bare { border-color: transparent; }
 .button--bare:hover:not(:disabled) { background: var(--paper-2); color: var(--ink); }
 
 .input, .select, .textarea {
 	width: 100%;
-	min-height: 40px;
-	padding: 7px 11px;
+	min-height: 38px;
+	padding: 6px 10px;
 	border: 1.5px solid var(--ink-3);
 	border-radius: var(--radius);
 	background: var(--paper);
@@ -235,10 +235,14 @@ ul, ol { margin: 0; padding: 0; }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--ink); box-shadow: inset 0 -3px 0 var(--mark); }
 .input::placeholder, .textarea::placeholder { color: var(--ink-3); }
 /* With a mouse there is no zoom to avoid, so controls can drop to 15px. */
+/* Touch keeps ~38px targets and 16px field text (iOS zooms below 16px).
+   With a mouse, controls tighten to 32-34px and 14px text. */
 @media (min-width: 768px) and (pointer: fine) {
-	.input, .select { min-height: 36px; padding-block: 6px; font-size: 0.9375rem; }
+	.input, .select { min-height: 32px; padding-block: 4px; font-size: 0.875rem; }
+	.button { min-height: 34px; padding: 5px 12px; }
+	.button--small { min-height: 28px; padding: 3px 9px; }
 }
-.textarea { min-height: 128px; font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.6; resize: vertical; }
+.textarea { min-height: 128px; font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.6; resize: vertical; }
 .select {
 	appearance: none;
 	padding-right: 36px;
@@ -257,13 +261,16 @@ ul, ol { margin: 0; padding: 0; }
 .toggle label {
 	display: inline-flex;
 	align-items: center;
-	min-height: 34px;
-	padding: 4px 12px;
+	min-height: 32px;
+	padding: 3px 10px;
 	border: 1.5px solid var(--ink-3);
 	border-radius: var(--radius);
-	font-size: 0.9375rem;
+	font-size: 0.875rem;
 	cursor: pointer;
 	user-select: none;
+}
+@media (min-width: 768px) and (pointer: fine) {
+	.toggle label { min-height: 28px; padding: 2px 9px; font-size: 0.8125rem; }
 }
 .toggle label:hover { border-color: var(--ink); }
 .toggle input:checked + label { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); font-weight: 600; }
@@ -652,15 +659,15 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 
 /* Parameters: a ruled form, label column + control column. */
 .params { margin-top: 26px; border-top: 1px solid var(--rule); max-width: 980px; }
-.param { display: grid; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.param { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
 @media (min-width: 760px) { .param { grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; } }
 .param-name { display: flex; flex-direction: column; gap: 2px; }
-@media (min-width: 760px) { .param-name { padding-top: 6px; } }
+@media (min-width: 760px) { .param-name { padding-top: 4px; } }
 .param-name .label { font-weight: 700; font-size: 0.9375rem; }
 .param-name .req { color: var(--loss); margin-left: 2px; }
 .param-name code { font-size: 0.75rem; color: var(--ink-3); }
 .param-control { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.param-control .input, .param-control .select { max-width: 380px; }
+.param-control .input, .param-control .select { max-width: 340px; }
 .param-control .textarea { max-width: 620px; }
 .help { font-size: 0.875rem; color: var(--ink-2); line-height: 1.5; max-width: 62ch; }
 .help code { padding: 0 3px; background: var(--paper-2); border-radius: var(--radius); font-size: 0.7812rem; }
@@ -722,9 +729,64 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .post-row .kind { font-size: 0.875rem; color: var(--ink-2); }
 @media (min-width: 760px) { .post-row .kind { text-align: right; } }
 
-.article { max-width: 760px; padding-block: 36px 64px; }
-.article .back { font-size: 0.9375rem; font-weight: 600; }
-.article h1 { margin-top: 20px; font-size: clamp(2.375rem, 3vw + 1.375rem, 4rem); }
+.crumbs { padding-top: 28px; font-size: 0.875rem; }
+.crumbs ol { display: flex; flex-wrap: wrap; gap: 4px 0; list-style: none; }
+.crumbs li { display: inline-flex; min-width: 0; color: var(--ink-3); }
+.crumbs li + li::before { content: "/"; padding-inline: 8px; color: var(--ink-3); }
+.crumbs a { color: var(--ink-2); font-weight: 600; text-decoration: none; }
+.crumbs a:hover { color: var(--ink); text-decoration: underline; }
+.crumbs [aria-current="page"] { display: block; max-width: 36ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Article + contents. One column below laptop; from 1024 the contents list
+   sits in a sticky column beside the text. */
+.article-layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1024px) {
+	.article-layout { grid-template-columns: minmax(0, 760px) 240px; justify-content: space-between; gap: 56px; }
+}
+@media (min-width: 1440px) { .article-layout { grid-template-columns: minmax(0, 780px) 280px; } }
+.article { max-width: 760px; padding-block: 16px 64px; min-width: 0; }
+.article h1 { margin-top: 12px; font-size: clamp(2.375rem, 3vw + 1.375rem, 4rem); }
+.article-body section { scroll-margin-top: calc(var(--nav-h) + 20px); }
+.article-body h2 .anchor { color: inherit; text-decoration: none; }
+.article-body h2 .anchor:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.article-note { margin-top: 8px; }
+.article-end { margin-top: 48px; padding-top: 16px; border-top: 1.5px solid var(--ink); }
+
+.toc-list { display: grid; list-style: none; counter-reset: toc; }
+.toc-list li { counter-increment: toc; }
+.toc-list a {
+	display: grid;
+	grid-template-columns: 2.2em minmax(0, 1fr);
+	padding: 7px 8px 7px 0;
+	border-left: 3px solid transparent;
+	font-size: 0.9375rem;
+	line-height: 1.35;
+	color: var(--ink-2);
+	text-decoration: none;
+}
+.toc-list a::before { content: counter(toc, decimal-leading-zero); padding-left: 10px; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.8; color: var(--ink-3); }
+.toc-list a:hover { color: var(--ink); background: var(--paper-2); }
+.toc-list a[aria-current="true"] { border-left-color: var(--mark); color: var(--ink); font-weight: 600; }
+.toc--inline { margin-top: 28px; border-block: 1px solid var(--rule); }
+.toc--inline summary { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; font-weight: 700; cursor: pointer; }
+.toc--inline summary .faint { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 400; }
+.toc--inline .toc-list { padding-bottom: 12px; }
+.toc--side { display: none; }
+@media (min-width: 1024px) {
+	.toc--inline { display: none; }
+	.toc--side {
+		display: block;
+		position: sticky;
+		top: calc(var(--nav-h) + 24px);
+		align-self: start;
+		max-height: calc(100vh - var(--nav-h) - 48px);
+		overflow-y: auto;
+		margin-top: 16px;
+		padding-top: 14px;
+		border-top: 1.5px solid var(--ink);
+	}
+}
+.toc-title { margin-bottom: 8px; font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); }
 .article .lede { margin-top: 16px; }
 .article .meta { margin-top: 14px; }
 .article .cover { margin-top: 28px; }

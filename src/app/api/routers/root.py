@@ -164,5 +164,8 @@ async def api_index(request: Request) -> dict:
 )
 def robots_txt() -> PlainTextResponse:
     host_url = BASE_URL.rstrip("/")
-    content = "\n".join(["User-agent: *", "Allow: /", "Disallow:", f"Host: {host_url}"])
+    # JSON endpoints cost an upstream call per hit and are not pages; the docs are.
+    content = "\n".join(
+        ["User-agent: *", "Allow: /", "Allow: /api/docs", "Disallow: /api/", "", f"Sitemap: {host_url}/sitemap.xml"]
+    )
     return PlainTextResponse(content=content)

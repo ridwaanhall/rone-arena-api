@@ -15,6 +15,12 @@
   1.55 line height, running text capped near 70ch, headings `text-wrap: balance`, paragraphs
   `pretty`, numbers tabular. Form controls stay at 16px on touch screens (iOS zooms below that)
   and drop to 15px only with a fine pointer.
+- **SEO**: `_shared_context` sets `canonical_url` from `BASE_URL` + path (never the request host
+  or query) and `is_indexable` only on the production host; other hosts render `noindex`.
+  Blog posts share as `og:type` article with their cover. `/sitemap.xml` (in `routers/blog.py`)
+  lists home, showcase, blog, every post and every playground page; `robots.txt` points at it
+  and keeps crawlers off `/api/` (each hit costs an upstream call). Blog posts get an
+  "On this page" contents list built from their section headings (`table_of_contents`).
 - **Screen tiers**: mobile < 640, tablet 640+, laptop 1024+, monitor 1440+ (1320px page),
   extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes.
 - **Avoid generic AI-template tells** (enforced in part by `test_ui_avoids_generic_ai_template_tells`):

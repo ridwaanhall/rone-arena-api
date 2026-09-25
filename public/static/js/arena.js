@@ -127,6 +127,36 @@
 		navToggle.textContent = open ? "Close" : "Menu";
 	});
 
+	// ------------------------------------------------------- article contents
+
+	// Marks the section being read in every contents list, and folds the
+	// inline list again after a jump so the text is not pushed down.
+	const tocLinks = Array.from(document.querySelectorAll("[data-toc-link]"));
+	if (tocLinks.length && "IntersectionObserver" in window) {
+		const sections = [...new Set(tocLinks.map((link) => link.hash.slice(1)))]
+			.map((id) => document.getElementById(id))
+			.filter(Boolean);
+		const mark = (id) => {
+			tocLinks.forEach((link) => {
+				if (link.hash === `#${id}`) link.setAttribute("aria-current", "true");
+				else link.removeAttribute("aria-current");
+			});
+		};
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const visible = entries.filter((entry) => entry.isIntersecting);
+				if (visible.length) mark(visible[0].target.id);
+			},
+			{ rootMargin: "-20% 0px -70% 0px" },
+		);
+		sections.forEach((section) => observer.observe(section));
+		tocLinks.forEach((link) =>
+			link.addEventListener("click", () => {
+				link.closest("details")?.removeAttribute("open");
+			}),
+		);
+	}
+
 	// ---------------------------------------------------------------- session
 
 	function clearStoredSession() {

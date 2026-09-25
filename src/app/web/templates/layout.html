@@ -8,18 +8,29 @@
 	<title>{{ page_title }}</title>
 	<meta name="description" content="{{ page_description }}" />
 	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'rone arena api, mobile legends data api, hero data, openapi' }}" />
-	<meta name="robots" content="index, follow" />
+	{# Only production is indexed; other hosts point their canonical at it. #}
+	<meta name="robots" content="{{ 'index, follow, max-image-preview:large' if is_indexable else 'noindex, follow' }}" />
 	<meta name="theme-color" content="#f7f7f4" media="(prefers-color-scheme: light)" />
 	<meta name="theme-color" content="#121310" media="(prefers-color-scheme: dark)" />
-	<meta property="og:type" content="website" />
+	<link rel="canonical" href="{{ canonical_url }}" />
+	<link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+	<meta property="og:site_name" content="{{ site_name }}" />
+	<meta property="og:locale" content="en_US" />
+	<meta property="og:type" content="{{ og_type }}" />
 	<meta property="og:title" content="{{ page_title }}" />
 	<meta property="og:description" content="{{ page_description }}" />
-	<meta property="og:url" content="{{ request.url }}" />
-	<meta property="og:image" content="https://rone.dev/static/img/favicon/favicon.ico" />
-	<meta name="twitter:card" content="summary" />
+	<meta property="og:url" content="{{ canonical_url }}" />
+	<meta property="og:image" content="{{ share_image }}" />
+	<meta property="og:image:alt" content="{{ share_image_alt }}" />
+	{% if og_type == "article" and blog_post %}
+	<meta property="article:published_time" content="{{ blog_post['published_at'] }}" />
+	<meta property="article:section" content="{{ blog_post.get('category', 'Article') }}" />
+	{% endif %}
+	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="{{ page_title }}" />
 	<meta name="twitter:description" content="{{ page_description }}" />
-	<link rel="canonical" href="{{ request.url }}" />
+	<meta name="twitter:image" content="{{ share_image }}" />
+	<meta name="twitter:image:alt" content="{{ share_image_alt }}" />
 	<link rel="icon" type="image/x-icon" href="https://rone.dev/static/img/favicon/favicon.ico" />
 
 	{# Apply a saved theme before first paint. Without one, the system setting decides. #}

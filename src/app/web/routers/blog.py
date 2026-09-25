@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse
+import re
+from xml.sax.saxutils import escape
 
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, Response
+
+from app.web.openapi_catalog import WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
-from app.web.routers.root import _shared_context, templates
+from app.web.routers.root import _shared_context, absolute_url, templates
 
 router = APIRouter(tags=["web"])
 
@@ -581,6 +585,24 @@ for post in _BLOG_POSTS:
     post.setdefault("slug", _slugify_title(title))
 
 
+def section_anchor(heading: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-") or "section"
+
+
+def table_of_contents(post: dict[str, object]) -> list[dict[str, str]]:
+    """One entry per section, with an anchor that stays unique within the post."""
+    entries: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for section in post.get("sections") or []:
+        anchor = base = section_anchor(str(section["heading"]))
+        counter = 2
+        while anchor in seen:
+            anchor, counter = f"{base}-{counter}", counter + 1
+        seen.add(anchor)
+        entries.append({"id": anchor, "heading": str(section["heading"])})
+    return entries
+
+
 def _get_blog_post_or_404(slug: str) -> dict[str, object]:
     normalized = slug.strip().lower()
     for post in _BLOG_POSTS:
@@ -603,8 +625,8 @@ def blog_list_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": "Tutorial & Blog / Rone Arena API Web",
-            "web_title": "Tutorial & Blog",
+            "title": "Blog: Tutorials and Release Notes / Rone Arena API",
+            "web_title": "Blog",
             "subtitle": "Guides, release notes, and practical walkthroughs for the Rone Arena API & Web.",
             "seo_description": "Read Rone Arena API tutorials and changelogs: sign-in flow, endpoint execution, snippets, response rendering, and release updates.",
             "seo_keywords": "rone arena api tutorial, changelog, mobile legends data api guide, swagger authorization",
@@ -623,12 +645,39 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": f"{post['title']} / Rone Arena API Web",
+            "title": f"{post['title']} / Rone Arena API Blog",
             "web_title": str(post["title"]),
             "subtitle": str(post["excerpt"]),
             "seo_description": str(post["excerpt"]),
             "seo_keywords": "rone arena tutorial, changelog, endpoint guide, jwt login tutorial",
             "blog_post": post,
+            "toc": table_of_contents(post),
+            "og_type": "article",
+            "share_image": absolute_url(str(post["cover_image"])),
+            "share_image_alt": str(post["title"]),
         }
     )
     return templates.TemplateResponse(request, "blog/detail_page.html", context)
+
+
+@router.get(path="/sitemap.xml", include_in_schema=False, name="web.sitemap")
+def sitemap(request: Request) -> Response:
+    """Every indexable page: home, showcase, blog, its posts, and the playground."""
+    urls: list[tuple[str, str | None]] = [("/", None), ("/showcase", None), ("/blog", None)]
+    urls += [(f"/blog/{post['slug']}", str(post.get("published_at") or "") or None) for post in _BLOG_POSTS]
+    for group in WEB_GROUPS:
+        urls.append((f"/web/{group}", None))
+        urls += [(str(operation["web_path"]), None) for operation in get_group_operations(request.app, group)]
+
+    seen: set[str] = set()
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for path, lastmod in urls:
+        if path in seen:
+            continue
+        seen.add(path)
+        entry = f"<url><loc>{escape(absolute_url(path))}</loc>"
+        if lastmod:
+            entry += f"<lastmod>{escape(lastmod)}</lastmod>"
+        lines.append(entry + "</url>")
+    lines.append("</urlset>")
+    return Response("\n".join(lines), media_type="application/xml")

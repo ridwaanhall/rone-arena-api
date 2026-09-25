@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -50,6 +51,19 @@ def _asset_version() -> str:
 
 ASSET_VERSION = _asset_version()
 
+# Search engines should only index the production host; workers.dev, preview
+# and local copies of the same pages are marked noindex and point their
+# canonical link at production.
+SITE_ORIGIN = BASE_URL.rstrip("/")
+CANONICAL_HOST = (urlsplit(BASE_URL).hostname or "").lower()
+SITE_NAME = "Rone Arena API"
+# A real screenshot of the home page, used when a page has no image of its own.
+DEFAULT_SHARE_IMAGE = "/images/blog/release-v1.1.0-home.webp"
+
+
+def absolute_url(path: str) -> str:
+    return path if path.startswith(("http://", "https://")) else f"{SITE_ORIGIN}{path}"
+
 
 def _asset_version_for(request: Request) -> str:
     """The `?v=` value for asset URLs.
@@ -85,6 +99,12 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "is_debug": DEBUG,
         "api_url": API_URL.rstrip("/"),
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
+        "site_name": SITE_NAME,
+        "canonical_url": absolute_url(request.url.path),
+        "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
+        "og_type": "website",
+        "share_image": absolute_url(DEFAULT_SHARE_IMAGE),
+        "share_image_alt": "The Rone Arena API home page with live hero rankings",
     }
 
 

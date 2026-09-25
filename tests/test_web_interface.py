@@ -397,7 +397,7 @@ def test_blog_list_page_renders_tutorial_cards() -> None:
     response = client.get("/blog")
 
     assert response.status_code == 200
-    assert "Tutorial &amp; Blog" in response.text or "Tutorial & Blog" in response.text
+    assert "<h1>Blog</h1>" in response.text
     assert "Rone Arena Web v3.2.2 Changelog" in response.text
     assert "How to Use the Rone Arena API Web Project" in response.text
     assert "/blog/how-to-use-mlbb-public-data-api-web-project" in response.text
@@ -422,11 +422,12 @@ def test_blog_detail_page_uses_slug_url_and_shows_steps() -> None:
     assert "/images/blog/tutorial-step-2-signin-send-vc.webp" in response.text
 
 
-def test_navbar_includes_tutorial_button() -> None:
+def test_navbar_links_the_blog() -> None:
     response = client.get("/web/user")
 
     assert response.status_code == 200
-    assert "Tutorials" in response.text
+    assert ">Blog</a>" in response.text
+    assert ">Tutorials</a>" not in response.text
     assert "href=\"/blog\"" in response.text
 
 
@@ -498,3 +499,61 @@ def test_every_blog_image_exists_on_disk() -> None:
         images = [post["cover_image"]] + [s["image"] for s in post["sections"] if s.get("image")]
         for image in images:
             assert (root / "public" / str(image).lstrip("/")).is_file(), image
+
+
+def test_blog_post_has_a_table_of_contents_linked_to_its_sections() -> None:
+    response = client.get("/blog/how-to-use-mlbb-public-data-api-web-project")
+
+    assert response.status_code == 200
+    assert "On this page" in response.text
+    assert 'href="#step-1-open-the-website"' in response.text
+    assert 'id="step-1-open-the-website"' in response.text
+    assert '"@type": "BreadcrumbList"' in response.text
+
+
+def test_pages_point_search_engines_at_production() -> None:
+    # The test client's host is not the production host, so pages are noindex
+    # and their canonical/og:url use BASE_URL, never the requested host or query.
+    response = client.get("/blog?utm_source=x")
+
+    assert '<link rel="canonical" href="https://arena.rone.dev/blog" />' in response.text
+    assert '<meta property="og:url" content="https://arena.rone.dev/blog" />' in response.text
+    assert 'content="noindex, follow"' in response.text
+    assert "utm_source" not in response.text
+
+
+def test_production_host_is_indexable() -> None:
+    response = client.get("/showcase", headers={"host": "arena.rone.dev"})
+
+    assert 'content="index, follow, max-image-preview:large"' in response.text
+
+
+def test_blog_post_shares_as_an_article_with_its_cover() -> None:
+    response = client.get("/blog/rone-arena-1-1-0-release-notes")
+
+    assert '<meta property="og:type" content="article" />' in response.text
+    assert 'content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert '<meta property="article:published_time" content="2026-09-25" />' in response.text
+
+
+def test_sitemap_lists_pages_posts_and_every_endpoint() -> None:
+    from xml.etree import ElementTree
+
+    response = client.get("/sitemap.xml")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/xml")
+
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    locs = [loc.text for loc in ElementTree.fromstring(response.text).findall("s:url/s:loc", ns)]
+    assert "https://arena.rone.dev/" in locs
+    assert "https://arena.rone.dev/blog/rone-arena-1-1-0-release-notes" in locs
+    assert "https://arena.rone.dev/web/heroes/heroes/wallpapers" in locs
+    assert len(locs) == len(set(locs))
+    assert all(loc.startswith("https://arena.rone.dev/") for loc in locs)
+
+
+def test_robots_txt_points_at_the_sitemap() -> None:
+    body = client.get("/robots.txt").text
+
+    assert "Sitemap: https://arena.rone.dev/sitemap.xml" in body
+    assert "Disallow: /api/" in body

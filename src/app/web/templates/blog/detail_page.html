@@ -1,70 +1,115 @@
 {% extends "layout.html" %}
 
-{% block content %}
-<article class="article">
-	<a href="/blog" class="link back">Back to Blog</a>
-	<h1>{{ blog_post['title'] }}</h1>
-	<p class="lede">{{ blog_post['excerpt'] }}</p>
-	<p class="meta">{{ blog_post['published_at'] }}, {{ blog_post['read_time'] }}, {{ blog_post.get('category', 'Article') }}</p>
-
-	<img class="cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" />
-
-	{% if blog_post.get('key_points') %}
-		<div class="keypoints">
-			<h2>In short</h2>
-			<ul>
-				{% for point in blog_post['key_points'] %}<li>{{ point }}</li>{% endfor %}
-			</ul>
-		</div>
-	{% endif %}
-
-	<div class="article-body">
-		{% for section in blog_post['sections'] %}
-			<section>
-				<h2>{{ section['heading'] }}</h2>
-				<p>{{ section['body'] }}</p>
-
-				{% if section.get('bullets') %}
-					<ul>
-						{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
-					</ul>
-				{% endif %}
-
-				{% if section.get('callout') %}
-					<p class="note">{{ section['callout'] }}</p>
-				{% endif %}
-
-				{% if section.get('image') %}
-					<figure>
-						<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" />
-						{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
-					</figure>
-				{% elif section.get('image_note') %}
-					<p class="help" style="margin-top: 8px">{{ section['image_note'] }}</p>
-				{% endif %}
-			</section>
+{% macro toc_list() %}
+	<ol class="toc-list">
+		{% for entry in toc %}
+			<li><a href="#{{ entry['id'] }}" data-toc-link>{{ entry['heading'] }}</a></li>
 		{% endfor %}
-	</div>
+	</ol>
+{% endmacro %}
 
-	<p style="margin-top: 48px; padding-top: 16px; border-top: 1.5px solid var(--ink)"><a href="/blog" class="link">All posts</a></p>
-</article>
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb">
+	<ol>
+		<li><a href="/">Home</a></li>
+		<li><a href="/blog">Blog</a></li>
+		<li aria-current="page">{{ blog_post['title'] }}</li>
+	</ol>
+</nav>
+
+<div class="article-layout">
+	<article class="article">
+		<h1>{{ blog_post['title'] }}</h1>
+		<p class="lede">{{ blog_post['excerpt'] }}</p>
+		<p class="meta"><time datetime="{{ blog_post['published_at'] }}">{{ blog_post['published_at'] }}</time>, {{ blog_post['read_time'] }}, {{ blog_post.get('category', 'Article') }}</p>
+
+		<img class="cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" width="1600" height="900" />
+
+		{% if blog_post.get('key_points') %}
+			<div class="keypoints">
+				<h2>In short</h2>
+				<ul>
+					{% for point in blog_post['key_points'] %}<li>{{ point }}</li>{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+
+		{% if toc | length > 1 %}
+			{# Phones and tablets: a folded contents list above the text. #}
+			<details class="toc toc--inline">
+				<summary>On this page <span class="faint">{{ toc | length }} sections</span></summary>
+				{{ toc_list() }}
+			</details>
+		{% endif %}
+
+		<div class="article-body">
+			{% for section in blog_post['sections'] %}
+				<section id="{{ toc[loop.index0]['id'] }}" aria-labelledby="{{ toc[loop.index0]['id'] }}-title">
+					<h2 id="{{ toc[loop.index0]['id'] }}-title"><a class="anchor" href="#{{ toc[loop.index0]['id'] }}">{{ section['heading'] }}</a></h2>
+					<p>{{ section['body'] }}</p>
+
+					{% if section.get('bullets') %}
+						<ul>
+							{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
+						</ul>
+					{% endif %}
+
+					{% if section.get('callout') %}
+						<p class="note">{{ section['callout'] }}</p>
+					{% endif %}
+
+					{% if section.get('image') %}
+						<figure>
+							<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" decoding="async" />
+							{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
+						</figure>
+					{% elif section.get('image_note') %}
+						<p class="help article-note">{{ section['image_note'] }}</p>
+					{% endif %}
+				</section>
+			{% endfor %}
+		</div>
+
+		<p class="article-end"><a href="/blog" class="link">All posts</a></p>
+	</article>
+
+	{% if toc | length > 1 %}
+		{# Laptop and up: the same list, pinned beside the text, marking the section in view. #}
+		<aside class="toc toc--side" aria-label="On this page">
+			<p class="toc-title">On this page</p>
+			{{ toc_list() }}
+		</aside>
+	{% endif %}
+</div>
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": {{ blog_post['title'] | tojson }},
-  "description": {{ blog_post['excerpt'] | tojson }},
-  "datePublished": {{ blog_post['published_at'] | tojson }},
-  "author": {
-    "@type": "Organization",
-    "name": "RoneAI"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "RoneAI"
-  },
-  "image": {{ blog_post['cover_image'] | tojson }}
+  "@graph": [
+    {
+      "@type": "BlogPosting",
+      "headline": {{ blog_post['title'] | tojson }},
+      "description": {{ blog_post['excerpt'] | tojson }},
+      "datePublished": {{ blog_post['published_at'] | tojson }},
+      "dateModified": {{ blog_post['published_at'] | tojson }},
+      "articleSection": {{ blog_post.get('category', 'Article') | tojson }},
+      "inLanguage": "en",
+      "mainEntityOfPage": {{ canonical_url | tojson }},
+      "url": {{ canonical_url | tojson }},
+      "image": {{ share_image | tojson }},
+      "author": {"@type": "Organization", "name": "RoneAI", "url": "https://rone.dev/"},
+      "publisher": {"@type": "Organization", "name": "RoneAI", "url": "https://rone.dev/"},
+      "isPartOf": {"@type": "Blog", "name": "Rone Arena API Blog", "url": {{ (base_url ~ 'blog') | tojson }}}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": {{ base_url | tojson }}},
+        {"@type": "ListItem", "position": 2, "name": "Blog", "item": {{ (base_url ~ 'blog') | tojson }}},
+        {"@type": "ListItem", "position": 3, "name": {{ blog_post['title'] | tojson }}, "item": {{ canonical_url | tojson }}}
+      ]
+    }
+  ]
 }
 </script>
 {% endblock %}
