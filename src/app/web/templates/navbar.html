@@ -19,7 +19,7 @@
 			<div class="masthead-end">
 				<a href="https://github.com/ridwaanhall/rone-arena-api/releases" class="version only-wide" target="_blank" rel="noreferrer noopener" title="Release notes">v{{ api_version }}</a>
 				<button id="donate-modal-trigger" type="button" class="button button--bare button--small only-wide">Donate</button>
-				<button id="theme-toggle" type="button" class="button button--bare button--small" aria-label="Switch color theme">
+				<button id="theme-toggle" type="button" class="button button--bare button--small from-tablet" aria-label="Switch color theme" data-theme-toggle>
 					<span class="theme-light-label">Dark</span><span class="theme-dark-label">Light</span>
 				</button>
 
@@ -53,6 +53,9 @@
 			{% endfor %}
 			<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub</a>
 			<button type="button" data-open-donate>Donate</button>
+			<button type="button" class="drawer-theme" data-theme-toggle>
+				<span class="theme-light-label">Dark mode</span><span class="theme-dark-label">Light mode</span>
+			</button>
 		</nav>
 	</div>
 </header>

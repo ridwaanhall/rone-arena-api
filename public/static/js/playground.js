@@ -457,6 +457,21 @@
 			});
 			empty?.classList.toggle("hidden", visible > 0);
 		});
+		// "/" jumps to the filter from anywhere outside a field; Escape clears it.
+		document.addEventListener("keydown", (event) => {
+			if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+			const target = event.target;
+			if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+			if (input.offsetParent === null) return;
+			event.preventDefault();
+			input.focus();
+			input.select();
+		});
+		input.addEventListener("keydown", (event) => {
+			if (event.key !== "Escape" || !input.value) return;
+			input.value = "";
+			input.dispatchEvent(new Event("input"));
+		});
 	}
 
 	// ----------------------------------------------------------------- submit

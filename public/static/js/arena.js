@@ -108,10 +108,13 @@
 		return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 	}
 
-	$("theme-toggle")?.addEventListener("click", () => {
-		const next = currentTheme() === "dark" ? "light" : "dark";
-		document.documentElement.dataset.theme = next;
-		storage.set(THEME_KEY, next);
+	// The masthead switch (tablet and up) and the drawer entry (phones).
+	document.querySelectorAll("[data-theme-toggle]").forEach((toggle) => {
+		toggle.addEventListener("click", () => {
+			const next = currentTheme() === "dark" ? "light" : "dark";
+			document.documentElement.dataset.theme = next;
+			storage.set(THEME_KEY, next);
+		});
 	});
 
 	// ------------------------------------------------------------ nav drawer
@@ -121,6 +124,7 @@
 	navToggle?.addEventListener("click", () => {
 		const open = navDrawer?.classList.toggle("hidden") === false;
 		navToggle.setAttribute("aria-expanded", String(open));
+		navToggle.textContent = open ? "Close" : "Menu";
 	});
 
 	// ---------------------------------------------------------------- session

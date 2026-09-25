@@ -6,7 +6,8 @@
 	</nav>
 
 	<label class="sr-only" for="endpoint-filter">Filter endpoints</label>
-	<input id="endpoint-filter" type="search" class="input" placeholder="Filter by path or name" data-endpoint-filter autocomplete="off" />
+	<input id="endpoint-filter" type="search" class="input" placeholder="Filter by path or name" data-endpoint-filter autocomplete="off" aria-keyshortcuts="/" />
+	<p class="filter-hint">Press <kbd>/</kbd> to filter, <kbd>Esc</kbd> to clear</p>
 
 	<nav class="index-list" data-endpoint-list aria-label="{{ group_meta[current_group]['title'] }} endpoints">
 		{% for operation in sidebar_operations %}

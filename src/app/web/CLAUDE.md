@@ -9,7 +9,14 @@
   width for headings, normal for body) and IBM Plex Mono for data. One highlighter accent
   (`--mark`, chartreuse) used only behind marks, on the primary button, and on selected states;
   never as text colour. Data colours carry meaning (win/loss/info). Light is the designed default;
-  dark follows the system or the toggle.
+  dark follows the system or the toggle. Anything on `--mark` takes `--mark-ink` text (dark in
+  both themes); never put `--ink` text or borders on the green, since `--ink` turns light in dark mode.
+- **Typography**: font sizes in `rem` (the reader's browser setting scales them); body 1rem at
+  1.55 line height, running text capped near 70ch, headings `text-wrap: balance`, paragraphs
+  `pretty`, numbers tabular. Form controls stay at 16px on touch screens (iOS zooms below that)
+  and drop to 15px only with a fine pointer.
+- **Screen tiers**: mobile < 640, tablet 640+, laptop 1024+, monitor 1440+ (1320px page),
+  extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes.
 - **Avoid generic AI-template tells** (enforced in part by `test_ui_avoids_generic_ai_template_tells`):
   Inter/Geist/Space Grotesk, purple or neon-on-dark palettes, glows and radial halos, glass/blur,
   gradient text, badges or eyebrow labels above headlines, icon tiles over headings, identical card
