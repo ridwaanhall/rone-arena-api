@@ -133,19 +133,24 @@ cp .env.example .env
 #### Development
 
 ```bash
-fastapi dev
+uv run fastapi dev
 ```
 
 #### Production
 
 ```bash
-fastapi run
+uv run fastapi run
 ```
 
 #### Deploy
 
+Pushing to `main` deploys to Cloudflare Workers (`arena.rone.dev`) through Workers Builds,
+which runs `uv run pywrangler deploy`. Other branches get preview versions.
+
 ```bash
-# deploy via fastapicloud
+# run the Worker locally (Linux/macOS; needs Node.js)
+uv run pywrangler dev
+# deploy the high-traffic fallback to FastAPI Cloud
 fastapi deploy
 ```
 

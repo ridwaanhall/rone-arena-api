@@ -8,6 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import DEBUG, IS_AVAILABLE, PROJECT_VERSION
 from app.core.paths import PUBLIC_DIR
@@ -251,16 +252,33 @@ def custom_openapi() -> dict[str, object]:
 app.openapi = custom_openapi
 
 
-@app.middleware("http")
-async def maintenance_mode_guard(request: Request, call_next):
-    allowed_when_limited_prefixes = ("/blog", "/images/blog", "/static")
-    if IS_AVAILABLE or request.url.path == "/" or request.url.path.startswith(allowed_when_limited_prefixes):
-        return await call_next(request)
+class ServiceStatusGuard:
+    """While the service is restricted, keep only the status page, blog and assets up.
 
-    if request.url.path.startswith("/api"):
-        return await app_error_handler(request, service_unavailable_error())
+    A plain ASGI middleware rather than @app.middleware("http"), which wraps every
+    request in a task group; this one only runs when the service is restricted.
+    """
 
-    return RedirectResponse(url="/", status_code=307)
+    _ALLOWED_PREFIXES = ("/blog", "/images/blog", "/static")
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] != "http" or path == "/" or path.startswith(self._ALLOWED_PREFIXES):
+            await self.app(scope, receive, send)
+            return
+
+        if path.startswith("/api"):
+            response = await app_error_handler(Request(scope), service_unavailable_error())
+        else:
+            response = RedirectResponse(url="/", status_code=307)
+        await response(scope, receive, send)
+
+
+if not IS_AVAILABLE:
+    app.add_middleware(ServiceStatusGuard)
 
 # api routers
 app.include_router(root_router)

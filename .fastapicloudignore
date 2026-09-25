@@ -1,0 +1,4 @@
+pylock.toml
+python_modules/
+.venv-workers/
+.wrangler/

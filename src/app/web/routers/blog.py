@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from app.web.page_cache import page_cached
 from app.web.routers.root import _shared_context, templates
 
 router = APIRouter(tags=["web"])
@@ -589,6 +590,7 @@ def _get_blog_post_or_404(slug: str) -> dict[str, object]:
 
 
 @router.get(path="/blog", include_in_schema=False, response_class=HTMLResponse, name="web.blog.list")
+@page_cached
 def blog_list_page(request: Request) -> HTMLResponse:
     ordered_posts = sorted(
         _BLOG_POSTS,
@@ -615,6 +617,7 @@ def blog_list_page(request: Request) -> HTMLResponse:
 
 
 @router.get(path="/blog/{slug}", include_in_schema=False, response_class=HTMLResponse, name="web.blog.detail")
+@page_cached
 def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
     post = _get_blog_post_or_404(slug)
     context = _shared_context(request)

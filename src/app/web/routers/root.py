@@ -24,6 +24,7 @@ from app.core.config import (
 )
 from app.core.paths import PUBLIC_DIR
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
+from app.web.page_cache import page_cached
 from app.web.showcase import ENTRY_KEYS, SHOWCASE, SUBMIT_URL, format_entry, llm_prompt, with_playground_links
 
 router = APIRouter(tags=["web"])
@@ -50,6 +51,18 @@ def _asset_version() -> str:
 ASSET_VERSION = _asset_version()
 
 
+def _asset_version_for(request: Request) -> str:
+    """The `?v=` value for asset URLs.
+
+    On Cloudflare Workers the static files are not on disk, so the deployed version id
+    (the CF_VERSION_METADATA binding) busts the cache on every deploy instead.
+    """
+    env = request.scope.get("env")
+    metadata = getattr(env, "CF_VERSION_METADATA", None) if env is not None else None
+    version_id = getattr(metadata, "id", None) if metadata is not None else None
+    return str(version_id)[:10] if version_id else ASSET_VERSION
+
+
 def _shared_context(request: Request, current_group: str | None = None) -> dict[str, object]:
     return {
         "request": request,
@@ -59,7 +72,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "group_counts": {group: len(get_group_operations(request.app, group)) for group in WEB_GROUPS},
         "current_year": datetime.now(UTC).year,
         "api_version": PROJECT_VERSION,
-        "asset_version": ASSET_VERSION,
+        "asset_version": _asset_version_for(request),
         "is_available": IS_AVAILABLE,
         "is_maintenance": IS_MAINTENANCE,
         "is_high_traffic": IS_HIGH_TRAFFIC,
@@ -94,6 +107,7 @@ def _normalize_path(value: str) -> str:
 
 
 @router.get(path="/", include_in_schema=False, response_class=HTMLResponse)
+@page_cached
 def landing_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     if IS_AVAILABLE:
@@ -133,6 +147,7 @@ def landing_page(request: Request) -> HTMLResponse:
 
 
 @router.get(path="/showcase", include_in_schema=False, response_class=HTMLResponse, name="web.showcase")
+@page_cached
 def showcase_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
@@ -157,6 +172,7 @@ def web_home() -> RedirectResponse:
 
 
 @router.get(path="/web/{group}", include_in_schema=False, response_class=HTMLResponse)
+@page_cached
 def web_group_page(request: Request, group: str) -> HTMLResponse:
     if group not in WEB_GROUPS:
         raise HTTPException(status_code=404, detail="Web group not found")
@@ -179,6 +195,7 @@ def web_group_page(request: Request, group: str) -> HTMLResponse:
 
 
 @router.get(path="/web/{group}/{endpoint_path:path}", include_in_schema=False, response_class=HTMLResponse)
+@page_cached
 def web_endpoint_page(request: Request, group: str, endpoint_path: str) -> HTMLResponse:
     if group not in WEB_GROUPS:
         raise HTTPException(status_code=404, detail="Web group not found")

@@ -112,3 +112,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Cloudflare Workers (pywrangler / wrangler)
+.wrangler/
+.venv-workers/
+python_modules/
+node_modules/
+.dev.vars*

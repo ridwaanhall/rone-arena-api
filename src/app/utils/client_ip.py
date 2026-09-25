@@ -68,6 +68,13 @@ def _select_best_ip(candidates: list[str], public_only: bool) -> str | None:
 
 
 def extract_client_ip(request: Request, *, public_only: bool = False) -> str | None:
+    # Set by Cloudflare to the visitor's address; on Workers the ASGI scope has no client.
+    cf_connecting_ip = request.headers.get("cf-connecting-ip")
+    if cf_connecting_ip:
+        parsed = _normalize_ip_candidate(cf_connecting_ip)
+        if parsed and (not public_only or _is_public_ip(parsed)):
+            return parsed
+
     candidates: list[str] = []
 
     x_forwarded_for = request.headers.get("x-forwarded-for")

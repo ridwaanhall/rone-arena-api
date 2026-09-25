@@ -82,3 +82,21 @@ def test_academy_service_header_uses_public_forwarded_ip(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert captured_headers.get("X-Forwarded-For") == "103.90.20.10"
+
+
+def test_addon_ip_prefers_cloudflare_connecting_ip(monkeypatch) -> None:
+    captured: dict[str, str | None] = {}
+
+    def fake_fetch(path: str, client_ip: str | None = None) -> dict[str, object]:
+        captured["client_ip"] = client_ip
+        return {"code": 0, "msg": "ok", "data": {"client_ip": client_ip}}
+
+    monkeypatch.setattr("app.api.routers.addon.fetch_ip_get", fake_fetch)
+
+    response = client.get(
+        "/api/addon/ip",
+        headers={"cf-connecting-ip": "36.72.11.22", "x-forwarded-for": "103.90.20.10"},
+    )
+
+    assert response.status_code == 200
+    assert captured["client_ip"] == "36.72.11.22"

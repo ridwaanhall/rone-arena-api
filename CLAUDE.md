@@ -8,14 +8,38 @@ Web UI conventions (design system, design language, JS layout) live in `src/app/
 
 - `IS_MAINTENANCE`: set to `true` to restrict the API and show the maintenance page on `/`.
 - `IS_HIGH_TRAFFIC`: set to `true` to restrict the API and point callers at the high-volume host.
-  Both default to a restricted service when unset; maintenance wins when both are true, and
+  Both default to `false` (fully available) when unset; maintenance wins when both are true, and
   `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment.
+- Settings are read from `os.environ` (plus `.env` locally), and on Cloudflare Workers from the
+  Worker's `env` binding (`from workers import env`), since `os.environ` is empty there.
 - **Version**: `PROJECT_VERSION` is hardcoded in `src/app/core/config.py` (not read from the
   environment). Bump it there and in `pyproject.toml` together for each release.
 - **API URL**: `API_URL` in `config.py` is derived, not read from the environment:
   `http://127.0.0.1:8000/api/` when `DEBUG=True`, otherwise `{BASE_URL}api/`, so a deployment
   automatically calls its own host and the playground avoids CORS errors locally. There is no
   request-volume host switch.
+
+## Layout & Deploy
+
+- App code lives in `src/app` (installable package, `[tool.fastapi] entrypoint = "app.main:app"`);
+  web assets (CSS, JS, blog images) live in `public/`. Run locally with
+  `uv run uvicorn app.main:app --app-dir src --reload` or `uv run fastapi dev`.
+- **Production is a Cloudflare Python Worker** (`rone-arena-api`, custom domain `arena.rone.dev`):
+  `wrangler.jsonc` points at `src/worker.py`, which wraps the FastAPI app with
+  `workers.asgi.entrypoint`. `public/` is served as Workers Static Assets before the app runs.
+- **Workers Builds** deploys on every push to `main` (`uv run pywrangler deploy`); other branches
+  upload preview versions. pywrangler vendors `[project].dependencies` for Pyodide into
+  `python_modules/`, so anything the app imports must be pure Python or Pyodide-built; keep
+  server/CLI extras behind `sys_platform != 'emscripten'`.
+- Non-secret vars live in `wrangler.jsonc` (`vars`); the three secrets (`SECRET_KEY`,
+  `RONE_DEV_ACCESS_KEY`, `RONE_DEV_ACCESS_KEY_V2`) are set on the Worker and listed under
+  `secrets.required`, so a deploy fails loudly if one is missing.
+- Worker constraints: top-level imports run once at deploy time and are snapshotted (no
+  randomness or network at import, e.g. the httpx client is created on first use); sync routes
+  run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate
+  (`app/web/page_cache.py`) to stay inside the per-request CPU budget.
+- FastAPI Cloud (`fastapi deploy`) still works and hosts the high-traffic fallback
+  `arena-hv.fastapicloud.dev`; `.fastapicloudignore` keeps Worker build files out of it.
 
 ## Testing
 

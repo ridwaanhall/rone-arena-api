@@ -286,9 +286,23 @@ def _extract_response_example(operation: dict[str, Any]) -> str | None:
 
 
 def get_group_operations(app: FastAPI, group: str) -> list[dict[str, Any]]:
+    """The group's GET/POST operations in router order, built once per app and group.
+
+    Every web page renders the group counts, so this is cached on the app instead of
+    walking the OpenAPI schema on each request. Treat the result as read-only.
+    """
     if group not in WEB_GROUPS:
         return []
 
+    cache = getattr(app.state, "web_group_operations", None)
+    if cache is None:
+        cache = app.state.web_group_operations = {}
+    if group not in cache:
+        cache[group] = _build_group_operations(app, group)
+    return cache[group]
+
+
+def _build_group_operations(app: FastAPI, group: str) -> list[dict[str, Any]]:
     spec = app.openapi()
     paths = spec.get("paths", {})
     components = spec.get("components", {})

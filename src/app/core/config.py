@@ -1,18 +1,35 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Callable, TypeVar
 from urllib.parse import urlsplit
 
-from dotenv import load_dotenv
-
-load_dotenv()
+if sys.platform == "emscripten":
+    # Cloudflare Python Workers: vars and secrets live on the Worker's env binding,
+    # not in os.environ.
+    from workers import env as _platform_env
+else:
+    _platform_env = None
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        pass
+    else:
+        load_dotenv()
 
 T = TypeVar("T")
 
 
-def _env_cast(key: str, caster: Callable[[str], T], default: T | None = None) -> T:
+def _raw_env(key: str) -> str | None:
     value = os.getenv(key)
+    if value is None and _platform_env is not None:
+        value = getattr(_platform_env, key, None)
+    return None if value is None else str(value)
+
+
+def _env_cast(key: str, caster: Callable[[str], T], default: T | None = None) -> T:
+    value = _raw_env(key)
     if value is None:
         if default is None:
             raise RuntimeError(f"Missing required environment variable: {key}")

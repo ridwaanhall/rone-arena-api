@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from functools import cache
 
 from cryptography.fernet import Fernet
 
@@ -31,6 +32,12 @@ class CryptoManager:
         return self.fernet.decrypt(token).decode()
 
 
+@cache
+def _decrypt(token: bytes) -> str:
+    """Decrypt a route prefix once per process; the plaintext is fixed for a given SECRET_KEY."""
+    return CryptoManager(SECRET_KEY).decrypt(token)
+
+
 class BasePathProvider:
     RONE_DEV_KEY = (
         b"gAAAAABoeVABaPKjWkRGpRV7c7bmRASNq4aZcN_cLGeeWU0OSNFtWLahn4mn9AYq4PqpkJKjA8rx4-Jk2oqjfLTB7l3u9tC_ufGi1x5IcdWrinV26tcdotw="
@@ -44,15 +51,15 @@ class BasePathProvider:
 
     @classmethod
     def get_base_path(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY)
+        return _decrypt(cls.RONE_DEV_KEY)
 
     @classmethod
     def get_base_path_academy(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY_ACADEMY)
+        return _decrypt(cls.RONE_DEV_KEY_ACADEMY)
 
     @classmethod
     def get_base_path_ratings(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY_RATINGS)
+        return _decrypt(cls.RONE_DEV_KEY_RATINGS)
 
 
 class BaseUserPathProvider:
@@ -70,12 +77,12 @@ class BaseUserPathProvider:
 
     @classmethod
     def get_base_url_path_auth(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY_AUTH)
+        return _decrypt(cls.RONE_DEV_KEY_AUTH)
 
     @classmethod
     def get_base_url_path_data(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY_DATA)
+        return _decrypt(cls.RONE_DEV_KEY_DATA)
 
     @classmethod
     def get_base_url_path_stats(cls) -> str:
-        return CryptoManager(SECRET_KEY).decrypt(cls.RONE_DEV_KEY_STATS)
+        return _decrypt(cls.RONE_DEV_KEY_STATS)

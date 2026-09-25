@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from functools import cache
 from typing import Any
 
 import httpx
@@ -124,12 +125,16 @@ class UpstreamHeaderBuilder:
 # One pooled client that lives as long as the process. httpx.Client is
 # thread-safe (sync routes run in a threadpool), and reusing it keeps upstream
 # TLS connections alive instead of paying a fresh handshake on every call.
-_client = httpx.Client(timeout=30.0, follow_redirects=True)
+# Created on first use, not at import: Cloudflare Workers snapshot the imported
+# module state at deploy time, where building an SSL context is not allowed.
+@cache
+def _get_client() -> httpx.Client:
+    return httpx.Client(timeout=30.0, follow_redirects=True)
 
 
 def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
     try:
-        response = _client.request(method, url, headers=headers, **kwargs)
+        response = _get_client().request(method, url, headers=headers, **kwargs)
     except httpx.HTTPError as exc:
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data", details=str(exc)) from exc
 

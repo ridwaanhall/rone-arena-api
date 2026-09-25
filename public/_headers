@@ -1,0 +1,7 @@
+# Workers Static Assets response headers. Asset URLs carry a ?v= version that
+# changes on every deploy, so the stylesheet and scripts can be cached for good.
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/images/*
+  Cache-Control: public, max-age=604800

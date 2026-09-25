@@ -7,13 +7,18 @@ license = { text = "BSD-3-Clause" }
 authors = [
     { name = "ridwaanhall" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
+# The first four are what the app imports; they are also what pywrangler bundles into
+# the Cloudflare Worker (Pyodide, sys_platform == "emscripten"). The server, CLI and
+# dotenv extras are for local runs and FastAPI Cloud only.
 dependencies = [
-    "fastapi[standard]>=0.135.2",
+    "fastapi>=0.135.2",
+    "jinja2>=3.1.4",
     "httpx>=0.28.1",
-    "cryptography==50.0.0",
-    "fastapi-cloud-cli>=0.22.0",
+    "cryptography>=45",
+    "fastapi[standard]>=0.135.2; sys_platform != 'emscripten'",
+    "fastapi-cloud-cli>=0.22.0; sys_platform != 'emscripten'",
 ]
 
 [project.urls]
@@ -42,6 +47,8 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "pytest==9.0.3",
+    # Cloudflare Workers tooling: `uv run pywrangler dev|deploy`.
+    "workers-py>=1.17.4",
+    "workers-runtime-sdk",
 ]
