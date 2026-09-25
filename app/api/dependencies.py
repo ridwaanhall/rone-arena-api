@@ -18,10 +18,8 @@ from app.core.http import UpstreamHeaderBuilder
 user_bearer = HTTPBearer(auto_error=False)
 
 
-def require_api_available() -> None:
-    if IS_AVAILABLE:
-        return
-
+def service_unavailable_error() -> AppError:
+    """The 503 returned for every API call while the service is restricted."""
     status_info = API_STATUS_MESSAGES[SERVICE_STATUS_KEY]
     details: dict[str, object] = {
         "available_endpoints": status_info["available_endpoints"],
@@ -32,12 +30,17 @@ def require_api_available() -> None:
     if SERVICE_STATUS_KEY == "limited":
         details["alternative_endpoint"] = ALTERNATIVE_ENDPOINT_URL
 
-    raise AppError(
+    return AppError(
         status_code=503,
         code="SERVICE_UNAVAILABLE",
         message=cast(str, status_info["message"]),
         details=details,
     )
+
+
+def require_api_available() -> None:
+    if not IS_AVAILABLE:
+        raise service_unavailable_error()
 
 
 def require_user_jwt(
@@ -52,3 +55,7 @@ def require_user_jwt(
         message="Authorization header is required",
         details="Provide Authorization: Bearer <jwt>.",
     )
+
+
+# The caller's JWT, taken from ``Authorization: Bearer <jwt>``.
+UserJwt = Annotated[str, Depends(require_user_jwt)]

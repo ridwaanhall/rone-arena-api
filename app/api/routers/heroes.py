@@ -1,22 +1,46 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import require_api_available
-
-from app.services.heroes import fetch_hero_post
-from app.schemas.heroes import HeroCollectionResponse
-
+from app.api.params import HeroIdentifier, Lang, PageIndex, PageSize, Rank, StatsDays
 from app.core.enums import LanguageEnum, RankEnum, SortOrderEnum, HeroRoleEnum, HeroLaneEnum, WallpaperDeviceEnum
-from app.core.errors import _hero_id_or_404
-from app.utils.client_ip import bind_client_ip
-from app.utils.filters import (
-    ROLE_MAP, LANE_MAP, validate_and_map_multi, validate_and_map_rank
+from app.schemas.heroes import HeroCollectionResponse
+from app.services.heroes import (
+    HERO_LIST,
+    HERO_SKILL_COMBOS,
+    HERO_STATS_BY_DAYS,
+    HERO_TRENDS_BY_DAYS,
+    HERO_WALLPAPERS,
+    fetch_hero_post,
+    hero_stats_filters,
+    require_hero_id,
+    role_lane_filters,
 )
+from app.services.source import build_query, eq, has_any_of, sort_by, where
+from app.utils.client_ip import bind_client_ip
+from app.utils.filters import rank_code
 
 router = APIRouter(prefix="/api", tags=["heroes"], dependencies=[Depends(require_api_available), Depends(bind_client_ip)])
+
+RANK_SORT_FIELDS = {
+    "pick_rate": "main_hero_appearance_rate",
+    "ban_rate": "main_hero_ban_rate",
+    "win_rate": "main_hero_win_rate",
+}
+
+WALLPAPER_CHANNEL_ID = 3255313
+WALLPAPER_RESOLUTIONS = {
+    WallpaperDeviceEnum.DESKTOP: "1920x1080",
+    WallpaperDeviceEnum.MOBILE: "1080x1920",
+}
+
+
+def _matchup_filters(hero_id: int, rank: str, *, match_type: str) -> list[dict[str, Any]]:
+    """Counter (match_type "0") and compatibility (match_type "1") statistics."""
+    return [eq("match_type", match_type), eq("main_heroid", hero_id), eq("bigrank", rank_code(rank))]
 
 
 @router.get(
@@ -96,22 +120,8 @@ router = APIRouter(prefix="/api", tags=["heroes"], dependencies=[Depends(require
     }
 )
 def hero_list(
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
+    size: PageSize = 20,
+    index: PageIndex = 1,
     order: Annotated[
         SortOrderEnum,
         Query(
@@ -119,35 +129,15 @@ def hero_list(
             description="Sort order by hero ID.",
         )
     ] = SortOrderEnum.DESCENDING,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    payload = {
-        "pageSize": size,
-        "sorts": [
-            {
-                "data":
-                    {
-                        "field": "hero_id",
-                        "order": order
-                    },
-                    "type": "sequence"
-            }
-        ],
-        "pageIndex": index,
-        "fields": [
-            "hero_id",
-            "hero.data.head",
-            "hero.data.name",
-            "hero.data.smallmap"
-        ],
-    }
-    return fetch_hero_post("2756564", payload, lang)
+    payload = build_query(
+        size,
+        index,
+        sorts=[sort_by("hero_id", order)],
+        fields=["hero_id", "hero.data.head", "hero.data.name", "hero.data.smallmap"],
+    )
+    return fetch_hero_post(HERO_LIST, payload, lang)
 
 
 @router.get(
@@ -243,20 +233,8 @@ def hero_list(
     }
 )
 def hero_rank(
-    days: Annotated[
-        Literal["1", "3", "7", "15", "30"],
-        Query(
-            title="Past Days",
-            description="Past day window for rank statistics.",
-        )
-    ] = "1",
-    rank: Annotated[
-        RankEnum,
-        Query(
-            title="Rank",
-            description="Rank filter for hero statistics.",
-        ),
-    ] = RankEnum.ALL,
+    days: StatsDays = "1",
+    rank: Rank = RankEnum.ALL,
     sort_field: Annotated[
         Literal["pick_rate", "ban_rate", "win_rate"],
         Query(
@@ -271,69 +249,16 @@ def hero_rank(
             description="Sort order by field.",
         )
     ] = SortOrderEnum.DESCENDING,
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    sort_field_map = {
-        "pick_rate": "main_hero_appearance_rate",
-        "ban_rate": "main_hero_ban_rate",
-        "win_rate": "main_hero_win_rate",
-    }
-
-    url_map = {
-        "1": "2756567",
-        "3": "2756568",
-        "7": "2756569",
-        "15": "2756565",
-        "30": "2756570",
-    }
-
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "bigrank",
-                "operator": "eq",
-                "value": validate_and_map_rank(rank),
-            },
-            {
-                "field": "match_type",
-                "operator": "eq",
-                "value": "0",
-            },
-        ],
-        "sorts": [
-            {
-                "data": {
-                    "field": sort_field_map.get(sort_field, "main_hero_win_rate"),
-                    "order": sort_order,
-                },
-                "type": "sequence",
-            }
-        ],
-        "pageIndex": index,
-        "fields": [
+    payload = build_query(
+        size,
+        index,
+        filters=[eq("bigrank", rank_code(rank)), eq("match_type", "0")],
+        sorts=[sort_by(RANK_SORT_FIELDS[sort_field], sort_order)],
+        fields=[
             "main_hero",
             "main_hero_appearance_rate",
             "main_hero_ban_rate",
@@ -345,10 +270,8 @@ def hero_rank(
             "data.sub_hero.increase_win_rate",
             "data.sub_hero.heroid",
         ],
-    }
-
-    url_key = url_map.get(days, "2756567")
-    return fetch_hero_post(url_key, payload, lang)
+    )
+    return fetch_hero_post(HERO_STATS_BY_DAYS[days], payload, lang)
 
 
 @router.get(
@@ -529,22 +452,8 @@ def hero_position(
         HeroLaneEnum.JUNGLE,
         HeroLaneEnum.GOLD,
     ],
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
+    size: PageSize = 20,
+    index: PageIndex = 1,
     order: Annotated[
         SortOrderEnum,
         Query(
@@ -552,52 +461,17 @@ def hero_position(
             description="Sort order by hero ID.",
         )
     ] = SortOrderEnum.DESCENDING,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    role_values = validate_and_map_multi(role, ROLE_MAP, [1,2,3,4,5,6], "role")
-    lane_values = validate_and_map_multi(lane, LANE_MAP, [1,2,3,4,5], "lane")
-
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "<hero.data.sortid>",
-                "operator": "hasAnyOf",
-                "value": role_values
-            },
-            {
-                "field": "<hero.data.roadsort>",
-                "operator": "hasAnyOf", 
-                "value": lane_values
-            },
-        ],
-        "sorts": [
-            {
-                "data": {
-                    "field": "hero_id",
-                    "order": order
-                },
-                "type": "sequence"
-            }
-        ],
-        "pageIndex": index,
-        "fields": [
-            "id",
-            "hero_id",
-            "hero.data.name",
-            "hero.data.smallmap",
-            "hero.data.sortid",
-            "hero.data.roadsort"
-        ],
-        "object": [],
-    }
-    return fetch_hero_post("2756564", payload, lang)
+    payload = build_query(
+        size,
+        index,
+        filters=role_lane_filters(role, lane),
+        sorts=[sort_by("hero_id", order)],
+        fields=["id", "hero_id", "hero.data.name", "hero.data.smallmap", "hero.data.sortid", "hero.data.roadsort"],
+        object=[],
+    )
+    return fetch_hero_post(HERO_LIST, payload, lang)
 
 
 @router.get(
@@ -854,54 +728,14 @@ def hero_position(
     }
 )
 def hero_detail(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            )
-        )
-    ],
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "hero_id",
-                "operator": "eq",
-                "value": hero_id
-            }
-        ],
-        "sorts": [],
-        "pageIndex": index,
-        "object": [],
-    }
-    return fetch_hero_post("2756564", payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=[eq("hero_id", hero_id)], sorts=[], object=[])
+    return fetch_hero_post(HERO_LIST, payload, lang)
 
 
 @router.get(
@@ -1055,70 +889,15 @@ def hero_detail(
     }
 )
 def hero_detail_stats(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    rank: Annotated[
-        RankEnum,
-        Query(
-            title="Rank",
-            description="Rank filter for hero statistics.",
-        ),
-    ] = RankEnum.ALL,
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    rank: Rank = RankEnum.ALL,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "main_heroid",
-                "operator": "eq",
-                "value": hero_id
-            },
-            {
-                "field": "bigrank",
-                "operator": "eq",
-                "value": validate_and_map_rank(rank)
-            },
-            {
-                "field": "match_type",
-                "operator": "eq",
-                "value": "1"
-            },
-        ],
-        "sorts": [],
-        "pageIndex": index,
-    }
-    return fetch_hero_post("2756567", payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=hero_stats_filters(hero_id, rank, match_type="1"), sorts=[])
+    return fetch_hero_post(HERO_STATS_BY_DAYS["1"], payload, lang)
 
 
 @router.get(
@@ -1210,60 +989,14 @@ def hero_detail_stats(
     }
 )
 def hero_skill_combo(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "hero_id",
-                "operator": "eq",
-                "value": hero_id
-            }
-        ],
-        "sorts": [],
-        "pageIndex": index,
-        "object": [2684183],
-    }
-    return fetch_hero_post("2674711", payload, lang)
-
-
-WALLPAPER_RESOLUTIONS = {
-    WallpaperDeviceEnum.DESKTOP: "1920x1080",
-    WallpaperDeviceEnum.MOBILE: "1080x1920",
-}
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=[eq("hero_id", hero_id)], sorts=[], object=[2684183])
+    return fetch_hero_post(HERO_SKILL_COMBOS, payload, lang)
 
 
 @router.get(
@@ -1363,15 +1096,7 @@ WALLPAPER_RESOLUTIONS = {
     }
 )
 def hero_wallpapers(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `133`, `Hirara`, or `hirara`."
-            ),
-        )
-    ],
+    hero_identifier: HeroIdentifier,
     device: Annotated[
         WallpaperDeviceEnum,
         Query(
@@ -1379,43 +1104,23 @@ def hero_wallpapers(
             description="Target device: `desktop` (1920x1080) or `mobile` (1080x1920).",
         )
     ] = WallpaperDeviceEnum.DESKTOP,
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 12,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    size: PageSize = 12,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    payload = {
-        "pageSize": size,
-        "pageIndex": index,
-        "filters": [
-            {"field": "heroid", "operator": "hasAnyOf", "value": [str(hero_id)]},
-            {"field": "channel", "operator": "hasAnyOf", "value": [3255313]},
-            {"field": "pictures.resolution", "operator": "contain", "value": WALLPAPER_RESOLUTIONS[device]},
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(
+        size,
+        index,
+        filters=[
+            has_any_of("heroid", [str(hero_id)]),
+            has_any_of("channel", [WALLPAPER_CHANNEL_ID]),
+            where("pictures.resolution", "contain", WALLPAPER_RESOLUTIONS[device]),
         ],
-        "sorts": [],
-        "object": [],
-    }
-    return fetch_hero_post("3255326", payload, lang)
+        sorts=[],
+        object=[],
+    )
+    return fetch_hero_post(HERO_WALLPAPERS, payload, lang)
 
 
 @router.get(
@@ -1495,22 +1200,8 @@ def hero_wallpapers(
     }
 )
 def hero_rate(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    rank: Annotated[
-        RankEnum,
-        Query(
-            title="Rank",
-            description="Rank filter for hero statistics.",
-        ),
-    ] = RankEnum.ALL,
+    hero_identifier: HeroIdentifier,
+    rank: Rank = RankEnum.ALL,
     past_days: Annotated[
         Literal["7", "15", "30"],
         Query(
@@ -1519,59 +1210,13 @@ def hero_rate(
             description="Rate window in days.",
         ),
     ] = "7",
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    url_map = {
-        "7": "2674709",
-        "15": "2687909",
-        "30": "2690860"
-    }
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "main_heroid",
-                "operator": "eq",
-                "value": hero_id
-            },
-            {
-                "field": "bigrank",
-                "operator": "eq",
-                "value": validate_and_map_rank(rank)
-            },
-            {
-                "field": "match_type",
-                "operator": "eq",
-                "value": "1"
-            },
-        ],
-        "sorts": [],
-        "pageIndex": index,
-    }
-    return fetch_hero_post(url_map.get(past_days, "2674709"), payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=hero_stats_filters(hero_id, rank, match_type="1"), sorts=[])
+    return fetch_hero_post(HERO_TRENDS_BY_DAYS[past_days], payload, lang)
 
 
 @router.get(
@@ -1649,55 +1294,14 @@ def hero_rate(
     }
 )
 def hero_relation(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "hero_id",
-                "operator": "eq",
-                "value": hero_id
-            }
-        ],
-        "sorts": [],
-        "pageIndex": index,
-        "fields": ["hero.data.name"],
-        "object": [],
-    }
-    return fetch_hero_post("2756564", payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=[eq("hero_id", hero_id)], sorts=[], fields=["hero.data.name"], object=[])
+    return fetch_hero_post(HERO_LIST, payload, lang)
 
 
 @router.get(
@@ -1851,79 +1455,16 @@ def hero_relation(
     }
 )
 def hero_counter(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    days: Annotated[
-        Literal["1", "3", "7", "15", "30"],
-        Query(
-            title="Past Days",
-            description="Past day window for rank statistics.",
-        )
-    ] = "1",
-    rank: Annotated[
-        RankEnum,
-        Query(
-            title="Rank",
-            description="Rank filter for hero statistics.",
-        ),
-    ] = RankEnum.ALL,
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    days: StatsDays = "1",
+    rank: Rank = RankEnum.ALL,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    url_map = {"1": "2756567", "3": "2756568", "7": "2756569", "15": "2756565", "30": "2756570"}
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "match_type",
-                "operator": "eq",
-                "value": "0"
-            },
-            {
-                "field": "main_heroid",
-                "operator": "eq",
-                "value": hero_id
-            },
-            {
-                "field": "bigrank",
-                "operator": "eq",
-                "value": validate_and_map_rank(rank)
-            },
-        ],
-        "sorts": [],
-        "pageIndex": index,
-    }
-    url_key = url_map.get(days, "2756567")
-    return fetch_hero_post(url_key, payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=_matchup_filters(hero_id, rank, match_type="0"), sorts=[])
+    return fetch_hero_post(HERO_STATS_BY_DAYS[days], payload, lang)
 
 
 @router.get(
@@ -2078,76 +1619,13 @@ def hero_counter(
     }
 )
 def hero_compatibility(
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
-    days: Annotated[
-        Literal["1", "3", "7", "15", "30"],
-        Query(
-            title="Past Days",
-            description="Past day window for rank statistics.",
-        )
-    ] = "1",
-    rank: Annotated[
-        RankEnum,
-        Query(
-            title="Rank",
-            description="Rank filter for hero statistics.",
-        ),
-    ] = RankEnum.ALL,
-    size: Annotated[
-        int,
-        Query(
-            title="Page Size",
-            description="Number of items per page.",
-            ge=1,
-        )
-    ] = 20,
-    index: Annotated[
-        int,
-        Query(
-            title="Page Index",
-            description="Page index for pagination.",
-            ge=1,
-        )
-    ] = 1,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH
+    hero_identifier: HeroIdentifier,
+    days: StatsDays = "1",
+    rank: Rank = RankEnum.ALL,
+    size: PageSize = 20,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
 ) -> object:
-    hero_id = _hero_id_or_404(hero_identifier, lang)
-    url_map = {"1": "2756567", "3": "2756568", "7": "2756569", "15": "2756565", "30": "2756570"}
-    payload = {
-        "pageSize": size,
-        "filters": [
-            {
-                "field": "match_type",
-                "operator": "eq",
-                "value": "1"
-            },
-            {
-                "field": "main_heroid",
-                "operator": "eq",
-                "value": hero_id
-            },
-            {
-                "field": "bigrank",
-                "operator": "eq",
-                "value": validate_and_map_rank(rank)
-            },
-        ],
-        "sorts": [],
-        "pageIndex": index,
-    }
-    url_key = url_map.get(days, "2756567")
-    return fetch_hero_post(url_key, payload, lang)
+    hero_id = require_hero_id(hero_identifier, lang)
+    payload = build_query(size, index, filters=_matchup_filters(hero_id, rank, match_type="1"), sorts=[])
+    return fetch_hero_post(HERO_STATS_BY_DAYS[days], payload, lang)

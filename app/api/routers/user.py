@@ -1,13 +1,14 @@
-﻿from fastapi import APIRouter, Depends, Path, Query
+from __future__ import annotations
 
-from app.api.dependencies import require_api_available, require_user_jwt
+from typing import Annotated, Any
 
-from app.services.user import fetch_user_post, fetch_user_actgateway, fetch_user_actgateway_post
+from fastapi import APIRouter, Depends, Path, Query
 
+from app.api.dependencies import UserJwt, require_api_available
+from app.api.params import HeroIdentifier, Lang
+from app.core.enums import LanguageEnum, VisibilityEnum
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder
-from app.core.errors import _hero_id_or_404
-from app.core.enums import LanguageEnum, VisibilityEnum
 from app.schemas.user import (
     UserAuthSimpleResponse,
     UserFriendsResponse,
@@ -23,31 +24,40 @@ from app.schemas.user import (
     UserStatsResponse,
     UserMatchesByHeroResponse,
 )
-
-from typing import Annotated
+from app.services.heroes import require_hero_id
+from app.services.user import fetch_user_actgateway, fetch_user_actgateway_post, fetch_user_post
 
 router = APIRouter(prefix="/api/user", tags=["user"], dependencies=[Depends(require_api_available)])
 
 
-def _require_dict_response(data: object) -> dict[str, object]:
-    if not isinstance(data, dict):
-        raise AppError(
-            status_code=502,
-            code="UPSTREAM_INVALID_RESPONSE",
-            message="Failed to fetch data",
-            details="Upstream response format is invalid.",
-        )
-    return data
+def _upstream_invalid(details: str) -> AppError:
+    return AppError(status_code=502, code="UPSTREAM_INVALID_RESPONSE", message="Failed to fetch data", details=details)
 
 
-def _require_key(response_data: dict[str, object], key: str) -> None:
-    if key not in response_data:
-        raise AppError(
-            status_code=502,
-            code="UPSTREAM_INVALID_RESPONSE",
-            message="Failed to fetch data",
-            details=f"Upstream response missing required field: {key}.",
-        )
+def _checked(response: object) -> dict[str, Any]:
+    """Pass an upstream response through only if it has the expected envelope."""
+    if not isinstance(response, dict):
+        raise _upstream_invalid("Upstream response format is invalid.")
+    for key in ("code", "data"):
+        if key not in response:
+            raise _upstream_invalid(f"Upstream response missing required field: {key}.")
+    return response
+
+
+def _page(*, last_cursor: int | None, **params: Any) -> dict[str, Any]:
+    """Cursor-paginated params; the cursor is only sent once the caller has one."""
+    if last_cursor is not None:
+        params["last_cursor"] = last_cursor
+    return params
+
+
+def _battle_report(
+    path: str, jwt: str, lang: str, params: dict[str, Any] | None = None, *, method: str = "GET"
+) -> dict[str, Any]:
+    """Call a battle-report endpoint as the signed-in player."""
+    headers = UpstreamHeaderBuilder.get_user_header(lang=lang, x_token=jwt)
+    fetch = fetch_user_actgateway_post if method == "POST" else fetch_user_actgateway
+    return _checked(fetch(path, headers, params or {}))
 
 
 @router.post(
@@ -190,16 +200,9 @@ def login(
     }
 )
 def logout(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        jwt=jwt
-    )
-    payload = {}
-    return fetch_user_post("base/logout", headers, payload)
+    return fetch_user_post("base/logout", UpstreamHeaderBuilder.get_user_header(jwt=jwt), {})
 
 
 @router.get(
@@ -252,29 +255,11 @@ def logout(
     }
 )
 def user_info(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    jwt: UserJwt,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_actid="2728785",
-        x_appid="2713644",
-        jwt=jwt
-    )
-    payload = {}
-    response = _require_dict_response(fetch_user_post("base/getBaseInfo", headers, payload))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    headers = UpstreamHeaderBuilder.get_user_header(lang=lang, x_actid="2728785", x_appid="2713644", jwt=jwt)
+    return _checked(fetch_user_post("base/getBaseInfo", headers, {}))
 
 
 @router.get(
@@ -442,27 +427,10 @@ def user_info(
     }
 )
 def user_stats(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    jwt: UserJwt,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {}
-    response = _require_dict_response(fetch_user_actgateway("battlereport/stats", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/stats", jwt, lang)
 
 
 @router.get(
@@ -503,27 +471,10 @@ def user_stats(
     }
 )
 def user_privacy_settings(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    jwt: UserJwt,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {}
-    response = _require_dict_response(fetch_user_actgateway("battlereport/privacy/settings", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/privacy/settings", jwt, lang)
 
 
 @router.post(
@@ -563,10 +514,7 @@ def user_privacy_settings(
     }
 )
 def user_update_privacy_settings(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
     visibility: Annotated[
         VisibilityEnum,
         Query(
@@ -577,25 +525,10 @@ def user_update_privacy_settings(
             ),
         )
     ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "privacy": 1 if visibility == VisibilityEnum.VISIBLE else 2,
-    }
-    response = _require_dict_response(fetch_user_actgateway_post("battlereport/privacy/settings", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    params = {"privacy": 1 if visibility == VisibilityEnum.VISIBLE else 2}
+    return _battle_report("battlereport/privacy/settings", jwt, lang, params, method="POST")
 
 
 @router.get(
@@ -639,27 +572,10 @@ def user_update_privacy_settings(
     }
 )
 def user_season(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    jwt: UserJwt,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {}
-    response = _require_dict_response(fetch_user_actgateway("battlereport/season/list", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/season/list", jwt, lang)
 
 
 @router.get(
@@ -753,10 +669,7 @@ def user_season(
     }
 )
 def user_matches(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
     sid: Annotated[
         int,
         Query(
@@ -779,29 +692,9 @@ def user_matches(
             description="Pagination cursor from `pageInfo.nextCursor` of the current response.",
         )
     ] = None,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "sid": sid,
-        "limit": limit,
-    }
-    if last_cursor is not None:
-        params["last_cursor"] = last_cursor
-
-    response = _require_dict_response(fetch_user_actgateway("battlereport/matches/recent", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/matches/recent", jwt, lang, _page(sid=sid, limit=limit, last_cursor=last_cursor))
 
 
 @router.get(
@@ -926,10 +819,7 @@ def user_match_details(
             description="The unique identifier of the match to retrieve details for.",
         )
     ],
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
     sid: Annotated[
         int,
         Query(
@@ -937,25 +827,9 @@ def user_match_details(
             description="The season ID for filtering recent matches.",
         )
     ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "sid": sid
-    }
-    response = _require_dict_response(fetch_user_actgateway(f"battlereport/matches/{match_id}", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report(f"battlereport/matches/{match_id}", jwt, lang, {"sid": sid})
 
 
 @router.get(
@@ -1043,10 +917,7 @@ def user_match_details(
     }
 )
 def user_frequent_heroes(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
     sid: Annotated[
         int,
         Query(
@@ -1069,29 +940,9 @@ def user_frequent_heroes(
             description="Pagination cursor from `pageInfo.nextCursor` of the current response.",
         )
     ] = None,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "sid": sid,
-        "limit": limit,
-    }
-    if last_cursor is not None:
-        params["last_cursor"] = last_cursor
-
-    response = _require_dict_response(fetch_user_actgateway("battlereport/heros/frequent", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/heros/frequent", jwt, lang, _page(sid=sid, limit=limit, last_cursor=last_cursor))
 
 
 @router.get(
@@ -1219,19 +1070,8 @@ def user_frequent_heroes(
     }
 )
 def user_matches_by_hero(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
-    hero_identifier: Annotated[
-        str,
-        Path(
-            title="Hero Identifier",
-            description=(
-                "Hero identifier as numeric hero ID or hero name. Accepts values like `30`, `Yi Sun-shin`, or `yisunshin`."
-            ),
-        )
-    ],
+    jwt: UserJwt,
+    hero_identifier: HeroIdentifier,
     sid: Annotated[
         int,
         Query(
@@ -1254,34 +1094,11 @@ def user_matches_by_hero(
             description="Pagination cursor from `pageInfo.nextCursor` of the current response.",
         )
     ] = None,
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    hero_id = _hero_id_or_404(
-        hero_identifier,
-        lang
-    )
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "hid": hero_id,
-        "sid": sid,
-        "limit": limit,
-    }
-    if last_cursor is not None:
-        params["last_cursor"] = last_cursor
-
-    response = _require_dict_response(fetch_user_actgateway("battlereport/hero/matches", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    hero_id = require_hero_id(hero_identifier, lang)
+    params = _page(hid=hero_id, sid=sid, limit=limit, last_cursor=last_cursor)
+    return _battle_report("battlereport/hero/matches", jwt, lang, params)
 
 
 @router.get(
@@ -1357,10 +1174,7 @@ def user_matches_by_hero(
     }
 )
 def user_friends(
-    jwt: Annotated[
-        str,
-        Depends(require_user_jwt),
-    ],
+    jwt: UserJwt,
     sid: Annotated[
         int,
         Query(
@@ -1368,23 +1182,6 @@ def user_friends(
             description="The season ID for filtering friends.",
         )
     ],
-    lang: Annotated[
-        LanguageEnum,
-        Query(
-            title="Language",
-            description="Language code for localized content.",
-        )
-    ] = LanguageEnum.ENGLISH,
+    lang: Lang = LanguageEnum.ENGLISH,
 ) -> object:
-    headers = UpstreamHeaderBuilder.get_user_header(
-        lang=lang,
-        x_token=jwt,
-    )
-    params = {
-        "sid": sid,
-    }
-
-    response = _require_dict_response(fetch_user_actgateway("battlereport/friends", headers, params))
-    _require_key(response, "code")
-    _require_key(response, "data")
-    return response
+    return _battle_report("battlereport/friends", jwt, lang, {"sid": sid})

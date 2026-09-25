@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app.core import hero_limits
+from app.services import heroes as hero_service
 from app.main import app
 
 
@@ -58,14 +58,17 @@ def test_validation_error_payload_contains_details_list() -> None:
     assert "Invalid role" in payload["message"]
 
 
-def test_academy_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
+def _fake_hero_list_with_max(max_hero_id: int):
     def fake_fetch(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
-        if endpoint_id == "2766683":
-            return {"code": 0, "message": "OK", "data": {"total": 132}}
-        return {"code": 0, "message": "OK", "data": []}
+        return {"code": 0, "message": "OK", "data": {"records": [{"data": {"hero_id": max_hero_id}}]}}
 
-    hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_academy_post", fake_fetch)
+    return fake_fetch
+
+
+def test_academy_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
+    # Academy routes validate numeric IDs against the same live hero list as /api/heroes.
+    hero_service.clear_hero_caches()
+    monkeypatch.setattr(hero_service, "fetch_hero_post", _fake_hero_list_with_max(132))
 
     response = client.get("/api/academy/heroes/133/stats")
 
@@ -73,20 +76,25 @@ def test_academy_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> No
     payload = response.json()
     assert payload["code"] == "VALIDATION_ERROR"
     assert payload["status"] == "error"
+    assert payload["details"][0]["ctx"] == {"le": 132}
 
 
 def test_academy_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> None:
-    def fake_fetch(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
-        if endpoint_id == "2766683":
-            return {"code": 0, "message": "OK", "data": {"total": 132}}
-        return {"code": 0, "message": "OK", "data": []}
+    captured: dict[str, object] = {}
 
-    hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_academy_post", fake_fetch)
+    def fake_academy_post(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
+        captured["payload"] = payload
+        return {"code": 0, "message": "OK", "data": {"records": []}}
+
+    hero_service.clear_hero_caches()
+    monkeypatch.setattr(hero_service, "fetch_hero_post", _fake_hero_list_with_max(132))
+    monkeypatch.setattr("app.api.routers.academy.fetch_academy_post", fake_academy_post)
 
     response = client.get("/api/academy/heroes/132/stats")
 
     assert response.status_code == 200
+    assert {"field": "main_heroid", "operator": "eq", "value": 132} in captured["payload"]["filters"]
+    hero_service.clear_hero_caches()
 
 
 def test_hero_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
@@ -107,8 +115,8 @@ def test_hero_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> None:
             }
         return {"code": 0, "message": "OK", "data": []}
 
-    hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_hero_post", fake_fetch)
+    hero_service.clear_hero_caches()
+    monkeypatch.setattr(hero_service, "fetch_hero_post", fake_fetch)
 
     response = client.get("/api/heroes/133")
 
@@ -219,8 +227,8 @@ def test_hero_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> Non
             }
         return {"code": 0, "message": "OK", "data": []}
 
-    hero_limits.clear_hero_max_cache()
-    monkeypatch.setattr(hero_limits, "fetch_hero_post", fake_fetch)
+    hero_service.clear_hero_caches()
+    monkeypatch.setattr(hero_service, "fetch_hero_post", fake_fetch)
 
     response = client.get("/api/heroes/132")
 

@@ -8,17 +8,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware  # <-- 1. IMPORT ADDED HERE
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import (
-    ALTERNATIVE_ENDPOINT_URL,
-    API_STATUS_MESSAGES,
-    DEBUG,
-    IS_AVAILABLE,
-    SERVICE_STATUS_KEY,
-    PROJECT_VERSION,
-)
+from app.core.config import DEBUG, IS_AVAILABLE, PROJECT_VERSION
 
+from app.api.dependencies import service_unavailable_error
 from app.api.routers.root import router as root_router
 from app.api.routers.heroes import router as heroes_router
 from app.api.routers.academy import router as academy_router
@@ -81,9 +75,6 @@ app = FastAPI(
     ]
 )
 
-# ==========================================
-# 2. CORS MIDDLEWARE ADDED HERE
-# ==========================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all domains, including http://localhost:3000
@@ -266,19 +257,8 @@ async def maintenance_mode_guard(request: Request, call_next):
     if IS_AVAILABLE or request.url.path == "/" or request.url.path.startswith(allowed_when_limited_prefixes):
         return await call_next(request)
 
-    status_info = API_STATUS_MESSAGES[SERVICE_STATUS_KEY]
-    available_endpoints = status_info.get("available_endpoints", ["/"])
-    if not isinstance(available_endpoints, list):
-        available_endpoints = ["/"]
-
-    details: dict[str, object] = {"available_endpoints": available_endpoints}
-    if SERVICE_STATUS_KEY == "limited":
-        details["alternative_endpoint"] = ALTERNATIVE_ENDPOINT_URL
-
     if request.url.path.startswith("/api"):
-        payload = safe_error_payload(str(status_info["message"]), 503, details)
-        payload["code"] = "SERVICE_UNAVAILABLE"
-        return JSONResponse(status_code=503, content=payload)
+        return await app_error_handler(request, service_unavailable_error())
 
     return RedirectResponse(url="/", status_code=307)
 
