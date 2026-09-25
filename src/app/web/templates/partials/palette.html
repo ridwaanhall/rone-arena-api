@@ -1,0 +1,42 @@
+{% set pages = [
+	("/", "Home"),
+	("/web/heroes", "Playground"),
+	("/showcase", "Showcase"),
+	("/blog", "Tutorials and blog"),
+	("/api/docs", "API docs (Swagger UI)"),
+	("/api/redoc", "API reference (ReDoc)"),
+	("/api/openapi.json", "OpenAPI schema (JSON)"),
+] %}
+<div id="palette" class="modal modal--palette hidden" role="dialog" aria-modal="true" aria-label="Search pages and endpoints">
+	<div class="dialog palette">
+		<div class="palette-head">
+			<label class="sr-only" for="palette-input">Search pages and endpoints</label>
+			<input id="palette-input" class="input" type="search" placeholder="Search endpoints, e.g. counters" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="palette-list" aria-autocomplete="list" />
+			<button type="button" class="button button--bare button--small" data-close-palette>Close</button>
+		</div>
+		<div id="palette-list" class="palette-list" role="listbox" aria-label="Results">
+			<div role="group" aria-labelledby="palette-g-pages" data-palette-group>
+				<p id="palette-g-pages" class="palette-group-title">Pages</p>
+				{% for href, label in pages %}
+					<a id="palette-p-{{ loop.index }}" class="palette-item palette-item--page" role="option" href="{{ href }}" data-palette-item data-filter-text="{{ (label ~ ' ' ~ href) | lower }}">{{ label }}</a>
+				{% endfor %}
+			</div>
+			{% if is_available and operations_by_group %}
+				{% for group in groups %}
+					<div role="group" aria-labelledby="palette-g-{{ group }}" data-palette-group>
+						<p id="palette-g-{{ group }}" class="palette-group-title">{{ group_meta[group]["title"] }}</p>
+						{% for operation in operations_by_group[group] %}
+							<a id="palette-{{ operation.operation_id }}" class="palette-item" role="option" href="{{ operation.web_path }}" data-palette-item data-filter-text="{{ (operation.method ~ ' ' ~ operation.api_path ~ ' ' ~ operation.summary ~ ' ' ~ group) | lower }}">
+								<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
+								<span class="path">{{ operation.api_path }}</span>
+								<span class="what">{{ operation.summary }}</span>
+							</a>
+						{% endfor %}
+					</div>
+				{% endfor %}
+			{% endif %}
+			<p id="palette-empty" class="palette-empty" hidden>Nothing matches. Try a path word like <code>rank</code> or <code>counters</code>.</p>
+		</div>
+		<p class="palette-foot"><span><kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move</span><span><kbd>Enter</kbd> to open</span><span><kbd>Esc</kbd> to close</span></p>
+	</div>
+</div>

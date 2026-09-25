@@ -349,6 +349,43 @@
 
 		if (!parsedResponse) setActiveResponseTab(wrapper, "raw");
 		wrapper.classList.remove("hidden");
+		wrapper.dataset.state = "ready";
+
+		const code = /HTTP (\d{3})/.exec(String(statusText));
+		const benchStatus = form.querySelector("[data-bench-status]");
+		if (benchStatus) benchStatus.textContent = code ? ` ${code[1]}` : " !";
+		showResponse(form);
+	}
+
+	// ------------------------------------------------------------- workbench
+	// Phones show request and response one at a time; wider screens show both.
+
+	const phone = window.matchMedia("(max-width: 639.98px)");
+
+	function setBenchView(form, view) {
+		form.dataset.view = view;
+		form.querySelectorAll("[data-bench-view]").forEach((button) => {
+			button.setAttribute("aria-selected", String(button.dataset.benchView === view));
+		});
+	}
+
+	function showResponse(form) {
+		const wrapper = form.querySelector("[data-response-wrapper]");
+		if (phone.matches) {
+			setBenchView(form, "response");
+			wrapper?.scrollIntoView({ block: "start" });
+		} else if (wrapper && wrapper.getBoundingClientRect().top > window.innerHeight) {
+			// Stacked layout (tablet): bring the response into view.
+			wrapper.scrollIntoView({ block: "start", behavior: "smooth" });
+		}
+	}
+
+	function setupBenchSwitch() {
+		document.addEventListener("click", (event) => {
+			const button = event.target.closest("[data-bench-view]");
+			const form = button?.closest(".api-operation-form");
+			if (form) setBenchView(form, button.dataset.benchView);
+		});
 	}
 
 	// --------------------------------------------------------------- validation
@@ -447,15 +484,17 @@
 		if (!input || !list) return;
 		const links = Array.from(list.querySelectorAll("[data-filter-text]"));
 		const empty = list.querySelector("[data-endpoint-empty]");
+		const count = document.querySelector("[data-endpoint-count]");
 		input.addEventListener("input", () => {
-			const query = input.value.trim().toLowerCase();
+			const tokens = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
 			let visible = 0;
 			links.forEach((link) => {
-				const match = !query || link.dataset.filterText.includes(query);
+				const match = tokens.every((token) => link.dataset.filterText.includes(token));
 				link.classList.toggle("hidden", !match);
 				visible += match ? 1 : 0;
 			});
 			empty?.classList.toggle("hidden", visible > 0);
+			if (count) count.textContent = tokens.length ? `${visible} of ${links.length} endpoints` : `${links.length} endpoints`;
 		});
 	}
 
@@ -503,7 +542,7 @@
 			const session = auth()?.readAuth?.();
 			if (!session) {
 				showFormValidationError(form, "Please sign in first to use this endpoint.");
-				setResponse(form, "JWT required", "This endpoint requires sign-in. Use Sign In in the navbar; the JWT is cached for 1 day.", emptySnippets());
+				setResponse(form, "JWT required", "This endpoint requires sign-in. Use Sign In at the top of the page; the JWT is cached for 1 day.", emptySnippets());
 				return;
 			}
 			headers.Authorization = `Bearer ${session.jwt}`;
@@ -575,6 +614,7 @@
 	setupResponseTabs();
 	setupReadableModeToggles();
 	setupEndpointFilter();
+	setupBenchSwitch();
 
 	document.querySelectorAll(".api-operation-form").forEach((form) => {
 		form.querySelectorAll("[data-form-field='true']").forEach((field) => {

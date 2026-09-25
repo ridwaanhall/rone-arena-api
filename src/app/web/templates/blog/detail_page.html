@@ -1,53 +1,65 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<article class="article">
-	<a href="/blog" class="link back">Back to Blog</a>
-	<h1>{{ blog_post['title'] }}</h1>
-	<p class="lede">{{ blog_post['excerpt'] }}</p>
-	<p class="meta">{{ blog_post['published_at'] }}, {{ blog_post['read_time'] }}, {{ blog_post.get('category', 'Article') }}</p>
+<a href="/blog" class="link back">Back to Blog</a>
 
-	<img class="cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" />
+<div class="with-toc">
+	<details class="toc" data-toc open data-open-from="1024">
+		<summary>In this post</summary>
+		<ol>
+			{% for section in blog_post['sections'] %}<li><a href="#section-{{ loop.index }}">{{ section['heading'] }}</a></li>{% endfor %}
+		</ol>
+	</details>
 
-	{% if blog_post.get('key_points') %}
-		<div class="keypoints">
-			<h2>In short</h2>
-			<ul>
-				{% for point in blog_post['key_points'] %}<li>{{ point }}</li>{% endfor %}
-			</ul>
+	<article class="article toc-body">
+		<header class="article-head">
+			<h1>{{ blog_post['title'] }}</h1>
+			<p class="lede">{{ blog_post['excerpt'] }}</p>
+			<p class="meta">{{ blog_post['published_at'] }}, {{ blog_post['read_time'] }}, {{ blog_post.get('category', 'Article') }}</p>
+		</header>
+
+		<img class="cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" />
+
+		{% if blog_post.get('key_points') %}
+			<div class="keypoints">
+				<h2>In short</h2>
+				<ul>
+					{% for point in blog_post['key_points'] %}<li>{{ point }}</li>{% endfor %}
+				</ul>
+			</div>
+		{% endif %}
+
+		<div class="article-body">
+			{% for section in blog_post['sections'] %}
+				<section id="section-{{ loop.index }}">
+					<h2>{{ section['heading'] }}</h2>
+					<p>{{ section['body'] }}</p>
+
+					{% if section.get('bullets') %}
+						<ul>
+							{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
+						</ul>
+					{% endif %}
+
+					{% if section.get('callout') %}
+						<p class="note">{{ section['callout'] }}</p>
+					{% endif %}
+
+					{% if section.get('image') %}
+						<figure>
+							<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" />
+							{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
+						</figure>
+					{% elif section.get('image_note') %}
+						<p class="help">{{ section['image_note'] }}</p>
+					{% endif %}
+				</section>
+			{% endfor %}
 		</div>
-	{% endif %}
 
-	<div class="article-body">
-		{% for section in blog_post['sections'] %}
-			<section>
-				<h2>{{ section['heading'] }}</h2>
-				<p>{{ section['body'] }}</p>
-
-				{% if section.get('bullets') %}
-					<ul>
-						{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
-					</ul>
-				{% endif %}
-
-				{% if section.get('callout') %}
-					<p class="note">{{ section['callout'] }}</p>
-				{% endif %}
-
-				{% if section.get('image') %}
-					<figure>
-						<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" />
-						{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
-					</figure>
-				{% elif section.get('image_note') %}
-					<p class="help" style="margin-top: 8px">{{ section['image_note'] }}</p>
-				{% endif %}
-			</section>
-		{% endfor %}
-	</div>
-
-	<p style="margin-top: 48px; padding-top: 16px; border-top: 1.5px solid var(--ink)"><a href="/blog" class="link">All posts</a></p>
-</article>
+		<p class="article-end"><a href="/blog" class="link">All posts</a></p>
+	</article>
+</div>
 
 <script type="application/ld+json">
 {

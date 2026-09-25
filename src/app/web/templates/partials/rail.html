@@ -1,0 +1,54 @@
+{% set nav_items = [
+	("/web/heroes", "Playground", "playground"),
+	("/showcase", "Showcase", "showcase"),
+	("/blog", "Tutorials", "blog"),
+] %}
+<header class="rail">
+	<a href="/" class="wordmark">Rone Arena <span>API</span></a>
+
+	<button type="button" class="rail-search" data-open-palette aria-haspopup="dialog" aria-controls="palette">
+		<span>Search</span><kbd>Ctrl K</kbd>
+	</button>
+
+	<nav class="rail-nav" aria-label="Primary">
+		<a href="/"{% if nav_section == "home" %} aria-current="page"{% endif %}>Home</a>
+		{% for href, label, section in nav_items %}
+			<a href="{{ href }}"{% if nav_section == section %} aria-current="page"{% endif %}>{{ label }}</a>
+			{% if section == "playground" %}
+				<div class="rail-groups">
+					{% for group in groups %}
+						<a href="/web/{{ group }}"{% if current_group == group %} aria-current="page"{% endif %}>{{ group_meta[group]["title"] }}<span>{{ group_counts[group] }}</span></a>
+					{% endfor %}
+				</div>
+			{% endif %}
+		{% endfor %}
+		<a href="/api/docs">API Docs</a>
+	</nav>
+
+	<div class="rail-end">
+		<a href="https://github.com/ridwaanhall/rone-arena-api/releases" class="version" target="_blank" rel="noreferrer noopener" title="Release notes">v{{ api_version }}</a>
+		<button id="donate-modal-trigger" type="button" class="button button--bare button--small rail-donate" data-open-donate>Donate</button>
+		<button type="button" class="button button--bare button--small rail-theme" data-theme-toggle aria-label="Switch color theme">
+			<span class="theme-light-label">Dark theme</span><span class="theme-dark-label">Light theme</span>
+		</button>
+
+		<button id="user-signin-button" type="button" class="button button--small">Sign In</button>
+
+		<div class="menu-anchor">
+			<button id="user-menu-trigger" type="button" class="user-button hidden" aria-haspopup="menu" aria-controls="user-menu-panel" aria-expanded="false">
+				<span id="user-badge" class="user-badge">
+					<img id="user-avatar" class="avatar" alt="" />
+					<span class="name"><span id="user-name">Player</span><span id="user-country-inline" class="faint"></span></span>
+				</span>
+			</button>
+			<div id="user-menu-panel" class="menu hidden" role="menu">
+				<div class="menu-meta">
+					<p id="jwt-status">Not Signed In</p>
+					<p class="faint">Role (Zone): <span id="user-role-zone" class="mono">-</span></p>
+				</div>
+				<button id="jwt-copy-action" type="button" class="menu-item" role="menuitem"><span data-label>Copy JWT</span></button>
+				<button id="jwt-auth-action" type="button" class="menu-item menu-item--danger" role="menuitem"><span data-label>Sign Out</span></button>
+			</div>
+		</div>
+	</div>
+</header>

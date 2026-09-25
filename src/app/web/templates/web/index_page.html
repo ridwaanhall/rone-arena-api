@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% from "partials/macros.html" import ep_row %}
+
+{% block content %}
+<header class="page-head">
+	<nav class="tabs group-tabs" aria-label="API groups">
+		{% for group in groups %}
+			<a href="/web/{{ group }}" class="tab"{% if current_group == group %} aria-current="page"{% endif %}>{{ group_meta[group]["title"] }}<span class="count">{{ group_counts[group] }}</span></a>
+		{% endfor %}
+	</nav>
+	<h1>{{ web_title }}</h1>
+	<p class="lede">{{ subtitle }}</p>
+	<p class="bench-base">Requests go to <code>{{ api_url }}</code>{% if is_debug %} <span class="tag tag--caution">debug</span>{% endif %}. Each row opens a request form built from the OpenAPI schema.</p>
+</header>
+
+{% if not operations %}
+	<p class="note">No endpoint metadata found for this group.</p>
+{% else %}
+	<div class="filter-bar">
+		<label class="sr-only" for="endpoint-filter">Filter endpoints</label>
+		<input id="endpoint-filter" type="search" class="input" placeholder="Filter by path or name" data-endpoint-filter autocomplete="off" />
+		<span class="count" data-endpoint-count aria-live="polite">{{ operations | length }} endpoints</span>
+	</div>
+
+	<ol class="ep-index" data-endpoint-list aria-label="{{ group_meta[current_group]['title'] }} endpoints">
+		{% for operation in operations %}
+			<li data-operation-id="{{ operation.operation_id }}" data-api-path="{{ operation.api_path }}" data-filter-text="{{ (operation.summary ~ ' ' ~ operation.api_path) | lower }}">
+				{{ ep_row(operation, operation.web_path.removeprefix('/web/' ~ current_group) or '/') }}
+			</li>
+		{% endfor %}
+		<li class="help hidden" data-endpoint-empty>Nothing matches that filter.</li>
+	</ol>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/playground.js?v={{ asset_version }}"></script>
+{% endblock %}

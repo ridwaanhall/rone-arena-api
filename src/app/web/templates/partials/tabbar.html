@@ -1,0 +1,7 @@
+<nav class="tabbar" aria-label="Sections">
+	<a href="/"{% if nav_section == "home" %} aria-current="page"{% endif %}>Home</a>
+	<a href="/web/heroes"{% if nav_section == "playground" %} aria-current="page"{% endif %}>Playground</a>
+	<button type="button" data-open-palette aria-haspopup="dialog" aria-controls="palette">Search</button>
+	<a href="/blog"{% if nav_section == "blog" %} aria-current="page"{% endif %}>Tutorials</a>
+	<button type="button" data-open-more aria-haspopup="dialog" aria-controls="more-sheet"{% if nav_section == "showcase" %} aria-current="page"{% endif %}>More</button>
+</nav>

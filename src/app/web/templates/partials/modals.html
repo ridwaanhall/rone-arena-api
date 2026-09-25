@@ -1,0 +1,84 @@
+<div id="signin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+	<div class="dialog">
+		<h2 id="signin-title">Sign in</h2>
+		<p class="quiet">User endpoints need a JWT. You get one by confirming a code the game sends to your in-game mail.</p>
+
+		<ol class="signin-steps">
+			<li class="step">
+				<div class="step-body">
+					<span class="label">Your Role ID and Zone ID</span>
+					<div class="field-pair">
+						<label class="sr-only" for="signin-role-id">Role ID</label>
+						<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Role ID" />
+						<label class="sr-only" for="signin-zone-id">Zone ID</label>
+						<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Zone ID" />
+					</div>
+					<div>
+						<button id="signin-send-vc" type="button" class="button">Send VC</button>
+					</div>
+					<p id="signin-vc-hint" class="help">The code arrives in your in-game mail and expires in 5 minutes.</p>
+				</div>
+			</li>
+			<li id="signin-login-block" class="step is-waiting">
+				<div class="step-body">
+					<label class="label" for="signin-vc">The code from your mail</label>
+					<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" disabled />
+					<div>
+						<button id="signin-login" type="button" class="button button--mark" disabled>Sign In</button>
+					</div>
+				</div>
+			</li>
+		</ol>
+
+		<p id="signin-status" class="status-line" aria-live="polite"></p>
+
+		<div class="dialog-actions">
+			<button id="signin-cancel" type="button" class="button button--bare">Close</button>
+		</div>
+	</div>
+</div>
+
+<div id="signout-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signout-confirm-title">
+	<div class="dialog">
+		<h2 id="signout-confirm-title">Sign out</h2>
+		<p class="quiet">Are you sure you want to sign out? The JWT saved in this browser will be removed.</p>
+		<div class="dialog-actions">
+			<button id="signout-cancel" type="button" class="button button--bare">Cancel</button>
+			<button id="signout-confirm" type="button" class="button button--danger">Sign Out</button>
+		</div>
+	</div>
+</div>
+
+<div id="donate-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="donate-title">
+	<div class="dialog">
+		<h2 id="donate-title">Donate</h2>
+		<p class="quiet">Rone Arena is free to use. Donations pay for hosting and the time spent keeping it running.</p>
+		<ul class="plain-list">
+			<li><a href="https://github.com/sponsors/ridwaanhall" target="_blank" rel="noreferrer noopener">GitHub Sponsors <span>github.com/sponsors/ridwaanhall</span></a></li>
+			<li><a href="https://paypal.me/ridwaanhall" target="_blank" rel="noreferrer noopener">PayPal <span>paypal.me/ridwaanhall</span></a></li>
+			<li><a href="https://buymeacoffee.com/ridwaanhall" target="_blank" rel="noreferrer noopener">Buy Me a Coffee <span>buymeacoffee.com/ridwaanhall</span></a></li>
+			<li><a href="https://saweria.co/ridwaanhall" target="_blank" rel="noreferrer noopener">Saweria <span>saweria.co/ridwaanhall</span></a></li>
+			<li><a href="https://sociabuzz.com/ridwaanhall/support" target="_blank" rel="noreferrer noopener">Sociabuzz <span>sociabuzz.com/ridwaanhall/support</span></a></li>
+		</ul>
+		<div class="dialog-actions">
+			<button id="donate-close" type="button" class="button button--bare">Close</button>
+		</div>
+	</div>
+</div>
+
+{# Phone-only overflow of the bottom tab bar. #}
+<div id="more-sheet" class="modal modal--sheet hidden" role="dialog" aria-modal="true" aria-labelledby="more-title">
+	<div class="dialog dialog--sheet">
+		<h2 id="more-title" class="sr-only">More</h2>
+		<ul class="plain-list">
+			<li><a href="/showcase"{% if nav_section == "showcase" %} aria-current="page"{% endif %}>Showcase <span>projects built on it</span></a></li>
+			<li><a href="/api/docs">API Docs <span>Swagger UI</span></a></li>
+			<li><a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub <span>source</span></a></li>
+			<li><button type="button" data-open-donate>Donate <span>keep it running</span></button></li>
+			<li><button type="button" data-theme-toggle><span class="theme-light-label">Dark theme</span><span class="theme-dark-label">Light theme</span> <span>v{{ api_version }}</span></button></li>
+		</ul>
+		<div class="dialog-actions">
+			<button type="button" class="button button--bare" data-close-more>Close</button>
+		</div>
+	</div>
+</div>

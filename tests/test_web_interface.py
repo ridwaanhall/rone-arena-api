@@ -131,7 +131,10 @@ def test_ui_avoids_generic_ai_template_tells() -> None:
     # Guard rails from the design research: no stock fonts, no decorative glow,
     # no gradient text, no em dashes in interface copy.
     css = client.get("/static/css/arena.css").text
-    pages = [client.get(path).text for path in ("/", "/showcase", "/web/heroes", "/blog")]
+    pages = [
+        client.get(path).text
+        for path in ("/", "/showcase", "/web/heroes", "/web/heroes/heroes/rank", "/blog", "/blog/rone-arena-1-1-0-release-notes")
+    ]
 
     for banned in ("Inter", "Geist", "Space Grotesk", "backdrop-filter", "radial-gradient", "background-clip: text"):
         assert banned not in css
@@ -179,12 +182,73 @@ def test_web_group_pages_are_available() -> None:
         assert f"/web/{group}" in response.text
 
 
-def test_mobile_endpoint_jump_strip_is_present_on_group_pages() -> None:
+def test_group_page_is_a_filterable_endpoint_index() -> None:
     response = client.get("/web/academy")
+    main = response.text.split("<main>")[1].split("</main>")[0]
 
     assert response.status_code == 200
-    assert "data-mobile-endpoint-strip" in response.text
-    assert "Jump to endpoint" in response.text
+    for hook in ("data-endpoint-filter", "data-endpoint-list", "data-endpoint-empty", "data-endpoint-count"):
+        assert hook in main
+    # The index links to each endpoint's workbench instead of stacking every form.
+    assert "<form" not in main
+    assert main.count("data-operation-id=") == len(get_group_operations(app, "academy"))
+
+
+def test_endpoint_page_is_a_workbench() -> None:
+    import re
+
+    operations = get_group_operations(app, "heroes")
+    pages = list(dict.fromkeys(op["web_path"] for op in operations))
+    middle = pages[1]
+    response = client.get(middle)
+    main = response.text.split("<main>")[1].split("</main>")[0]
+    form = main[main.index("<form"):main.index("</form>")]
+
+    assert response.status_code == 200
+    # playground.js scopes every lookup to the form, so the response lives inside it.
+    assert "data-response-wrapper" in form and "data-bench-switch" in form
+    assert re.search(r'rel="prev" href="([^"]+)"', main).group(1) == pages[0]
+    assert re.search(r'rel="next" href="([^"]+)"', main).group(1) == pages[2]
+    assert 'aria-current="page"' in main
+
+
+def test_palette_lists_every_endpoint() -> None:
+    response = client.get("/showcase")
+    operations = [op for group in ("user", "heroes", "academy", "addon") for op in get_group_operations(app, group)]
+
+    assert 'id="palette"' in response.text
+    for operation in operations:
+        assert f'id="palette-{operation["operation_id"]}"' in response.text
+
+
+def test_main_element_has_no_attributes() -> None:
+    # The em-dash guard splits pages on the literal "<main>".
+    for path in ("/", "/showcase", "/web/heroes", "/web/heroes/heroes/rank", "/blog"):
+        assert client.get(path).text.count("<main>") == 1, path
+
+
+def test_css_uses_exactly_four_tiers() -> None:
+    import re
+
+    css = client.get("/static/css/arena.css").text
+    widths = set(re.findall(r"@media \(min-width: (\d+)px\)", css))
+
+    assert widths == {"640", "1024", "1440"}
+    assert "max-width:" not in "".join(re.findall(r"@media[^{]*", css))
+
+
+def test_static_bundle_stays_small() -> None:
+    from app.core.paths import PUBLIC_DIR
+
+    total = sum(path.stat().st_size for path in (PUBLIC_DIR / "static").rglob("*") if path.is_file())
+    assert total < 120_000, total
+
+
+def test_blog_detail_has_table_of_contents() -> None:
+    response = client.get("/blog/rone-arena-1-1-0-release-notes")
+
+    assert "data-toc" in response.text
+    assert 'href="#section-1"' in response.text and 'id="section-1"' in response.text
 
 
 def test_web_pages_cover_all_documented_group_operations() -> None:
@@ -438,7 +502,7 @@ def test_endpoint_page_title_uses_operation_summary() -> None:
     assert "Heroe Endpoint" not in response.text
 
 
-def test_sidebar_breaks_paths_only_after_slashes() -> None:
+def test_endpoint_index_breaks_paths_only_after_slashes() -> None:
     response = client.get("/web/heroes")
 
     assert "/<wbr>{hero_identifier}/<wbr>wallpapers" in response.text
@@ -479,7 +543,7 @@ def test_blog_detail_v4_0_4_release_notes_no_commit_hash() -> None:
 
 def test_release_1_1_0_post_leads_the_blog() -> None:
     response = client.get("/blog")
-    lead_start = response.text.index('class="lead-post"')
+    lead_start = response.text.index("data-featured-post")
 
     assert "Rone Arena 1.1.0: Hero Wallpapers, a Faster API, and a New Website" in response.text[lead_start:lead_start + 2000]
 

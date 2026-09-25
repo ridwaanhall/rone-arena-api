@@ -1,7 +1,8 @@
 /*
  * Rone Arena: site-wide behaviour shared by every page.
  *   - theme toggle (system / light / dark, remembered per browser)
- *   - mobile navigation drawer
+ *   - command palette (Ctrl/Cmd+K or "/") and the phone "More" sheet
+ *   - table-of-contents highlighting on long pages
  *   - player session: JWT cache, navbar state, sign-in / sign-out modals
  *   - donate modal and copy-to-clipboard buttons
  * Exposes window.ArenaWebAuth for page scripts (the playground).
@@ -108,19 +109,25 @@
 		return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 	}
 
-	$("theme-toggle")?.addEventListener("click", () => {
-		const next = currentTheme() === "dark" ? "light" : "dark";
-		document.documentElement.dataset.theme = next;
-		storage.set(THEME_KEY, next);
+	document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+		button.addEventListener("click", () => {
+			const next = currentTheme() === "dark" ? "light" : "dark";
+			document.documentElement.dataset.theme = next;
+			storage.set(THEME_KEY, next);
+		});
 	});
 
-	// ------------------------------------------------------------ nav drawer
+	// ------------------------------------------------------ responsive details
+	// <details data-open-from="1024"> is rendered open (so it works without
+	// JavaScript) and folds away below that width, where space is short.
 
-	const navToggle = $("nav-toggle");
-	const navDrawer = $("nav-drawer");
-	navToggle?.addEventListener("click", () => {
-		const open = navDrawer?.classList.toggle("hidden") === false;
-		navToggle.setAttribute("aria-expanded", String(open));
+	document.querySelectorAll("details[data-open-from]").forEach((details) => {
+		const wide = window.matchMedia(`(min-width: ${details.dataset.openFrom}px)`);
+		const sync = () => {
+			details.open = wide.matches;
+		};
+		sync();
+		wide.addEventListener("change", sync);
 	});
 
 	// ---------------------------------------------------------------- session
@@ -255,16 +262,25 @@
 		signin: $("signin-modal"),
 		signout: $("signout-confirm-modal"),
 		donate: $("donate-modal"),
+		more: $("more-sheet"),
+		palette: $("palette"),
 	};
+
+	// Focus goes back to whatever opened the dialog when it closes.
+	let lastOpener = null;
 
 	function openModal(modal, focusTarget) {
 		if (!modal) return;
+		lastOpener = document.activeElement;
 		modal.classList.remove("hidden");
 		(focusTarget || modal.querySelector("button, input"))?.focus();
 	}
 
 	function closeModal(modal) {
-		modal?.classList.add("hidden");
+		if (!modal || modal.classList.contains("hidden")) return;
+		modal.classList.add("hidden");
+		if (lastOpener && document.contains(lastOpener)) lastOpener.focus();
+		lastOpener = null;
 	}
 
 	Object.values(modals).forEach((modal) => {
@@ -276,10 +292,20 @@
 		});
 	});
 
-	// Donate
-	$("donate-modal-trigger")?.addEventListener("click", () => openModal(modals.donate, $("donate-close")));
+	// Donate (opened from the rail or from the phone "More" sheet)
 	document.querySelectorAll("[data-open-donate]").forEach((button) => {
-		button.addEventListener("click", () => openModal(modals.donate, $("donate-close")));
+		button.addEventListener("click", () => {
+			closeModal(modals.more);
+			openModal(modals.donate, $("donate-close"));
+		});
+	});
+
+	// Phone "More" sheet
+	document.querySelectorAll("[data-open-more]").forEach((button) => {
+		button.addEventListener("click", () => openModal(modals.more, modals.more?.querySelector("a")));
+	});
+	document.querySelectorAll("[data-close-more]").forEach((button) => {
+		button.addEventListener("click", () => closeModal(modals.more));
 	});
 	$("donate-close")?.addEventListener("click", () => closeModal(modals.donate));
 
@@ -468,7 +494,119 @@
 		if (modals.signin && !modals.signin.classList.contains("hidden")) closeSignIn();
 		closeModal(modals.donate);
 		closeModal(modals.signout);
+		closeModal(modals.more);
+		closeModal(modals.palette);
 	});
+
+	// ---------------------------------------------------------------- palette
+	// Every page and endpoint is rendered into the palette by the server, so
+	// search is a filter over existing links: no fetch.
+
+	function setupPalette() {
+		const palette = modals.palette;
+		const input = $("palette-input");
+		if (!palette || !input) return;
+		const items = Array.from(palette.querySelectorAll("[data-palette-item]"));
+		const groups = Array.from(palette.querySelectorAll("[data-palette-group]"));
+		const empty = $("palette-empty");
+		let active = -1;
+
+		const visible = () => items.filter((item) => !item.hidden);
+
+		function setActive(index) {
+			const shown = visible();
+			items.forEach((item) => item.removeAttribute("aria-selected"));
+			if (!shown.length) {
+				active = -1;
+				input.removeAttribute("aria-activedescendant");
+				return;
+			}
+			active = (index + shown.length) % shown.length;
+			const item = shown[active];
+			item.setAttribute("aria-selected", "true");
+			input.setAttribute("aria-activedescendant", item.id);
+			item.scrollIntoView({ block: "nearest" });
+		}
+
+		function filter() {
+			const tokens = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+			items.forEach((item) => {
+				const text = item.dataset.filterText || "";
+				item.hidden = !tokens.every((token) => text.includes(token));
+			});
+			groups.forEach((group) => {
+				group.hidden = !group.querySelector("[data-palette-item]:not([hidden])");
+			});
+			if (empty) empty.hidden = visible().length > 0;
+			setActive(0);
+		}
+
+		function open() {
+			setMenuOpen(false);
+			closeModal(modals.more);
+			input.value = "";
+			filter();
+			openModal(palette, input);
+		}
+
+		input.addEventListener("input", filter);
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+				event.preventDefault();
+				setActive(active + (event.key === "ArrowDown" ? 1 : -1));
+			} else if (event.key === "Enter") {
+				const target = visible()[active];
+				if (target) {
+					event.preventDefault();
+					window.location.href = target.href;
+				}
+			}
+		});
+		items.forEach((item) => {
+			item.addEventListener("mousemove", () => setActive(visible().indexOf(item)));
+		});
+
+		document.querySelectorAll("[data-open-palette]").forEach((button) => button.addEventListener("click", open));
+		palette.querySelector("[data-close-palette]")?.addEventListener("click", () => closeModal(palette));
+
+		document.addEventListener("keydown", (event) => {
+			if (!palette.classList.contains("hidden")) return;
+			const typing = event.target.closest?.("input, textarea, select, [contenteditable='true']");
+			const isShortcut = event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey);
+			if (isShortcut || (event.key === "/" && !typing && !event.ctrlKey && !event.metaKey && !event.altKey)) {
+				event.preventDefault();
+				open();
+			}
+		});
+	}
+
+	setupPalette();
+
+	// ------------------------------------------------------ table of contents
+	// Marks the section being read in a [data-toc] list.
+
+	function setupTableOfContents() {
+		const toc = document.querySelector("[data-toc]");
+		if (!toc || !("IntersectionObserver" in window)) return;
+		const links = new Map();
+		toc.querySelectorAll('a[href^="#"]').forEach((link) => {
+			const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+			if (target) links.set(target, link);
+		});
+		const visibleTargets = new Set();
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => (entry.isIntersecting ? visibleTargets.add(entry.target) : visibleTargets.delete(entry.target)));
+				const current = Array.from(links.keys()).find((target) => visibleTargets.has(target));
+				if (!current) return;
+				links.forEach((link, target) => link.setAttribute("aria-current", String(target === current)));
+			},
+			{ rootMargin: "0px 0px -60% 0px" }
+		);
+		links.forEach((_, target) => observer.observe(target));
+	}
+
+	setupTableOfContents();
 
 	// ------------------------------------------------------------- copy buttons
 
