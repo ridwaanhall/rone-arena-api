@@ -34,6 +34,9 @@
       "binding": "CF_VERSION_METADATA"
     }
   },
+  "routes": [
+    { "pattern": "arena.rone.dev", "custom_domain": true }
+  ],
   "workers_dev": true,
   "preview_urls": true,
   "observability": {
