@@ -172,7 +172,6 @@ def version(
         "- Browsing available heroes.\n"
         "- Analyzing basic hero attributes.\n\n"
     ),
-    deprecated=True,
     responses={
         200: {
             "description": "Successful Response",

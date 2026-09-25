@@ -160,7 +160,6 @@ def win_rate(
             }
         }
     },
-    deprecated=True,
 )
 def ip(request: Request) -> object:
     client_ip = extract_client_ip(request, public_only=True)
