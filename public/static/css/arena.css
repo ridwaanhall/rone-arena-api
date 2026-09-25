@@ -197,9 +197,11 @@ ul, ol { margin: 0; padding: 0; }
 	gap: 8px;
 	min-height: 38px;
 	padding: 7px 14px;
-	border: 1.5px solid var(--ink);
+	/* Borderless: a soft paper fill carries the shape. The transparent border
+	   keeps every variant the same size. */
+	border: 1.5px solid transparent;
 	border-radius: var(--radius);
-	background: transparent;
+	background: var(--paper-3);
 	color: var(--ink);
 	font-weight: 600;
 	font-size: 0.875rem;
@@ -213,10 +215,10 @@ ul, ol { margin: 0; padding: 0; }
    readable on the green; on hover the colours swap onto that same dark. */
 .button--mark { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
 .button--mark:hover:not(:disabled) { background: var(--mark-ink); border-color: var(--mark); color: var(--mark); }
-.button--danger { border-color: var(--loss); color: var(--loss); }
+.button--danger { background: color-mix(in srgb, var(--loss) 12%, transparent); color: var(--loss); }
 .button--danger:hover:not(:disabled) { background: var(--loss); color: var(--paper); }
 .button--small { min-height: 32px; padding: 4px 10px; font-size: 0.8125rem; }
-.button--bare { border-color: transparent; }
+.button--bare { background: transparent; }
 .button--bare:hover:not(:disabled) { background: var(--paper-2); color: var(--ink); }
 
 .input, .select, .textarea {
@@ -263,8 +265,10 @@ ul, ol { margin: 0; padding: 0; }
 	align-items: center;
 	min-height: 32px;
 	padding: 3px 10px;
-	border: 1.5px solid var(--ink-3);
+	border: 1.5px solid transparent;
 	border-radius: var(--radius);
+	background: var(--paper-2);
+	color: var(--ink-2);
 	font-size: 0.875rem;
 	cursor: pointer;
 	user-select: none;
@@ -272,7 +276,7 @@ ul, ol { margin: 0; padding: 0; }
 @media (min-width: 768px) and (pointer: fine) {
 	.toggle label { min-height: 28px; padding: 2px 9px; font-size: 0.8125rem; }
 }
-.toggle label:hover { border-color: var(--ink); }
+.toggle label:hover { background: var(--paper-3); color: var(--ink); }
 .toggle input:checked + label { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); font-weight: 600; }
 .toggle input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: 2px; }
 .toggles.is-invalid { outline: 1.5px solid var(--loss); outline-offset: 4px; }
@@ -627,9 +631,10 @@ main { flex: 1 0 auto; }
 .bench-base code { color: var(--ink); overflow-wrap: anywhere; }
 
 .jump { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 16px; }
-.jump a { flex: none; display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 8px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; text-decoration: none; }
+.jump a { flex: none; display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 8px; background: var(--paper-2); border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; text-decoration: none; }
 .jump a .method { min-width: 0; font-size: 0.6875rem; }
-.jump a[aria-current="page"] { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
+.jump a:hover { background: var(--paper-3); }
+.jump a[aria-current="page"] { background: var(--mark); color: var(--mark-ink); }
 .jump a[aria-current="page"] .method { color: var(--mark-ink); }
 @media (min-width: 1024px) { .jump-block { display: none; } }
 
