@@ -29,4 +29,5 @@ class AddonIpResponse(BaseModel):
 
     code: int
     msg: str | None = None
-    data: AddonIpData | dict[str, str | None] | None = None
+    # The upstream answers a failed lookup with code -1 and data "".
+    data: AddonIpData | dict[str, str | None] | str | None = None

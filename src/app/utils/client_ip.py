@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from ipaddress import ip_address
 
 from fastapi import Request
 
 _client_ip_ctx: ContextVar[str | None] = ContextVar("client_ip", default=None)
+# Cloudflare's geolocation of the visitor (request.cf), set per request by the
+# Worker entry point. None off the Worker.
+_edge_geo_ctx: ContextVar[dict[str, str] | None] = ContextVar("edge_geo", default=None)
 
 
 def _normalize_ip_candidate(raw_value: str) -> str | None:
@@ -121,3 +124,24 @@ async def bind_client_ip(request: Request) -> AsyncGenerator[None, None]:
 
 def get_bound_client_ip() -> str | None:
     return _client_ip_ctx.get()
+
+
+def set_edge_geo(geo: dict[str, str] | None) -> Token:
+    return _edge_geo_ctx.set(geo)
+
+
+def reset_edge_geo(token: Token) -> None:
+    _edge_geo_ctx.reset(token)
+
+
+def get_edge_geo() -> dict[str, str] | None:
+    return _edge_geo_ctx.get()
+
+
+def as_ipv4(value: str) -> str | None:
+    """The IPv4 form of an address, including one embedded in IPv6 (mapped or 6to4)."""
+    parsed = ip_address(value)
+    if parsed.version == 4:
+        return value
+    embedded = parsed.ipv4_mapped or parsed.sixtofour
+    return str(embedded) if embedded else None

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query, Request
 from app.core.exceptions import AppError
 from app.services.addon import fetch_ip_get
 from app.schemas.addon import AddonIpResponse, AddonWinRateResponse
-from app.utils.client_ip import extract_client_ip
+from app.utils.client_ip import as_ipv4, extract_client_ip, get_edge_geo
 
 router = APIRouter(prefix="/api/addon", tags=["addon"])
 
@@ -164,4 +164,14 @@ def win_rate(
 )
 def ip(request: Request) -> object:
     client_ip = extract_client_ip(request, public_only=True)
+    if client_ip and not as_ipv4(client_ip):
+        # The upstream lookup only understands IPv4 and answers an IPv6 address
+        # with code -1. Use Cloudflare's own geolocation of the visitor instead;
+        # without it, let the upstream locate the calling server.
+        geo = get_edge_geo()
+        if geo:
+            return {"code": 0, "msg": "ok", "data": {**geo, "lang": "en"}}
+        client_ip = None
+    elif client_ip:
+        client_ip = as_ipv4(client_ip)
     return fetch_ip_get("c/ip", client_ip)
