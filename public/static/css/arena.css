@@ -119,6 +119,25 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 ul, ol { margin: 0; padding: 0; }
 
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- Scrollbars ----------
+   Ink thumb on a paper track, square like the rules; the thumb turns
+   highlighter on hover. Follows light/dark through the tokens. */
+html { scrollbar-color: var(--ink-3) var(--paper-2); scrollbar-width: thin; }
+* { scrollbar-color: var(--ink-3) transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-track { background: var(--paper-2); border-left: 1px solid var(--rule); }
+::-webkit-scrollbar-thumb {
+	background: var(--ink-3);
+	border: 2px solid transparent;
+	border-radius: var(--radius);
+	background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:active { background: var(--mark); border-color: var(--ink); background-clip: border-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+.code::-webkit-scrollbar-track, .readable::-webkit-scrollbar-track { background: var(--paper-3); }
 ::selection { background: var(--mark); color: var(--mark-ink); }
 
 /* ---------- Utilities ---------- */
