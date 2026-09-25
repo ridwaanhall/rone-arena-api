@@ -9,13 +9,11 @@ They need network access and valid upstream keys, so they only run on demand:
 from __future__ import annotations
 
 import os
-import sys
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.main import app  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not os.getenv("LIVE_UPSTREAM"), reason="set LIVE_UPSTREAM=1 to hit the real upstream")

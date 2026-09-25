@@ -4,7 +4,7 @@
     {
       "name": "arena",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "src", "--reload", "--reload-dir", "src", "--port", "8000"],
       "port": 8000
     }
   ]

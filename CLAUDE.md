@@ -2,7 +2,7 @@
 
 **Rone Arena API & Web** is a REST API and web interface for **Mobile Legends: Bang Bang** game data. It is an unofficial, community-maintained project with no affiliation to or endorsement by Moonton; the game name is used descriptively only, and the brand must never incorporate the "MLBB" or "Mobile Legends" marks.
 
-Web UI conventions (design system, design language, JS layout) live in `app/web/CLAUDE.md`.
+Web UI conventions (design system, design language, JS layout) live in `src/app/web/CLAUDE.md`.
 
 ## Configuration
 
@@ -10,7 +10,7 @@ Web UI conventions (design system, design language, JS layout) live in `app/web/
 - `IS_HIGH_TRAFFIC`: set to `true` to restrict the API and point callers at the high-volume host.
   Both default to a restricted service when unset; maintenance wins when both are true, and
   `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment.
-- **Version**: `PROJECT_VERSION` is hardcoded in `app/core/config.py` (not read from the
+- **Version**: `PROJECT_VERSION` is hardcoded in `src/app/core/config.py` (not read from the
   environment). Bump it there and in `pyproject.toml` together for each release.
 - **API URL**: `API_URL` in `config.py` is derived, not read from the environment:
   `http://127.0.0.1:8000/api/` when `DEBUG=True`, otherwise `{BASE_URL}api/`, so a deployment
@@ -41,9 +41,9 @@ Mobile Legends marks belong to Moonton and cannot be used as this project's bran
   package name, OpenAPI tag, or any other source-identifying position.
 - Naming the game **descriptively** ("data for the game Mobile Legends: Bang Bang") is fine and
   intentional - that is nominative fair use.
-- The `Origin`/`Referer` headers pointing at `https://www.mobilelegends.com` in `app/core/http.py`
+- The `Origin`/`Referer` headers pointing at `https://www.mobilelegends.com` in `src/app/core/http.py`
   are **required by the upstream service** - never rewrite them in a branding sweep.
 - Upstream CDN asset URLs (`akmweb.youngjoygame.com/.../mlbb/...`) inside OpenAPI response examples
   are real upstream paths - leave them alone.
-- Blog post slugs are pinned explicitly in `app/web/routers/blog.py` so rebranded titles never change
+- Blog post slugs are pinned explicitly in `src/app/web/routers/blog.py` so rebranded titles never change
   a published URL. Add a `"slug"` key when adding a post whose title may later change.

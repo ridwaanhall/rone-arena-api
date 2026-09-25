@@ -39,7 +39,7 @@ print(json.dumps({
     "message": body.get("message", ""),
     "alternative": (body.get("details") or {}).get("alternative_endpoint"),
 }))
-""" % str(_REPO_ROOT)
+""" % str(_REPO_ROOT / "src")
 
 
 def _probe(*, maintenance: bool, high_traffic: bool) -> dict:

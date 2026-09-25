@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import DEBUG, IS_AVAILABLE, PROJECT_VERSION
+from app.core.paths import PUBLIC_DIR
 
 from app.api.dependencies import service_unavailable_error
 from app.api.routers.root import router as root_router
@@ -273,13 +273,12 @@ app.include_router(addon_router)
 app.include_router(web_router)
 app.include_router(blog_router)
 
-# static assets
-_STATIC_IMAGES_DIR = Path(__file__).resolve().parents[1] / "images"
-app.mount("/images", StaticFiles(directory=str(_STATIC_IMAGES_DIR)), name="images")
-# Web UI stylesheet and scripts. Stays reachable during maintenance so the
-# status page renders styled.
-_WEB_STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
-app.mount("/static", StaticFiles(directory=str(_WEB_STATIC_DIR)), name="static")
+# static assets: blog images and the web UI stylesheet and scripts, which stay
+# reachable during maintenance so the status page renders styled. On Cloudflare
+# Workers `public/` is served as Static Assets before the app, so PUBLIC_DIR is None.
+if PUBLIC_DIR is not None:
+    app.mount("/images", StaticFiles(directory=str(PUBLIC_DIR / "images")), name="images")
+    app.mount("/static", StaticFiles(directory=str(PUBLIC_DIR / "static")), name="static")
 
 
 # exception handlers

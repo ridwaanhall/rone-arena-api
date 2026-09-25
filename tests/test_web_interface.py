@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import os
-import sys
 from collections import defaultdict
 
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.core.config import PROJECT_VERSION
 from app.main import app
 from app.web.openapi_catalog import get_group_operations
@@ -499,4 +497,4 @@ def test_every_blog_image_exists_on_disk() -> None:
     for post in _BLOG_POSTS:
         images = [post["cover_image"]] + [s["image"] for s in post["sections"] if s.get("image")]
         for image in images:
-            assert (root / str(image).lstrip("/")).is_file(), image
+            assert (root / "public" / str(image).lstrip("/")).is_file(), image

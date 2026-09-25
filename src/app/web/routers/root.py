@@ -22,6 +22,7 @@ from app.core.config import (
     BASE_URL,
     API_URL,
 )
+from app.core.paths import PUBLIC_DIR
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.showcase import ENTRY_KEYS, SHOWCASE, SUBMIT_URL, format_entry, llm_prompt, with_playground_links
 
@@ -33,9 +34,14 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 def _asset_version() -> str:
-    """Content hash of the web static files, used as a cache-busting query string."""
+    """Content hash of the web static files, used as a cache-busting query string.
+
+    Falls back to the project version where `public/` is not on disk (Cloudflare Workers).
+    """
+    if PUBLIC_DIR is None:
+        return PROJECT_VERSION
     digest = hashlib.sha256()
-    for path in sorted((_WEB_DIR / "static").rglob("*")):
+    for path in sorted((PUBLIC_DIR / "static").rglob("*")):
         if path.is_file():
             digest.update(path.read_bytes())
     return digest.hexdigest()[:10]

@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 
-![Landing Page](images/blog/landing-page-v3.2.2.webp)
+![Landing Page](public/images/blog/landing-page-v3.2.2.webp)
 
 Rone Arena is an unofficial, community-maintained data API for the game **Mobile Legends: Bang Bang**.
 It provides access to hero analytics, in-game performance data, academy resources, player endpoints, and utility tools. It is designed with a consistent RESTful structure, supports flexible hero identifiers (ID or name), and delivers standardized responses for seamless integration into applications, dashboards, analytics systems, and internal tooling.
