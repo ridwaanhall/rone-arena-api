@@ -1,80 +1,58 @@
-<header class="sticky top-0 z-30 border-b border-zinc-800 backdrop-blur-sm">
-    <div class="mx-auto w-full max-w-[1600px] px-3 py-2.5 sm:px-4 lg:px-6">
-        <div class="grid gap-2 border border-zinc-800 p-2.5 sm:p-3">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex min-w-0 items-center gap-2">
-                    <a href="/" class="inline-flex items-center gap-1.5 border border-zinc-700 px-2.5 py-1.5 text-xs font-semibold tracking-wide text-zinc-100 hover:border-cyan-400 hover:text-cyan-200 sm:text-sm">
-                        <span class="truncate">Rone Arena</span>
-                        <span class="border border-cyan-500/40 px-1.5 py-0.5 text-[10px] text-cyan-200">v{{ api_version }}</span>
-                    </a>
-                    <span class="hidden text-[10px] uppercase tracking-[0.16em] text-zinc-500 lg:inline">Interactive Endpoint Workspace</span>
-                </div>
+{% set path = request.url.path %}
+{% set nav_items = [
+	("/web/heroes", "Playground", path.startswith("/web")),
+	("/showcase", "Showcase", path.startswith("/showcase")),
+	("/blog", "Tutorials", path.startswith("/blog")),
+	("/api/docs", "API Docs", False),
+] %}
+<header class="masthead">
+	<div class="wrap">
+		<div class="masthead-row">
+			<a href="/" class="wordmark"{% if path == "/" %} aria-current="page"{% endif %}>Rone Arena <span>API</span></a>
 
-                <div class="flex items-center gap-1.5 text-[11px] sm:text-xs">
-                    <a href="/blog" class="border border-emerald-700/70 px-2 py-1 hover:border-emerald-400 hover:text-emerald-200">
-                        <span class="text-emerald-300 {{ 'underline' if request.scope['route'].name.startswith('web.blog') else '' }}">
-                            Blog
-                        </span>
-                    </a>
-                    <button id="donate-modal-trigger" type="button"
-                        class="border border-rose-700/70 px-2 py-1 hover:border-rose-400 hover:text-rose-200">
-                        <span class="text-rose-300 animate-pulse">Donate</span>
-                    </button>
-                    <a href="https://github.com/ridwaanhall/rone-arena-api" 
-                        target="_blank" 
-                        rel="noreferrer noopener" 
-                        class="border border-zinc-700/70 px-0.5 py-0.5 text-zinc-300 hover:border-zinc-500 hover:text-zinc-200"
-                    >
-                        <img src="https://img.shields.io/github/stars/ridwaanhall/rone-arena-api?style=flat-square&logo=github&label=Stars&color=white&logoColor=white" 
-                            alt="GitHub Stars">
-                    </a>
-                </div>
-            </div>
+			<nav class="nav" aria-label="Primary">
+				{% for href, label, active in nav_items %}
+					<a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+				{% endfor %}
+			</nav>
 
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 text-[11px] sm:text-xs" aria-label="API groups">
-                    {% set group_base = '/web' %}
-                    <a
-                        href="/"
-                        class="shrink-0 border px-2.5 py-1.5 {{ 'border-cyan-500/60 text-cyan-100' if request.url.path == '/' else 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100' }}"
-                    >
-                        Home
-                    </a>
-                    {% for group in groups %}
-                        <a
-                            href="{{ group_base }}/{{ group }}"
-                            class="shrink-0 border px-2.5 py-1.5 {{ 'border-cyan-500/60 text-cyan-100' if current_group == group else 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100' }}"
-                        >
-                            {{ group_meta[group]["title"] }}
-                        </a>
-                    {% endfor %}
-                </div>
+			<div class="masthead-end">
+				<a href="https://github.com/ridwaanhall/rone-arena-api/releases" class="version only-wide" target="_blank" rel="noreferrer noopener" title="Release notes">v{{ api_version }}</a>
+				<button id="donate-modal-trigger" type="button" class="button button--bare button--small only-wide">Donate</button>
+				<button id="theme-toggle" type="button" class="button button--bare button--small" aria-label="Switch color theme">
+					<span class="theme-light-label">Dark</span><span class="theme-dark-label">Light</span>
+				</button>
 
-                <div class="relative flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-[11px] sm:text-xs">
-                    <button id="user-signin-button" type="button" class="inline-flex shrink-0 items-center gap-1.5 border border-emerald-600/80 bg-emerald-950/30 px-2.5 py-1 text-emerald-200 hover:border-emerald-400 hover:text-emerald-100">
-                        Sign In
-                    </button>
+				<button id="user-signin-button" type="button" class="button button--small">Sign In</button>
 
-                    <button id="user-menu-trigger" type="button" class="hidden items-center gap-1.5 border border-zinc-700 px-1 py-1 hover:border-zinc-500">
-                        <span id="user-badge" class="inline-flex items-center gap-1.5">
-                            <img id="user-avatar" src="" alt="User avatar" class="h-5 w-5 border border-zinc-700 object-cover sm:h-6 sm:w-6" />
-                            <span class="max-w-32 truncate text-zinc-200 sm:max-w-44">
-                                <span id="user-name"></span>
-                                <span id="user-country-inline" class="text-zinc-400"></span>
-                            </span>
-                        </span>
-                    </button>
+				<div class="menu-anchor">
+					<button id="user-menu-trigger" type="button" class="user-button hidden" aria-haspopup="menu" aria-controls="user-menu-panel" aria-expanded="false">
+						<span id="user-badge" style="display: contents">
+							<img id="user-avatar" class="avatar" src="" alt="" />
+							<span class="name"><span id="user-name">Player</span><span id="user-country-inline" class="faint"></span></span>
+						</span>
+					</button>
+					<div id="user-menu-panel" class="menu hidden" role="menu">
+						<div class="menu-meta">
+							<p id="jwt-status">Not Signed In</p>
+							<p class="faint">Role (Zone): <span id="user-role-zone" class="mono">-</span></p>
+						</div>
+						<button id="jwt-copy-action" type="button" class="menu-item" role="menuitem"><span data-label>Copy JWT</span></button>
+						<button id="jwt-auth-action" type="button" class="menu-item menu-item--danger" role="menuitem"><span data-label>Sign Out</span></button>
+					</div>
+				</div>
 
-                    <div id="user-menu-panel" class="absolute right-0 top-full z-40 mt-1 hidden border border-zinc-700 p-1 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-                        <span id="jwt-status" class="mb-2 block border border-zinc-700 px-1 py-1 text-zinc-300">Signed In</span>
-                        <div class="mb-2 border border-zinc-700 px-1 py-1 text-[10px]">
-                            <p><span id="user-role-zone" class="text-zinc-300">-</span></p>
-                        </div>
-                        <button id="jwt-copy-action" type="button" class="mb-1 w-full border border-lime-700/80 bg-lime-950/30 px-1 py-1 text-left text-lime-300 hover:border-lime-500 hover:text-lime-200">Copy JWT</button>
-                        <button id="jwt-auth-action" type="button" class="w-full border border-rose-700 px-1 py-1 text-left text-rose-300 hover:border-rose-400 hover:text-rose-100">Sign Out</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+				<button id="nav-toggle" type="button" class="button button--bare button--small menu-toggle" aria-expanded="false" aria-controls="nav-drawer">Menu</button>
+			</div>
+		</div>
+
+		<nav id="nav-drawer" class="drawer hidden" aria-label="Mobile">
+			<a href="/">Home</a>
+			{% for href, label, active in nav_items %}
+				<a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+			{% endfor %}
+			<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub</a>
+			<button type="button" data-open-donate>Donate</button>
+		</nav>
+	</div>
 </header>

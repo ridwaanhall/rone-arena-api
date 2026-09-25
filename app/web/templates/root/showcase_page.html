@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header class="page-head">
+	<h1>Showcase</h1>
+	<p class="lede">
+		Two sites built on the Rone Arena API. Each table lists a page on the site and the endpoints that page is built from.
+		Open any endpoint to send the same request in the playground.
+	</p>
+</header>
+
+{% for product in products %}
+	<section class="section" id="{{ product.name | lower | replace(' ', '-') }}">
+		<div class="section-aside">
+			<h2 class="section-title">{{ product.name }}</h2>
+			<a class="link ext" href="{{ product.url }}" target="_blank" rel="noreferrer noopener">{{ product.url | replace("https://", "") | trim("/") }}</a>
+			<p>{{ product.about }}</p>
+			<p><strong style="color: var(--ink)">Shows you:</strong> {{ product.shows }}</p>
+		</div>
+		<div class="table-scroll">
+			<table class="ruled feature-map">
+				<thead>
+					<tr><th scope="col">Page or feature</th><th scope="col">Endpoints</th></tr>
+				</thead>
+				<tbody>
+					{% for feature in product.features %}
+						<tr>
+							<td>{{ feature.label }}</td>
+							<td>
+								<ul class="uses" style="margin: -6px 0">
+									{% for endpoint in feature.endpoints %}
+										<li style="border-bottom: 0">
+											<span class="method method--{{ endpoint.method | lower }}">{{ endpoint.method }}</span>
+											{% if endpoint.web_path %}<a href="{{ endpoint.web_path }}">{{ endpoint.path }}</a>{% else %}<span>{{ endpoint.path }}</span>{% endif %}
+										</li>
+									{% endfor %}
+								</ul>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{% endfor %}
+
+<section class="section">
+	<div class="section-aside">
+		<h2 class="section-title">Build your own</h2>
+	</div>
+	<div class="prose">
+		<p>Both sites follow the same pattern: call the API from your server, cache what changes slowly (hero lists, academy data) for a few minutes, and pass the player's JWT through only for <code>/api/user</code> requests.</p>
+		<p>Start from the <a class="link" href="/web/heroes">playground</a> to find the response shape you need, then copy the generated snippet in your language. The <a class="link" href="/blog/how-to-use-mlbb-public-data-api-web-project">sign-in tutorial</a> walks through the JWT flow Arena Card uses.</p>
+	</div>
+</section>
+{% endblock %}

@@ -1,156 +1,159 @@
 {% extends "layout.html" %}
 
 {% block content %}
-{% if is_maintenance %}
-<section class="mx-auto w-full max-w-5xl">
-	<div class="relative overflow-hidden border border-amber-400/50 bg-amber-950/20 p-5 sm:p-8 md:p-10">
-		<div class="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-amber-500/20 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-yellow-500/15 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-amber-200/80">Service Status</p>
-		<h1 class="relative z-10 mt-3 text-2xl font-semibold tracking-tight text-amber-50 sm:text-3xl md:text-4xl">
-			Under Maintenance
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-7 text-amber-100/90 sm:text-base">
-			{{ maintenance_message }}
-		</p>
-
-		{% if date_available %}
-		<div class="relative z-10 mt-6 border border-amber-300/50 bg-black/25 p-4 sm:p-5">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-amber-100/80">Expected Back</p>
-			<p class="mt-2 font-mono text-sm text-amber-100 sm:text-base">{{ date_available }}</p>
-		</div>
-		{% endif %}
-
-		<div class="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-zinc-300">
-			<span class="border border-zinc-700 px-3 py-1">API and interactive web routes are paused</span>
-			<span class="border border-zinc-700 px-3 py-1">Tutorial pages remain accessible under /blog</span>
-			<span class="border border-zinc-700 px-3 py-1">No action needed - existing integrations resume automatically</span>
-		</div>
-
-		<div class="relative z-10 mt-6 flex flex-wrap gap-2 text-xs">
-			<a href="/blog" class="border border-amber-400/60 px-3 py-1.5 text-amber-200 hover:border-amber-300 hover:text-amber-100">Read the blog</a>
-			<a href="/api" class="border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Check API status</a>
-		</div>
-	</div>
-</section>
-{% elif not is_available %}
-<section class="mx-auto w-full max-w-5xl">
-	<div class="relative overflow-hidden border border-rose-400/50 bg-rose-950/20 p-5 sm:p-8 md:p-10">
-		<div class="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-rose-500/20 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-orange-500/20 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-rose-200/80">Service Status</p>
-		<h1 class="relative z-10 mt-3 text-2xl font-semibold tracking-tight text-rose-50 sm:text-3xl md:text-4xl">
-			503 Service Unavailable
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-7 text-rose-100/90 sm:text-base">
-			The current endpoint is temporarily unavailable due to high traffic.
-			Please use the alternative endpoint below while maintenance and scaling are in progress.
-		</p>
-
-		<div class="relative z-10 mt-6 border border-rose-300/50 bg-black/25 p-4 sm:p-5">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-rose-100/80">Recommended Endpoint</p>
-			<a
-				href="{{ alternative_endpoint }}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="mt-2 inline-flex break-all text-cyan-200 underline decoration-cyan-300/70 underline-offset-4 hover:text-cyan-100"
-			>
-				<code class="border border-cyan-300/40 bg-black/30 px-2 py-1 font-mono text-xs sm:text-sm">
-					{{ alternative_endpoint }}
-				</code>
-			</a>
-		</div>
-
-		<div class="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-zinc-300">
-			<span class="border border-zinc-700 px-3 py-1">Base URL remains reachable for status updates</span>
-			<span class="border border-zinc-700 px-3 py-1">API and interactive web routes are currently restricted</span>
-			<span class="border border-zinc-700 px-3 py-1">Tutorial pages remain accessible under /blog</span>
-		</div>
+{% if is_maintenance or not is_available %}
+<section class="status">
+	<h1>{{ "Under Maintenance" if is_maintenance else "503 Service Unavailable" }}</h1>
+	{% if is_maintenance %}
+		<p class="lede">{{ maintenance_message }}</p>
+		<dl>
+			{% if date_available %}<dt>Expected back</dt><dd>{{ date_available }}</dd>{% endif %}
+			<dt>Status</dt><dd><a class="link" href="/api">/api</a></dd>
+		</dl>
+	{% else %}
+		<p class="lede">This host is turning requests away because of high traffic. The same API runs on a second host while this one recovers.</p>
+		<dl>
+			<dt>Use instead</dt><dd><a class="link" href="{{ alternative_endpoint }}" target="_blank" rel="noopener noreferrer">{{ alternative_endpoint }}</a></dd>
+			<dt>Status</dt><dd><a class="link" href="/api">/api</a></dd>
+		</dl>
+	{% endif %}
+	<ul>
+		<li>The API and the playground are paused on this host.</li>
+		<li>Tutorials under <code>/blog</code> stay available.</li>
+		<li>Nothing to change on your side: integrations resume when the service is back.</li>
+	</ul>
+	<div class="actions">
+		<a href="/blog" class="button">Read the tutorials</a>
 	</div>
 </section>
 {% else %}
-<section class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
-	<div class="relative border border-zinc-800 p-4 sm:p-6 md:p-10">
-		<div class="pointer-events-none absolute -right-24 top-0 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl"></div>
-		<div class="pointer-events-none absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl"></div>
-		<div class="pointer-events-none absolute right-0 top-20 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl"></div>
 
-		<p class="relative z-10 text-xs uppercase tracking-[0.24em] text-zinc-500">Rone Arena API</p>
-		<div class="relative z-10 mt-2 inline-flex border border-cyan-500/60 bg-cyan-950/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-cyan-200">
-			API Version {{ api_version }}
-		</div>
-		<h1 class="relative z-10 mt-3 max-w-4xl text-xl font-semibold tracking-tight text-zinc-100 sm:text-3xl md:text-4xl">
-			Rone Arena API &amp; Interactive Web Playground
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-6 text-zinc-300 md:text-base md:leading-7">
-			Check endpoint docs or use the updated playground.
-			APIs include easy forms, response tables, previews, and cURL for quick integration.
+<section class="opening">
+	<div>
+		<h1>Rone Arena API</h1>
+		<p class="lede">
+			A free REST API for Mobile Legends: Bang Bang game data. Heroes, win and ban rates, builds,
+			counters, academy guides, and signed-in player records, returned as JSON.
 		</p>
-
-		<div class="relative z-10 mt-6 grid gap-3 sm:gap-4 md:mt-8 md:grid-cols-2">
-			<a href="/web/user" 
-				class="group relative border border-zinc-700 p-5 transition hover:-translate-y-0.5 hover:border-teal-300">
-				
-				<span class="absolute top-2 right-2 bg-teal-600 px-2 py-1 text-xs">
-					Recommended
-				</span>
-
-				<p class="text-xs uppercase tracking-[0.18em] text-zinc-500 group-hover:text-teal-200">
-					Option 1
-				</p>
-				<h2 class="mt-2 text-xl font-medium text-zinc-100">Open Demo Website</h2>
-				<p class="mt-2 text-sm text-zinc-400">
-					Interactive requests, readable tables, and quick auth flow.
-				</p>
-			</a>
-			<a href="/api/docs" class="group border border-zinc-700 p-5 transition hover:-translate-y-0.5 hover:border-cyan-300">
-				<p class="text-xs uppercase tracking-[0.18em] text-zinc-500 group-hover:text-cyan-200">Option 2</p>
-				<h2 class="mt-2 text-xl font-medium text-zinc-100">Open API Docs</h2>
-				<p class="mt-2 text-sm text-zinc-400">Swagger UI with examples and full schema access.</p>
-			</a>
+		<div class="actions">
+			<a href="/web/heroes" class="button button--mark">Open the playground</a>
+			<a href="/api/docs" class="link">Read the API docs</a>
 		</div>
+		<div class="base-url">
+			<span class="faint">Base URL</span>
+			<code>{{ api_url }}</code>
+			<button type="button" class="button button--bare button--small" data-copy-command="{{ api_url }}"><span data-label>Copy</span></button>
+		</div>
+		<p class="help" style="margin-top: 14px">API version {{ api_version }}. Public endpoints need no key and no sign-up.</p>
 	</div>
 
-	<div class="relative overflow-hidden border border-cyan-700/40 bg-gradient-to-br from-black via-cyan-950/20 to-black p-4 sm:p-6">
-		<div class="pointer-events-none absolute -left-24 -top-16 h-52 w-52 rounded-full bg-cyan-500/15 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-24 -bottom-20 h-60 w-60 rounded-full bg-sky-500/10 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-zinc-500">API Base</p>
-		<h2 class="relative z-10 mt-2 text-xl font-semibold text-zinc-100">One endpoint for every request</h2>
-		<p class="relative z-10 mt-2 text-sm leading-6 text-zinc-300">
-			The docs and the playground both call {{ api_url }}. Local runs use the dev server; every
-			other deployment follows its own base URL.
-		</p>
-
-		<div class="relative z-10 mt-4 border border-cyan-700/50 bg-cyan-950/25 px-3 py-2 text-xs">
-			<p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Base URL</p>
-			<p class="mt-2 font-mono break-all text-cyan-200">{{ api_url }}</p>
-		</div>
+	<div class="table-scroll">
+		<table class="ruled" data-live-rank data-api-base="{{ api_url }}">
+			<caption>
+				<strong>Highest win rates this week</strong>
+				<span>All ranks, last 7 days. Loaded live from the API.</span>
+			</caption>
+			<thead>
+				<tr>
+					<th scope="col">#</th>
+					<th scope="col">Hero</th>
+					<th scope="col" class="num">Win</th>
+					<th scope="col" class="num">Pick</th>
+					<th scope="col" class="num">Ban</th>
+				</tr>
+			</thead>
+			<tbody data-live-rank-body>
+				<tr><td colspan="5" class="faint">Loading the latest numbers&hellip;</td></tr>
+			</tbody>
+		</table>
+		<code class="request-line">GET /api/heroes/rank?days=7&amp;rank=all&amp;sort_field=win_rate&amp;size=5</code>
+		<a class="link small" href="/web/heroes/heroes/rank">Run this request in the playground</a>
 	</div>
+</section>
 
-	<div class="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Coverage</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">4 Service Groups</p>
-			<p class="mt-1 text-xs text-zinc-400">user, heroes, academy, addon</p>
-		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Execution</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Live Request Forms</p>
-			<p class="mt-1 text-xs text-zinc-400">path, query, enum, and request-body aware</p>
-		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Response UX</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Readable Tables</p>
-			<p class="mt-1 text-xs text-zinc-400">with safe rich text and image rendering for media fields</p>
-		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Developer Tools</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Snippets + Auth Cache</p>
-			<p class="mt-1 text-xs text-zinc-400">cURL/multi-language snippets, JWT cache, and copy actions</p>
-		</div>
+<section class="section" id="endpoints">
+	<div class="section-aside">
+		<h2 class="section-title">Endpoints</h2>
+		<p>{{ endpoint_total }} endpoints in {{ groups | length }} groups. Every row opens a working request form in the playground.</p>
+		<a class="link" href="/api/openapi.json">OpenAPI schema</a>
+	</div>
+	<div class="table-scroll">
+		<table class="ruled">
+			<thead>
+				<tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">What it returns</th></tr>
+			</thead>
+			<tbody>
+				{% for group in groups %}
+					<tr class="group-row">
+						<td colspan="3"><h3>{{ group_meta[group]["title"] }}</h3><span>{{ group_meta[group]["description"] }}</span></td>
+					</tr>
+					{% for operation in operations_by_group[group] %}
+						<tr>
+							<td><span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span></td>
+							<td class="path"><a href="{{ operation.web_path }}">{{ operation.api_path }}</a></td>
+							<td>
+								{{ operation.summary }}
+								{% if operation.requires_auth %}<span class="tag tag--info">JWT</span>{% endif %}
+								{% if operation.deprecated %}<span class="tag tag--caution">Deprecated</span>{% endif %}
+							</td>
+						</tr>
+					{% endfor %}
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</section>
+
+<section class="section" id="built-on">
+	<div class="section-aside">
+		<h2 class="section-title">Built on the API</h2>
+		<p>Two working sites run entirely on these endpoints. Treat them as reference implementations.</p>
+		<a class="link" href="/showcase">Which endpoint powers each page</a>
+	</div>
+	<div>
+		{% for product in products %}
+			<article class="product">
+				<div>
+					<h3><a href="{{ product.url }}" target="_blank" rel="noreferrer noopener" class="ext">{{ product.name }}</a></h3>
+					<p class="domain">{{ product.url | replace("https://", "") | trim("/") }}</p>
+					<p class="about">{{ product.about }}</p>
+				</div>
+				<div>
+					<p class="uses-title">Endpoints it calls</p>
+					{% set ns = namespace(seen=[]) %}
+					<ul class="uses">
+						{% for feature in product.features %}
+							{% for endpoint in feature.endpoints %}
+								{% if endpoint.path not in ns.seen and ns.seen | length < 6 %}
+									{% set ns.seen = ns.seen + [endpoint.path] %}
+									<li>
+										<span class="method method--{{ endpoint.method | lower }}">{{ endpoint.method }}</span>
+										{% if endpoint.web_path %}<a href="{{ endpoint.web_path }}">{{ endpoint.path }}</a>{% else %}<span>{{ endpoint.path }}</span>{% endif %}
+									</li>
+								{% endif %}
+							{% endfor %}
+						{% endfor %}
+					</ul>
+					<a class="link small" href="/showcase#{{ product.name | lower | replace(' ', '-') }}" style="display: inline-block; margin-top: 10px">All endpoints by page</a>
+				</div>
+			</article>
+		{% endfor %}
+	</div>
+</section>
+
+<section class="section" id="first-request">
+	<div class="section-aside">
+		<h2 class="section-title">First request</h2>
+		<p>Hero names work anywhere a hero ID does, so <code>miya</code>, <code>Miya</code>, and <code>1</code> return the same hero.</p>
+	</div>
+	<div>
+<pre class="code">curl "{{ api_url }}/heroes/miya/counters?days=7&amp;rank=mythic"</pre>
+<pre class="code" style="margin-top: 12px">const res = await fetch("{{ api_url }}/heroes/rank?days=7&amp;sort_field=ban_rate");
+const { data } = await res.json();
+for (const row of data.records) {
+    console.log(row.data.main_hero.data.name, row.data.main_hero_ban_rate);
+}</pre>
+		<p class="help" style="margin-top: 14px">Responses keep the upstream shape: <code>code</code> is <code>0</code> on success and rows sit in <code>data.records[].data</code>.</p>
 	</div>
 </section>
 {% endif %}
@@ -161,7 +164,7 @@
   "@type": "WebSite",
   "name": "Rone Arena API",
   "url": "{{ request.url }}",
-  "description": "Interactive interface for Rone Arena API documentation and endpoint testing.",
+  "description": "Free REST API and interactive playground for Mobile Legends: Bang Bang game data.",
   "publisher": {
     "@type": "Organization",
     "name": "RoneAI"
@@ -171,32 +174,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-(() => {
-	const copyButtons = document.querySelectorAll("[data-copy-command]");
-	if (!copyButtons.length) {
-		return;
-	}
-
-	copyButtons.forEach((button) => {
-		button.addEventListener("click", async () => {
-			const command = button.getAttribute("data-copy-command") || "";
-			if (!command) {
-				return;
-			}
-
-			try {
-				await navigator.clipboard.writeText(command);
-				const previousText = button.textContent;
-				button.textContent = "Copied";
-				window.setTimeout(() => {
-					button.textContent = previousText;
-				}, 1200);
-			} catch {
-				window.prompt("Copy this command", command);
-			}
-		});
-	});
-})();
-</script>
+{% if is_available %}<script src="/static/js/home.js?v={{ asset_version }}"></script>{% endif %}
 {% endblock %}
