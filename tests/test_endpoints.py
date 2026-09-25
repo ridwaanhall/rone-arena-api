@@ -3,6 +3,7 @@ from __future__ import annotations
 from urllib.parse import urlparse
 from xml.etree import ElementTree
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -107,5 +108,37 @@ def test_openapi_documents_hero_wallpaper_device() -> None:
 
 def test_hero_wallpapers_rejects_unknown_device() -> None:
     response = client.get("/api/heroes/133/wallpapers", params={"device": "tablet"})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(("device", "resolution"), [("desktop", "1920x1080"), ("mobile", "1080x1920")])
+def test_wallpaper_gallery_queries_every_hero_for_the_device(monkeypatch, device: str, resolution: str) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_fetch(source_id: str, payload: dict[str, object], lang: str) -> dict[str, object]:
+        captured.update(source_id=source_id, payload=payload)
+        return {"code": 0, "message": "OK", "data": {"records": [], "total": 0}}
+
+    monkeypatch.setattr("app.api.routers.heroes.fetch_hero_post", fake_fetch)
+
+    response = client.get("/api/heroes/wallpapers", params={"device": device, "index": 2})
+
+    assert response.status_code == 200
+    assert captured["source_id"] == "3255326"
+    assert captured["payload"] == {
+        "pageSize": 12,
+        "pageIndex": 2,
+        "filters": [
+            {"field": "channel", "operator": "hasAnyOf", "value": [3255313]},
+            {"field": "pictures.resolution", "operator": "contain", "value": resolution},
+        ],
+        "sorts": [],
+        "object": [],
+    }
+
+
+def test_wallpaper_gallery_rejects_unknown_device() -> None:
+    response = client.get("/api/heroes/wallpapers", params={"device": "tablet"})
 
     assert response.status_code == 422

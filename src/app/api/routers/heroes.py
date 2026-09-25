@@ -474,6 +474,128 @@ def hero_position(
     return fetch_hero_post(HERO_LIST, payload, lang)
 
 
+# Declared before /heroes/{hero_identifier} so "wallpapers" is not read as a hero.
+@router.get(
+    path="/heroes/wallpapers",
+    name="api.heroes.wallpapers",
+    response_model=HeroCollectionResponse,
+    summary="Wallpaper Gallery",
+    description=(
+        "Browse the full official wallpaper gallery across all heroes, newest first, for desktop or mobile screens. "
+        "Supports query parameters for device, pagination, and localization. "
+        "For one hero's wallpapers, use `/api/heroes/{hero_identifier}/wallpapers`.\n\n"
+        "Query parameters:\n"
+        "- **device**: Target device: `desktop` (landscape, 1920x1080) or `mobile` (portrait, 1080x1920). Default: `desktop`.\n"
+        "- **size**: Number of items per page (minimum: 1).\n"
+        "- **index**: Page index (starting from 1).\n"
+        "- **lang**: Language code for localized content (default: `en`).\n\n"
+        "The response includes wallpaper details:\n"
+        "- **records**: Array of wallpaper entries, each containing:\n"
+        "    - **id**: Wallpaper record ID.\n"
+        "    - **caption**: Internal wallpaper caption.\n"
+        "    - **data**:\n"
+        "        - **heroid**: Array of hero IDs shown in the wallpaper. Absent on event artwork without a hero.\n"
+        "        - **pictures**: Array of image variants, each with **resolution**, **url**, and **md5**. "
+        "Records may carry more resolutions than the requested device (e.g., 2560x1440 or 1080x2400).\n"
+        "        - **skinid**: Skin label associated with the wallpaper.\n"
+        "        - **author**: Publisher metadata, when present.\n"
+        "        - **update_time**: Last content update time (epoch milliseconds or a date string).\n"
+        "    - **createdAt** / **updatedAt**: Record timestamps.\n"
+        "- **total**: Total number of wallpapers for the device.\n\n"
+        "This endpoint is useful for:\n"
+        "- Building a wallpaper gallery with paging.\n"
+        "- Offering desktop and phone wallpaper downloads.\n"
+        "- Tracking newly published artwork."
+    ),
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 0,
+                        "message": "OK",
+                        "data": {
+                            "records": [
+                                {
+                                    "_id": "6aa8c56cc5792903680baff5",
+                                    "caption": "062_kaja_skin00_壁纸3",
+                                    "configId": 144237,
+                                    "createdAt": 1789445484579,
+                                    "createdUser": "keiralin",
+                                    "data": {
+                                        "_object": 3254983,
+                                        "channel": [
+                                            {
+                                                "_object": 2677469,
+                                                "id": 3255313,
+                                                "parent": {"_object": 2677469, "id": 3255311},
+                                                "sort": 1,
+                                                "title": "Wallpaper"
+                                            }
+                                        ],
+                                        "heroid": [111, 59],
+                                        "pictures": [
+                                            {
+                                                "md5": "b204f61d508825f758a02bfb8ddb01d9",
+                                                "resolution": "1920x1080",
+                                                "url": "https://akmweb.youngjoygame.com/web/gms/image/b204f61d508825f758a02bfb8ddb01d9.jpg"
+                                            },
+                                            {
+                                                "md5": "32de04e29c927e5cabf2eaaefc05e94a",
+                                                "resolution": "2560x1440",
+                                                "url": "https://akmweb.youngjoygame.com/web/gms/image/32de04e29c927e5cabf2eaaefc05e94a.jpg"
+                                            },
+                                            {
+                                                "md5": "dfbd033880bdd0dfbf12f250b8d8b1ca",
+                                                "resolution": "1080x1920",
+                                                "url": "https://akmweb.youngjoygame.com/web/gms/image/dfbd033880bdd0dfbf12f250b8d8b1ca.jpg"
+                                            }
+                                        ],
+                                        "skinid": "默认",
+                                        "update_time": 1786075207000
+                                    },
+                                    "dynamic": None,
+                                    "id": 3503336,
+                                    "linkId": [3254983, 3255313],
+                                    "sort": 0,
+                                    "updatedAt": 1789445923840,
+                                    "updatedUser": "keiralin"
+                                }
+                            ],
+                            "total": 1143
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+def wallpapers(
+    device: Annotated[
+        WallpaperDeviceEnum,
+        Query(
+            title="Device",
+            description="Target device: `desktop` (1920x1080) or `mobile` (1080x1920).",
+        )
+    ] = WallpaperDeviceEnum.DESKTOP,
+    size: PageSize = 12,
+    index: PageIndex = 1,
+    lang: Lang = LanguageEnum.ENGLISH
+) -> object:
+    payload = build_query(
+        size,
+        index,
+        filters=[
+            has_any_of("channel", [WALLPAPER_CHANNEL_ID]),
+            where("pictures.resolution", "contain", WALLPAPER_RESOLUTIONS[device]),
+        ],
+        sorts=[],
+        object=[],
+    )
+    return fetch_hero_post(HERO_WALLPAPERS, payload, lang)
+
+
 @router.get(
     path="/heroes/{hero_identifier}",
     name="api.heroes.hero_detail",

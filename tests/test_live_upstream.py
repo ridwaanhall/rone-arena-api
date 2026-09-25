@@ -214,3 +214,14 @@ def test_ip_lookup() -> None:
     body = client.get("/api/addon/ip").json()
     assert body["code"] == 0
     assert {"city", "country"} <= set(body["data"])
+
+
+@pytest.mark.parametrize(("device", "resolution"), [("desktop", "1920x1080"), ("mobile", "1080x1920")])
+def test_wallpaper_gallery_pages_through_every_hero(device: str, resolution: str) -> None:
+    first = records("/api/heroes/wallpapers", device=device, size=5)
+    second = records("/api/heroes/wallpapers", device=device, size=5, index=2)
+    assert first and second
+    urls = lambda page: {picture["url"] for wallpaper in page for picture in wallpaper["pictures"]}
+    assert urls(first).isdisjoint(urls(second))
+    for wallpaper in first + second:
+        assert resolution in {picture["resolution"] for picture in wallpaper["pictures"]}
