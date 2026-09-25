@@ -9,7 +9,7 @@ from app.api.dependencies import require_api_available
 from app.services.heroes import fetch_hero_post
 from app.schemas.heroes import HeroCollectionResponse
 
-from app.core.enums import LanguageEnum, RankEnum, SortOrderEnum, HeroRoleEnum, HeroLaneEnum
+from app.core.enums import LanguageEnum, RankEnum, SortOrderEnum, HeroRoleEnum, HeroLaneEnum, WallpaperDeviceEnum
 from app.core.errors import _hero_id_or_404
 from app.utils.client_ip import bind_client_ip
 from app.utils.filters import (
@@ -1258,6 +1258,164 @@ def hero_skill_combo(
         "object": [2684183],
     }
     return fetch_hero_post("2674711", payload, lang)
+
+
+WALLPAPER_RESOLUTIONS = {
+    WallpaperDeviceEnum.DESKTOP: "1920x1080",
+    WallpaperDeviceEnum.MOBILE: "1080x1920",
+}
+
+
+@router.get(
+    path="/heroes/{hero_identifier}/wallpapers",
+    name="api.heroes.hero_wallpapers",
+    response_model=HeroCollectionResponse,
+    summary="Hero Wallpapers",
+    description=(
+        "Get official wallpapers for a specific hero by ID or name, for desktop or mobile screens. "
+        "Supports query parameters for device, pagination, and localization.\n\n"
+        "Path parameters:\n"
+        "- **hero_identifier**: Hero identifier as numeric hero ID or hero name. Accepts values like `133`, `Hirara`, or `hirara`.\n\n"
+        "Query parameters:\n"
+        "- **device**: Target device: `desktop` (landscape, 1920x1080) or `mobile` (portrait, 1080x1920). Default: `desktop`.\n"
+        "- **size**: Number of items per page (minimum: 1).\n"
+        "- **index**: Page index (starting from 1).\n"
+        "- **lang**: Language code for localized content (default: `en`).\n\n"
+        "The response includes hero wallpaper details:\n"
+        "- **records**: Array of wallpaper entries, each containing:\n"
+        "    - **_id**: Unique record identifier.\n"
+        "    - **caption**: Internal wallpaper caption.\n"
+        "    - **configId**: Configuration ID.\n"
+        "    - **createdAt**: Creation timestamp.\n"
+        "    - **createdUser**: Creator username.\n"
+        "    - **data**:\n"
+        "        - **heroid**: Array of hero IDs shown in the wallpaper (all heroes for event artwork).\n"
+        "        - **pictures**: Array of image variants, each with **resolution**, **url**, and **md5**. "
+        "Records may carry more resolutions than the requested device (e.g., 2560x1440 or 1080x2400).\n"
+        "        - **skinid**: Skin label associated with the wallpaper.\n"
+        "        - **channel**: Wallpaper channel metadata.\n"
+        "        - **update_time**: Last content update time.\n"
+        "    - **updatedAt**: Last update timestamp.\n"
+        "    - **updatedUser**: Last updater username.\n"
+        "- **total**: Total number of matching wallpapers.\n\n"
+        "This endpoint is useful for:\n"
+        "- Building hero galleries and fan sites.\n"
+        "- Offering desktop and phone wallpaper downloads.\n"
+        "- Showcasing hero artwork in apps and dashboards."
+    ),
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "code": 0,
+                        "message": "OK",
+                        "data": {
+                            "records": [
+                                {
+                                    "_id": "6a916bf0ccf5de989be67a72",
+                                    "caption": "133_hirara_壁纸1",
+                                    "configId": 144237,
+                                    "createdAt": 1787915248833,
+                                    "createdUser": "v_zhoujie",
+                                    "data": {
+                                        "_object": 3254983,
+                                        "channel": [
+                                            {
+                                                "_object": 2677469,
+                                                "id": 3255313,
+                                                "parent": {"_object": 2677469, "id": 3255311},
+                                                "sort": 1,
+                                                "title": "Wallpaper"
+                                            }
+                                        ],
+                                        "heroid": [133],
+                                        "pictures": [
+                                            {
+                                                "md5": "a8ab2694c67a5eb081d4cd19d727e4b3",
+                                                "resolution": "1920x1080",
+                                                "url": "https://akmweb.youngjoygame.com/web/gms/image/a8ab2694c67a5eb081d4cd19d727e4b3.jpg"
+                                            },
+                                            {
+                                                "md5": "bbf9cd2d3e8fa721f98e2084f9160bd7",
+                                                "resolution": "2560x1440",
+                                                "url": "https://akmweb.youngjoygame.com/web/gms/image/bbf9cd2d3e8fa721f98e2084f9160bd7.jpg"
+                                            }
+                                        ],
+                                        "skinid": "壁纸1",
+                                        "update_time": "2026-06-24 20:10:04"
+                                    },
+                                    "dynamic": None,
+                                    "id": 3497973,
+                                    "linkId": [3254983, 3255313],
+                                    "sort": 0,
+                                    "updatedAt": 1787915248833,
+                                    "updatedUser": "v_zhoujie"
+                                }
+                            ],
+                            "total": 6
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+def hero_wallpapers(
+    hero_identifier: Annotated[
+        str,
+        Path(
+            title="Hero Identifier",
+            description=(
+                "Hero identifier as numeric hero ID or hero name. Accepts values like `133`, `Hirara`, or `hirara`."
+            ),
+        )
+    ],
+    device: Annotated[
+        WallpaperDeviceEnum,
+        Query(
+            title="Device",
+            description="Target device: `desktop` (1920x1080) or `mobile` (1080x1920).",
+        )
+    ] = WallpaperDeviceEnum.DESKTOP,
+    size: Annotated[
+        int,
+        Query(
+            title="Page Size",
+            description="Number of items per page.",
+            ge=1,
+        )
+    ] = 12,
+    index: Annotated[
+        int,
+        Query(
+            title="Page Index",
+            description="Page index for pagination.",
+            ge=1,
+        )
+    ] = 1,
+    lang: Annotated[
+        LanguageEnum,
+        Query(
+            title="Language",
+            description="Language code for localized content.",
+        )
+    ] = LanguageEnum.ENGLISH
+) -> object:
+    hero_id = _hero_id_or_404(hero_identifier, lang)
+    payload = {
+        "pageSize": size,
+        "pageIndex": index,
+        "filters": [
+            {"field": "heroid", "operator": "hasAnyOf", "value": [str(hero_id)]},
+            {"field": "channel", "operator": "hasAnyOf", "value": [3255313]},
+            {"field": "pictures.resolution", "operator": "contain", "value": WALLPAPER_RESOLUTIONS[device]},
+        ],
+        "sorts": [],
+        "object": [],
+    }
+    return fetch_hero_post("3255326", payload, lang)
 
 
 @router.get(

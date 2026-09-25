@@ -96,3 +96,20 @@ def test_robots_txt_allows_all_crawlers() -> None:
     assert response.status_code == 200
     assert "User-agent: *" in content
     assert "Allow: /" in content
+
+
+def test_openapi_documents_hero_wallpaper_device() -> None:
+    openapi = client.get("/api/openapi.json").json()
+    params = openapi["paths"]["/api/heroes/{hero_identifier}/wallpapers"]["get"]["parameters"]
+
+    device_param = next(param for param in params if param["name"] == "device")
+    hero_identifier_param = next(param for param in params if param["name"] == "hero_identifier")
+
+    assert "$ref" in device_param["schema"] or device_param["schema"]["enum"] == ["desktop", "mobile"]
+    assert "numeric hero ID or hero name" in hero_identifier_param["description"]
+
+
+def test_hero_wallpapers_rejects_unknown_device() -> None:
+    response = client.get("/api/heroes/133/wallpapers", params={"device": "tablet"})
+
+    assert response.status_code == 422

@@ -56,3 +56,9 @@ class VisibilityEnum(str, Enum):
     '''Visibility mode for user privacy setting update.'''
     VISIBLE = "visible"
     INVISIBLE = "invisible"
+
+
+class WallpaperDeviceEnum(str, Enum):
+    '''Target device for hero wallpapers.'''
+    DESKTOP = "desktop"
+    MOBILE = "mobile"
