@@ -424,3 +424,26 @@ def test_blog_detail_v4_0_4_release_notes_no_commit_hash() -> None:
 
 
 
+
+
+def test_release_1_1_0_post_leads_the_blog() -> None:
+    response = client.get("/blog")
+    lead_start = response.text.index('class="lead-post"')
+
+    assert "Rone Arena 1.1.0: Hero Wallpapers, a Faster API, and a New Website" in response.text[lead_start:lead_start + 2000]
+
+    detail = client.get("/blog/rone-arena-1-1-0-release-notes")
+    assert detail.status_code == 200
+    assert "GET /api/heroes/{hero_identifier}/wallpapers" in detail.text
+
+
+def test_every_blog_image_exists_on_disk() -> None:
+    from pathlib import Path
+
+    from app.web.routers.blog import _BLOG_POSTS
+
+    root = Path(__file__).resolve().parents[1]
+    for post in _BLOG_POSTS:
+        images = [post["cover_image"]] + [s["image"] for s in post["sections"] if s.get("image")]
+        for image in images:
+            assert (root / str(image).lstrip("/")).is_file(), image

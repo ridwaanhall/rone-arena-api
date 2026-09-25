@@ -10,6 +10,87 @@ router = APIRouter(tags=["web"])
 
 _BLOG_POSTS: list[dict[str, object]] = [
     {
+        "title": "Rone Arena 1.1.0: Hero Wallpapers, a Faster API, and a New Website",
+        "slug": "rone-arena-1-1-0-release-notes",
+        "excerpt": "Version 1.1.0 adds a hero wallpapers endpoint, makes hero lookups faster, and replaces the website with a new design built around real data. A new Showcase page shows how Arena Academy and Arena Card use the API.",
+        "cover_image": "/images/blog/release-v1.1.0-home.webp",
+        "published_at": "2026-09-25",
+        "read_time": "6 min read",
+        "category": "Release Notes",
+        "is_featured": True,
+        "is_pinned": True,
+        "key_points": [
+            "New endpoint: GET /api/heroes/{hero_identifier}/wallpapers for desktop and mobile wallpapers",
+            "No breaking changes: every existing path, parameter, and response shape is the same",
+            "The website, playground, and blog were rebuilt, and a Showcase page maps the sister sites to the endpoints they call",
+        ],
+        "sections": [
+            {
+                "heading": "New: Hero Wallpapers",
+                "body": "A community request (issue #117) asked for official hero wallpapers. The new endpoint returns them for one hero, filtered by screen type. Heroes can be passed by ID or by name, the same as every other hero endpoint.",
+                "bullets": [
+                    "GET /api/heroes/{hero_identifier}/wallpapers?device=desktop returns 1920x1080 images.",
+                    "device=mobile returns 1080x1920 images.",
+                    "Each record lists every resolution available for that wallpaper, so one record can include 2560x1440 or 1080x2400 as well.",
+                    "Event artwork made for all heroes appears for every hero.",
+                ],
+                "callout": "Try it: open the playground, pick Heroes, then Hero Wallpapers, and enter hirara.",
+            },
+            {
+                "heading": "Faster Hero Lookups, Same Responses",
+                "body": "Most of the API code was reorganised so that every hero and academy endpoint builds its request from the same small set of helpers. Before shipping, 500 requests covering every endpoint and option were recorded before and after the change, and the responses matched exactly.",
+                "bullets": [
+                    "Hero names are now resolved from a list cached for an hour. Before, every request that used a name downloaded the full hero list first.",
+                    "Connections to the game-data service are reused instead of opened for every call.",
+                    "The IP lookup endpoint no longer holds up other requests while it waits for its answer.",
+                    "A new test suite calls every public endpoint against the live game-data service and checks the data that comes back.",
+                ],
+            },
+            {
+                "heading": "A New Website",
+                "body": "The home page, playground, and blog were rebuilt from scratch in a style closer to a printed reference than a marketing page: ruled tables, plain headings, and one highlight colour. The home page opens with this week's highest win rates, loaded live from the API, followed by an index of all 48 endpoints.",
+                "image": "/images/blog/release-v1.1.0-home.webp",
+                "image_note": "The new home page. The rankings table is filled from GET /api/heroes/rank when the page loads.",
+            },
+            {
+                "heading": "Light and Dark",
+                "body": "The site follows your system theme and remembers your choice when you switch with the Dark or Light button in the header.",
+                "image": "/images/blog/release-v1.1.0-dark.webp",
+                "image_note": "The same page in the dark theme.",
+            },
+            {
+                "heading": "The Playground",
+                "body": "Every endpoint is a form generated from the OpenAPI schema. Fill in the fields, press Send request, and read the result as a table, as raw JSON, or as ready-to-copy code in eight languages. The sidebar has a filter for finding an endpoint by path or name.",
+                "bullets": [
+                    "Table view turns nested JSON into nested tables and previews image URLs.",
+                    "The status line shows the HTTP status and how long the request took.",
+                    "Sign In now walks through the two steps: send a code to your in-game mail, then enter it.",
+                ],
+                "image": "/images/blog/release-v1.1.0-playground.webp",
+                "image_note": "The Hero Wallpapers endpoint in the playground.",
+            },
+            {
+                "heading": "Showcase: Sites Built on the API",
+                "body": "Two sites run entirely on Rone Arena endpoints. The new Showcase page lists each of their pages next to the endpoints it calls, with links that open the same request in the playground.",
+                "bullets": [
+                    "Arena Academy (arena-academy.rone.dev): hero pages, rankings, builds, and guides from the public endpoints, with no sign-in.",
+                    "Arena Card (arena-card.rone.dev): a player card built on the verification-code sign-in and the user endpoints.",
+                ],
+                "image": "/images/blog/release-v1.1.0-showcase.webp",
+                "image_note": "The Showcase page, mapping Arena Academy features to endpoints.",
+            },
+            {
+                "heading": "For Integrators",
+                "body": "Nothing to change on your side. Existing requests keep working exactly as before.",
+                "bullets": [
+                    "No endpoint was removed or renamed, and no response shape changed.",
+                    "The hero identifier parameter description in the OpenAPI schema is now the same on every endpoint.",
+                    "The deprecated /api/academy/heroes/ratings endpoint now returns an upstream error (code 10407), because the game-data service switched it off. Plan to stop calling it.",
+                ],
+            },
+        ],
+    },
+    {
         "title": "Migrating to Rone Arena: What Changed and What You Need to Update",
         "slug": "migrating-to-rone-arena",
         "excerpt": "The MLBB Public Data API is now Rone Arena. Every endpoint path is unchanged, but the hostname moved and the Python package was renamed and republished. Here is everything you need to update.",
@@ -346,7 +427,7 @@ _BLOG_POSTS: list[dict[str, object]] = [
         "published_at": "2026-04-05",
         "read_time": "9 min read",
         "category": "Release Notes",
-        "is_featured": True,
+        "is_featured": False,
         "is_pinned": False,
         "key_points": [
             "Range: 3.2.1 -> 3.2.2",
@@ -424,8 +505,8 @@ _BLOG_POSTS: list[dict[str, object]] = [
         "published_at": "2026-04-04",
         "read_time": "8 min read",
         "category": "Tutorial",
-        "is_featured": True,
-        "is_pinned": True,
+        "is_featured": False,
+        "is_pinned": False,
         "key_points": [
             "User endpoints require sign-in first",
             "Covers both web workspace and Swagger authorization flow",
