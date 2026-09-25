@@ -23,7 +23,7 @@ from app.core.config import (
     API_URL,
 )
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
-from app.web.showcase import with_playground_links
+from app.web.showcase import SHOWCASE, SUBMISSION_FIELDS, SUBMIT_URL, llm_prompt, submission_example, with_playground_links
 
 router = APIRouter(tags=["web"])
 
@@ -131,11 +131,15 @@ def showcase_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": "Showcase: sites built on the Rone Arena API",
+            "title": "Showcase: projects built on the Rone Arena API",
             "web_title": "Showcase",
-            "seo_description": "Arena Academy and Arena Card are built on the Rone Arena API. See which endpoints power each page and open them in the playground.",
-            "seo_keywords": "rone arena api examples, arena academy, arena card, api integration example",
+            "seo_description": "Projects the community built on the Rone Arena API, with the endpoints behind each page. Add your own project with one issue.",
+            "seo_keywords": "rone arena api examples, arena academy, arena card, api integration example, showcase",
             "products": _showcase_products(_operations_by_group(request.app)),
+            "submit_url": SUBMIT_URL,
+            "submission_fields": SUBMISSION_FIELDS,
+            "submission_example": submission_example(SHOWCASE[0]),
+            "llm_prompt": llm_prompt(context["base_url"]),
         }
     )
     return templates.TemplateResponse(request, "root/showcase_page.html", context)

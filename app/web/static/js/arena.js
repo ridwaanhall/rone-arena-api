@@ -479,5 +479,14 @@
 		});
 	});
 
+	// Copies the text of another element, for blocks too long to repeat in an attribute.
+	document.querySelectorAll("[data-copy-from]").forEach((button) => {
+		button.addEventListener("click", async () => {
+			const source = $(button.getAttribute("data-copy-from"));
+			const ok = source ? await copyText(source.textContent) : false;
+			flashLabel(button, ok ? "Copied" : "Copy failed");
+		});
+	});
+
 	renderNavbarState();
 })();

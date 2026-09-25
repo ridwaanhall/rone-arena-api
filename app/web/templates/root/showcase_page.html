@@ -4,9 +4,13 @@
 <header class="page-head">
 	<h1>Showcase</h1>
 	<p class="lede">
-		Two sites built on the Rone Arena API. Each table lists a page on the site and the endpoints that page is built from.
-		Open any endpoint to send the same request in the playground.
+		Projects built on the Rone Arena API, credited to the people who made them. Each table lists a page of the project and the endpoints
+		that page is built from. Open any endpoint to send the same request in the playground.
 	</p>
+	<div class="actions">
+		<a class="button button--mark ext" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener">Add your project</a>
+		<a class="link" href="#add-your-project">How to submit</a>
+	</div>
 </header>
 
 {% for product in products %}
@@ -14,6 +18,9 @@
 		<div class="section-aside">
 			<h2 class="section-title">{{ product.name }}</h2>
 			<a class="link ext" href="{{ product.url }}" target="_blank" rel="noreferrer noopener">{{ product.url | replace("https://", "") | trim("/") }}</a>
+			<p class="byline">Built by
+				{% for person in product.contributors %}<a class="link" href="{{ person.url }}" target="_blank" rel="noreferrer noopener">{{ person.name }}</a>{{ ", " if not loop.last }}{% endfor %}
+			</p>
 			<p>{{ product.about }}</p>
 			<p><strong style="color: var(--ink)">Shows you:</strong> {{ product.shows }}</p>
 		</div>
@@ -44,12 +51,59 @@
 	</section>
 {% endfor %}
 
+<section class="section" id="add-your-project">
+	<div class="section-aside">
+		<h2 class="section-title">Add your project</h2>
+		<p>Built something on these endpoints? One issue gets it listed here, with your name linked to your site or profile.</p>
+		<a class="button button--mark ext" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener" style="align-self: start">Open the form</a>
+	</div>
+	<div class="submit">
+		<ol class="steps">
+			<li><strong>Let your coding assistant fill it in.</strong> Open Claude, Codex, or any assistant inside your project and paste the prompt below. It reads your code, finds every Rone Arena call, and writes each field.</li>
+			<li><strong>Open the form.</strong> Use the prefilled link the assistant returns, or open the <a class="link" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener">showcase form</a> and paste each section into its field.</li>
+			<li><strong>Check it and submit.</strong> Fix any TODO, drop in a screenshot, and submit. Once reviewed, the project appears on this page.</li>
+		</ol>
+
+		<div class="submit-block">
+			<div class="pane-tools">
+				<h3>Prompt for your coding assistant</h3>
+				<button type="button" class="button button--small" data-copy-from="llm-prompt"><span data-label>Copy prompt</span></button>
+			</div>
+			<pre class="code" id="llm-prompt">{{ llm_prompt }}</pre>
+		</div>
+
+		<div class="submit-block">
+			<h3>What each field asks for</h3>
+			<div class="table-scroll">
+				<table class="ruled fields">
+					<thead>
+						<tr><th scope="col">Field</th><th scope="col">What to write</th></tr>
+					</thead>
+					<tbody>
+						{% for field in submission_fields %}
+							<tr><td>{{ field.label }}</td><td>{{ field.help }}</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="submit-block">
+			<div class="pane-tools">
+				<h3>Example: Arena Academy, filled in</h3>
+				<button type="button" class="button button--small" data-copy-from="submission-example"><span data-label>Copy example</span></button>
+			</div>
+			<pre class="code" id="submission-example">{{ submission_example }}</pre>
+		</div>
+	</div>
+</section>
+
 <section class="section">
 	<div class="section-aside">
 		<h2 class="section-title">Build your own</h2>
 	</div>
 	<div class="prose">
-		<p>Both sites follow the same pattern: call the API from your server, cache what changes slowly (hero lists, academy data) for a few minutes, and pass the player's JWT through only for <code>/api/user</code> requests.</p>
+		<p>Arena Academy and Arena Card follow the same pattern: call the API from your server, cache what changes slowly (hero lists, academy data) for a few minutes, and pass the player's JWT through only for <code>/api/user</code> requests.</p>
 		<p>Start from the <a class="link" href="/web/heroes">playground</a> to find the response shape you need, then copy the generated snippet in your language. The <a class="link" href="/blog/how-to-use-mlbb-public-data-api-web-project">sign-in tutorial</a> walks through the JWT flow Arena Card uses.</p>
 	</div>
 </section>

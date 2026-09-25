@@ -68,6 +68,35 @@ def test_showcase_links_sister_sites_to_real_endpoints() -> None:
                 assert (method, path) in documented, (product["name"], method, path)
 
 
+def test_showcase_credits_contributors_and_invites_submissions() -> None:
+    from app.web.showcase import SHOWCASE, SUBMISSION_FIELDS, SUBMIT_URL
+
+    response = client.get("/showcase")
+
+    for product in SHOWCASE:
+        assert product["contributors"], product["name"]
+        for name, url in product["contributors"]:
+            assert f'href="{url}"' in response.text and f">{name}</a>" in response.text
+    assert response.text.count(f'href="{SUBMIT_URL}"') >= 2
+    assert 'id="llm-prompt"' in response.text and 'data-copy-from="llm-prompt"' in response.text
+    assert "### Features and endpoints" in response.text
+    assert "Home: top win rates this week | GET /api/heroes/rank" in response.text
+
+
+def test_showcase_issue_form_matches_the_documented_fields() -> None:
+    # The page, the LLM prompt, and the prefilled link all name fields by these ids.
+    import re
+
+    from app.web.showcase import SUBMISSION_FIELDS
+
+    form_path = os.path.join(os.path.dirname(__file__), "..", ".github", "ISSUE_TEMPLATE", "showcase.yml")
+    with open(form_path, encoding="utf-8") as handle:
+        form = handle.read()
+    fields = re.findall(r"- type: (?:input|textarea)\n    id: (\w+)\n    attributes:\n      label: (.+)", form)
+
+    assert fields == [(field["id"], field["label"]) for field in SUBMISSION_FIELDS]
+
+
 def test_home_page_shows_both_sister_sites() -> None:
     response = client.get("/")
 

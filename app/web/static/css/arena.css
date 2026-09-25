@@ -501,6 +501,20 @@ main { flex: 1 0 auto; }
 
 .feature-map { margin-top: 8px; }
 .feature-map td:first-child { font-weight: 600; width: 34%; }
+.byline { font-size: 15px; }
+.product .byline { margin-top: 8px; color: var(--ink-2); }
+
+/* Showcase submission */
+.page-head .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 24px; }
+.submit { display: grid; gap: 36px; min-width: 0; }
+.steps { counter-reset: step; display: grid; gap: 14px; max-width: var(--measure); }
+.steps li { list-style: none; counter-increment: step; position: relative; padding-left: 2.2em; }
+.steps li::before { content: counter(step); position: absolute; left: 0; font-family: var(--font-mono); font-weight: 600; }
+.submit-block h3 { font-size: 22px; }
+.submit-block > h3 { margin-bottom: 10px; }
+.submit-block .pane-tools { margin-bottom: 10px; }
+.submit-block .code { max-height: 420px; white-space: pre-wrap; }
+.fields td:first-child { font-weight: 600; width: 30%; }
 
 /* ---------- Playground ---------- */
 .workbench { display: grid; grid-template-columns: minmax(0, 1fr); }

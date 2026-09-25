@@ -15,8 +15,11 @@
   gradient text, badges or eyebrow labels above headlines, icon tiles over headings, identical card
   grids, huge stat rows, nested cards, pulsing dots, decorative terminals, slogan copy, em dashes.
   Prefer real data (the home page loads live rankings) over decoration.
-- **Showcase**: `app/web/showcase.py` maps pages of Arena Academy and Arena Card to the endpoints
-  they call; rendered on `/` and `/showcase`. A test fails if a listed endpoint stops existing.
+- **Showcase**: `app/web/showcase.py` maps pages of each community project to the endpoints they
+  call, with `contributors` as `(name, link)` pairs; rendered on `/` and `/showcase`. A test fails if
+  a listed endpoint stops existing. Submissions come in through the issue form
+  `.github/ISSUE_TEMPLATE/showcase.yml`; its field ids and labels must match `SUBMISSION_FIELDS`
+  (tested). To accept one, turn its "Feature | METHOD /path" lines into a new `SHOWCASE` entry.
 - **JavaScript**: Vanilla JS, no build tools. `static/js/arena.js` (theme, nav, session/JWT cache,
   modals; exposes `window.ArenaWebAuth`), `static/js/home.js` (live rankings table) and
   `static/js/playground.js` (endpoint forms, readable/raw/code response tabs). Asset URLs are

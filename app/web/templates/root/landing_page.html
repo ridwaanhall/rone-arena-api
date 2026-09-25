@@ -107,8 +107,9 @@
 <section class="section" id="built-on">
 	<div class="section-aside">
 		<h2 class="section-title">Built on the API</h2>
-		<p>Two working sites run entirely on these endpoints. Treat them as reference implementations.</p>
+		<p>Working projects that run entirely on these endpoints. Treat them as reference implementations.</p>
 		<a class="link" href="/showcase">Which endpoint powers each page</a>
+		<a class="link" href="/showcase#add-your-project">Add your project</a>
 	</div>
 	<div>
 		{% for product in products %}
@@ -116,6 +117,9 @@
 				<div>
 					<h3><a href="{{ product.url }}" target="_blank" rel="noreferrer noopener" class="ext">{{ product.name }}</a></h3>
 					<p class="domain">{{ product.url | replace("https://", "") | trim("/") }}</p>
+					<p class="byline">Built by
+						{% for person in product.contributors %}<a class="link" href="{{ person.url }}" target="_blank" rel="noreferrer noopener">{{ person.name }}</a>{{ ", " if not loop.last }}{% endfor %}
+					</p>
 					<p class="about">{{ product.about }}</p>
 				</div>
 				<div>
