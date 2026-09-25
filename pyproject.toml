@@ -48,7 +48,10 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "pytest==9.0.3",
-    # Cloudflare Workers tooling: `uv run pywrangler dev|deploy`.
+    # Cloudflare Workers tooling: `uv run pywrangler dev|deploy`. pywrangler shells out to
+    # `uv` and needs >=0.12.3; installing it here puts a new enough uv first on PATH under
+    # `uv run`, whatever version the build image ships.
     "workers-py>=1.17.4",
     "workers-runtime-sdk",
+    "uv>=0.12.3",
 ]
