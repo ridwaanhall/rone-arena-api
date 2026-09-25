@@ -581,11 +581,6 @@ for post in _BLOG_POSTS:
     post.setdefault("slug", _slugify_title(title))
 
 
-def ordered_posts() -> list[dict[str, object]]:
-    """Every post, newest first."""
-    return sorted(_BLOG_POSTS, key=lambda post: str(post.get("published_at") or ""), reverse=True)
-
-
 def _get_blog_post_or_404(slug: str) -> dict[str, object]:
     normalized = slug.strip().lower()
     for post in _BLOG_POSTS:
@@ -597,9 +592,13 @@ def _get_blog_post_or_404(slug: str) -> dict[str, object]:
 @router.get(path="/blog", include_in_schema=False, response_class=HTMLResponse, name="web.blog.list")
 @page_cached
 def blog_list_page(request: Request) -> HTMLResponse:
-    posts = ordered_posts()
-    featured_posts = [post for post in posts if bool(post.get("is_featured"))]
-    pinned_posts = [post for post in posts if bool(post.get("is_pinned"))]
+    ordered_posts = sorted(
+        _BLOG_POSTS,
+        key=lambda post: str(post.get("published_at") or ""),
+        reverse=True,
+    )
+    featured_posts = [post for post in ordered_posts if bool(post.get("is_featured"))]
+    pinned_posts = [post for post in ordered_posts if bool(post.get("is_pinned"))]
 
     context = _shared_context(request)
     context.update(
@@ -609,7 +608,7 @@ def blog_list_page(request: Request) -> HTMLResponse:
             "subtitle": "Guides, release notes, and practical walkthroughs for the Rone Arena API & Web.",
             "seo_description": "Read Rone Arena API tutorials and changelogs: sign-in flow, endpoint execution, snippets, response rendering, and release updates.",
             "seo_keywords": "rone arena api tutorial, changelog, mobile legends data api guide, swagger authorization",
-            "blog_posts": posts,
+            "blog_posts": ordered_posts,
             "featured_posts": featured_posts,
             "pinned_posts": pinned_posts,
         }

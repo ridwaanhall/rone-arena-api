@@ -63,20 +63,9 @@ def _asset_version_for(request: Request) -> str:
     return str(version_id)[:10] if version_id else ASSET_VERSION
 
 
-def _nav_section(path: str) -> str | None:
-    if path == "/":
-        return "home"
-    for prefix, section in (("/web", "playground"), ("/showcase", "showcase"), ("/blog", "blog")):
-        if path == prefix or path.startswith(prefix + "/"):
-            return section
-    return None
-
-
 def _shared_context(request: Request, current_group: str | None = None) -> dict[str, object]:
     return {
         "request": request,
-        "nav_section": _nav_section(request.url.path),
-        "operations_by_group": _operations_by_group(request.app) if IS_AVAILABLE else {},
         "group_meta": GROUP_META,
         "groups": WEB_GROUPS,
         "current_group": current_group,
@@ -112,25 +101,6 @@ def _showcase_products(operations_by_group: dict[str, list[dict[str, object]]]) 
     return with_playground_links(web_paths)
 
 
-def _latest_posts(count: int) -> list[dict[str, object]]:
-    # Imported here: the blog router imports this module for the shared context.
-    from app.web.routers.blog import ordered_posts
-
-    return ordered_posts()[:count]
-
-
-def _group_entries(operations: list[dict[str, object]]) -> list[dict[str, object]]:
-    """One entry per endpoint page: operations sharing a web path share a page."""
-    seen: set[str] = set()
-    entries = []
-    for operation in operations:
-        web_path = _normalize_path(str(operation["web_path"]))
-        if web_path not in seen:
-            seen.add(web_path)
-            entries.append(operation)
-    return entries
-
-
 def _normalize_path(value: str) -> str:
     normalized = value.rstrip("/")
     return normalized or "/"
@@ -147,7 +117,6 @@ def landing_page(request: Request) -> HTMLResponse:
                 "operations_by_group": operations_by_group,
                 "endpoint_total": sum(len(operations) for operations in operations_by_group.values()),
                 "products": _showcase_products(operations_by_group),
-                "latest_posts": _latest_posts(3),
                 "title": "Rone Arena API: Mobile Legends: Bang Bang game data as JSON",
                 "web_title": "Home",
                 "seo_description": "Free REST API for Mobile Legends: Bang Bang game data: heroes, win rates, builds, counters, academy guides, and player records, with an interactive playground.",
@@ -218,9 +187,11 @@ def web_group_page(request: Request, group: str) -> HTMLResponse:
             "seo_description": f"Browse and execute {GROUP_META[group]['title']} endpoints from the Rone Arena API & Web interface.",
             "seo_keywords": f"rone arena api, {group} endpoints, openapi web ui",
             "operations": operations,
+            "sidebar_operations": operations,
+            "selected_web_path": None,
         }
     )
-    return templates.TemplateResponse(request, "web/index_page.html", context)
+    return templates.TemplateResponse(request, "web/group_page.html", context)
 
 
 @router.get(path="/web/{group}/{endpoint_path:path}", include_in_schema=False, response_class=HTMLResponse)
@@ -240,11 +211,6 @@ def web_endpoint_page(request: Request, group: str, endpoint_path: str) -> HTMLR
     if not matched_operations:
         raise HTTPException(status_code=404, detail="Web endpoint not found")
 
-    entries = _group_entries(all_operations)
-    position = next(
-        index for index, entry in enumerate(entries) if _normalize_path(str(entry["web_path"])) == normalized_path
-    )
-
     context = _shared_context(request, current_group=group)
     operation_summary = str(matched_operations[0].get("summary") or "Endpoint").strip()
     group_title = str(GROUP_META[group]["title"]).strip()
@@ -256,10 +222,8 @@ def web_endpoint_page(request: Request, group: str, endpoint_path: str) -> HTMLR
             "seo_description": f"Execute and inspect a {GROUP_META[group]['title']} endpoint from the Rone Arena API web interface.",
             "seo_keywords": f"rone arena api endpoint, {group}, curl, readable response",
             "operations": matched_operations,
-            "group_entries": entries,
-            "prev_entry": entries[position - 1] if position > 0 else None,
-            "next_entry": entries[position + 1] if position + 1 < len(entries) else None,
+            "sidebar_operations": all_operations,
             "selected_web_path": normalized_path,
         }
     )
-    return templates.TemplateResponse(request, "web/endpoint_page.html", context)
+    return templates.TemplateResponse(request, "web/group_page.html", context)

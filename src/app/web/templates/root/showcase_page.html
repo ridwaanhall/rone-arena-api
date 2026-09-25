@@ -13,108 +13,98 @@
 	</div>
 </header>
 
-<div class="with-toc">
-	<details class="toc" data-toc open data-open-from="1024">
-		<summary>On this page</summary>
-		<ol>
-			{% for product in products %}<li><a href="#{{ product.slug }}">{{ product.name }}</a></li>{% endfor %}
-			<li><a href="#add-your-project">Add your project</a></li>
-			<li><a href="#build-your-own">Build your own</a></li>
-		</ol>
-	</details>
+{% for product in products %}
+	<section class="section" id="{{ product.slug }}">
+		<div class="section-aside">
+			<h2 class="section-title">{{ product.name }}</h2>
+			<a class="link ext" href="{{ product.url }}" target="_blank" rel="noreferrer noopener">{{ product.url | replace("https://", "") | trim("/") }}</a>
+			<p class="byline">Built by
+				{% for person in product.contributors %}<a class="link" href="{{ person.url }}" target="_blank" rel="noreferrer noopener">{{ person.name }}</a>{{ ", " if not loop.last }}{% endfor %}
+			</p>
+			<p>{{ product.about }}</p>
+			<p><strong style="color: var(--ink)">Shows you:</strong> {{ product.shows }}</p>
+		</div>
+		<div class="table-scroll">
+			<table class="ruled feature-map">
+				<thead>
+					<tr><th scope="col">Page or feature</th><th scope="col">Endpoints</th></tr>
+				</thead>
+				<tbody>
+					{% for feature in product.features %}
+						<tr>
+							<td>{{ feature.label }}</td>
+							<td>
+								<ul class="uses" style="margin: -6px 0">
+									{% for endpoint in feature.endpoints %}
+										<li style="border-bottom: 0">
+											<span class="method method--{{ endpoint.method | lower }}">{{ endpoint.method }}</span>
+											{% if endpoint.web_path %}<a href="{{ endpoint.web_path }}">{{ endpoint.path }}</a>{% else %}<span>{{ endpoint.path }}</span>{% endif %}
+										</li>
+									{% endfor %}
+								</ul>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{% endfor %}
 
-	<div class="toc-body">
-		{% for product in products %}
-			<article class="project" id="{{ product.slug }}">
-				<div>
-					<h2>{{ product.name }}</h2>
-					<p class="domain"><a class="link ext" href="{{ product.url }}" target="_blank" rel="noreferrer noopener">{{ product.url | replace("https://", "") | trim("/") }}</a></p>
-					<p class="byline">Built by
-						{% for person in product.contributors %}<a class="link" href="{{ person.url }}" target="_blank" rel="noreferrer noopener">{{ person.name }}</a>{{ ", " if not loop.last }}{% endfor %}
-					</p>
-					<p class="about">{{ product.about }}</p>
-					<p class="shows"><strong>Shows you:</strong> {{ product.shows }}</p>
-				</div>
-				<div class="table-scroll">
-					<table class="ruled feature-map">
-						<thead>
-							<tr><th scope="col">Page or feature</th><th scope="col">Endpoints</th></tr>
-						</thead>
-						<tbody>
-							{% for feature in product.features %}
-								<tr>
-									<td>{{ feature.label }}</td>
-									<td>
-										<ul class="ep-list">
-											{% for endpoint in feature.endpoints %}
-												<li>
-													<span class="method method--{{ endpoint.method | lower }}">{{ endpoint.method }}</span>
-													{% if endpoint.web_path %}<a href="{{ endpoint.web_path }}">{{ endpoint.path }}</a>{% else %}<span>{{ endpoint.path }}</span>{% endif %}
-												</li>
-											{% endfor %}
-										</ul>
-									</td>
-								</tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-			</article>
-		{% endfor %}
-
-		<section id="add-your-project" aria-labelledby="add-title">
-			<h2 id="add-title">Add your project</h2>
-			<p class="lede">Built something on these endpoints? One issue gets it listed here, with your name linked to your site or profile.</p>
-			<ol class="submit-steps">
-				<li><strong>Let your coding assistant write the entry.</strong> Open Claude, Codex, or any assistant inside your project and paste the prompt below. It reads your code, finds every Rone Arena call, and writes your entry in the same Python format this site uses.</li>
-				<li><strong>Open the form.</strong> Use the prefilled link the assistant returns, or open the <a class="link" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener">showcase form</a> and paste the entry into it.</li>
-				<li><strong>Check it and submit.</strong> Replace any TODO, add a screenshot if you like, and submit. Once reviewed, the entry is pasted into the site as-is and your project appears here.</li>
-			</ol>
-
-			<div class="submit-block">
-				<div class="pane-tools">
-					<h3>Prompt for your coding assistant</h3>
-					<button type="button" class="button button--small" data-copy-from="llm-prompt"><span data-label>Copy prompt</span></button>
-				</div>
-				<pre class="code code--wrap" id="llm-prompt">{{ llm_prompt }}</pre>
-			</div>
-
-			<div class="submit-block">
-				<div class="pane-tools"><h3>What each key means</h3></div>
-				<div class="table-scroll">
-					<table class="ruled fields">
-						<thead>
-							<tr><th scope="col">Key</th><th scope="col">What to write</th></tr>
-						</thead>
-						<tbody>
-							{% for key, help in entry_keys %}
-								<tr><td><code>{{ key }}</code></td><td>{{ help }}</td></tr>
-							{% endfor %}
-						</tbody>
-					</table>
-				</div>
-			</div>
-
-			<div class="submit-block">
-				<div class="pane-tools">
-					<h3>Example: the Arena Academy entry</h3>
-					<button type="button" class="button button--small" data-copy-from="entry-example"><span data-label>Copy example</span></button>
-				</div>
-				<pre class="code" id="entry-example">{{ entry_example }}</pre>
-			</div>
-
-			<div class="submit-block">
-				<a class="button button--mark ext" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener">Open the form</a>
-			</div>
-		</section>
-
-		<section id="build-your-own" aria-labelledby="build-title">
-			<h2 id="build-title">Build your own</h2>
-			<div class="prose submit-block">
-				<p>Arena Academy and Arena Card follow the same pattern: call the API from your server, cache what changes slowly (hero lists, academy data) for a few minutes, and pass the player's JWT through only for <code>/api/user</code> requests.</p>
-				<p>Start from the <a class="link" href="/web/heroes">playground</a> to find the response shape you need, then copy the generated snippet in your language. The <a class="link" href="/blog/how-to-use-mlbb-public-data-api-web-project">sign-in tutorial</a> walks through the JWT flow Arena Card uses.</p>
-			</div>
-		</section>
+<section class="section" id="add-your-project">
+	<div class="section-aside">
+		<h2 class="section-title">Add your project</h2>
+		<p>Built something on these endpoints? One issue gets it listed here, with your name linked to your site or profile.</p>
+		<a class="button button--mark ext" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener" style="align-self: start">Open the form</a>
 	</div>
-</div>
+	<div class="submit">
+		<ol class="steps">
+			<li><strong>Let your coding assistant write the entry.</strong> Open Claude, Codex, or any assistant inside your project and paste the prompt below. It reads your code, finds every Rone Arena call, and writes your entry in the same Python format this site uses.</li>
+			<li><strong>Open the form.</strong> Use the prefilled link the assistant returns, or open the <a class="link" href="{{ submit_url }}" target="_blank" rel="noreferrer noopener">showcase form</a> and paste the entry into it.</li>
+			<li><strong>Check it and submit.</strong> Replace any TODO, add a screenshot if you like, and submit. Once reviewed, the entry is pasted into the site as-is and your project appears here.</li>
+		</ol>
+
+		<div class="submit-block">
+			<div class="pane-tools">
+				<h3>Prompt for your coding assistant</h3>
+				<button type="button" class="button button--small" data-copy-from="llm-prompt"><span data-label>Copy prompt</span></button>
+			</div>
+			<pre class="code code--wrap" id="llm-prompt">{{ llm_prompt }}</pre>
+		</div>
+
+		<div class="submit-block">
+			<h3>What each key means</h3>
+			<div class="table-scroll">
+				<table class="ruled fields">
+					<thead>
+						<tr><th scope="col">Key</th><th scope="col">What to write</th></tr>
+					</thead>
+					<tbody>
+						{% for key, help in entry_keys %}
+							<tr><td><code>{{ key }}</code></td><td>{{ help }}</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<div class="submit-block">
+			<div class="pane-tools">
+				<h3>Example: the Arena Academy entry</h3>
+				<button type="button" class="button button--small" data-copy-from="entry-example"><span data-label>Copy example</span></button>
+			</div>
+			<pre class="code" id="entry-example">{{ entry_example }}</pre>
+		</div>
+	</div>
+</section>
+
+<section class="section">
+	<div class="section-aside">
+		<h2 class="section-title">Build your own</h2>
+	</div>
+	<div class="prose">
+		<p>Arena Academy and Arena Card follow the same pattern: call the API from your server, cache what changes slowly (hero lists, academy data) for a few minutes, and pass the player's JWT through only for <code>/api/user</code> requests.</p>
+		<p>Start from the <a class="link" href="/web/heroes">playground</a> to find the response shape you need, then copy the generated snippet in your language. The <a class="link" href="/blog/how-to-use-mlbb-public-data-api-web-project">sign-in tutorial</a> walks through the JWT flow Arena Card uses.</p>
+	</div>
+</section>
 {% endblock %}
