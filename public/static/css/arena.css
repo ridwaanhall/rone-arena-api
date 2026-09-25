@@ -297,13 +297,13 @@ ul, ol { margin: 0; padding: 0; }
 /* Code-language picker: a row of mono words. */
 .langs { display: flex; flex-wrap: wrap; gap: 4px 2px; }
 .lang {
-	padding: 3px 8px;
+	padding: 2px 7px;
 	border: 0;
 	border-radius: var(--radius);
 	background: none;
 	color: var(--ink-2);
 	font-family: var(--font-mono);
-	font-size: 0.8125rem;
+	font-size: 0.75rem;
 }
 .lang:hover { color: var(--ink); background: var(--paper-2); }
 .lang.is-active { background: var(--ink); color: var(--paper); }
@@ -325,14 +325,16 @@ ul, ol { margin: 0; padding: 0; }
 /* Plain inline tag for status words (Deprecated, Auth). */
 .tag {
 	display: inline-block;
-	padding: 1px 6px;
+	padding: 0 4px;
 	border: 1px solid currentColor;
 	border-radius: var(--radius);
 	font-family: var(--font-mono);
-	font-size: 0.75rem;
+	font-size: 0.6875rem;
 	font-weight: 500;
-	line-height: 1.5;
-	vertical-align: middle;
+	line-height: 1.45;
+	letter-spacing: 0.01em;
+	vertical-align: 0.1em;
+	white-space: nowrap;
 }
 .tag--caution { color: var(--caution); }
 .tag--info { color: var(--info); }
@@ -625,7 +627,8 @@ main { flex: 1 0 auto; }
 .bench-base code { color: var(--ink); overflow-wrap: anywhere; }
 
 .jump { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 16px; }
-.jump a { flex: none; display: inline-flex; gap: 8px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.8125rem; text-decoration: none; }
+.jump a { flex: none; display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 8px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: var(--font-mono); font-size: 0.75rem; text-decoration: none; }
+.jump a .method { min-width: 0; font-size: 0.6875rem; }
 .jump a[aria-current="page"] { background: var(--mark); border-color: var(--mark); color: var(--mark-ink); }
 .jump a[aria-current="page"] .method { color: var(--mark-ink); }
 @media (min-width: 1024px) { .jump-block { display: none; } }
@@ -636,7 +639,7 @@ main { flex: 1 0 auto; }
 .endpoint-route .method { font-size: 0.9375rem; }
 .endpoint-route code { font-size: 0.9375rem; overflow-wrap: anywhere; }
 .endpoint-title { margin-top: 10px; font-size: 2.375rem; }
-.endpoint-title .tag { margin-left: 8px; font-variation-settings: normal; }
+.endpoint-title .tag { margin-left: 6px; font-variation-settings: normal; vertical-align: 0.35em; }
 .endpoint.is-deprecated .endpoint-title { color: var(--ink-3); }
 .endpoint-tools { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 0.875rem; }
 .endpoint .note { margin-top: 16px; }
@@ -670,7 +673,7 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .param-control .input, .param-control .select { max-width: 340px; }
 .param-control .textarea { max-width: 620px; }
 .help { font-size: 0.875rem; color: var(--ink-2); line-height: 1.5; max-width: 62ch; }
-.help code { padding: 0 3px; background: var(--paper-2); border-radius: var(--radius); font-size: 0.7812rem; }
+.help code { padding: 0 3px; background: var(--paper-2); border-radius: var(--radius); font-size: 0.75rem; }
 .help .limit { font-family: var(--font-mono); font-size: 0.7812rem; color: var(--ink-3); white-space: nowrap; }
 
 .run { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; }
