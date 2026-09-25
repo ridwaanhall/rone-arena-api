@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import math
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
-from app.core.errors import AppError
+from app.core.exceptions import AppError
 from app.services.addon import fetch_ip_get
-from fastapi import Request
 from app.schemas.addon import AddonIpResponse, AddonWinRateResponse
 from app.utils.client_ip import extract_client_ip
 
@@ -86,128 +86,36 @@ def win_rate(
         ),
     ],
 ) -> object:
-    missing_params = [
-        param
-        for param, value in [("match-now", match_now), ("wr-now", wr_now), ("wr-future", wr_future)]
-        if value is None or value == ""
-    ]
-    if missing_params:
-        raise AppError(
+    # Presence, types and ranges are enforced by the Query constraints above;
+    # what remains are the rules that depend on more than one value.
+    def bad_request(message: str) -> AppError:
+        return AppError(
             status_code=400,
             code="BAD_REQUEST",
-            message=(
-                f"Missing required parameter(s): {', '.join(missing_params)}. "
-                "Please provide all required parameters: match-now, wr-now, and wr-future."
-            ),
-            extra={
-                "match_now": match_now,
-                "wr_now": wr_now,
-                "wr_future": wr_future,
-                "required_no_lose_matches": None,
-            },
+            message=message,
+            extra={"match_now": match_now, "wr_now": wr_now, "wr_future": wr_future, "required_no_lose_matches": None},
         )
 
-    try:
-        if "." in str(match_now):
-            raise ValueError("match-now must be an integer (no decimals allowed).")
-        match_now_int = int(str(match_now))
-        wr_now_float = float(str(wr_now))
-        wr_future_float = float(str(wr_future))
-    except ValueError:
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message="Invalid input. Ensure match-now is an integer and wr-now, wr-future are numeric values.",
-            extra={
-                "match_now": match_now,
-                "wr_now": wr_now,
-                "wr_future": wr_future,
-                "required_no_lose_matches": None,
-            },
-        )
+    if wr_future <= wr_now:
+        raise bad_request("The target win rate (wr-future) must be greater than the current win rate (wr-now).")
+    if wr_future == 100:
+        raise bad_request(f"It is not possible to reach a {wr_future}% win rate with a finite number of matches.")
 
-    if match_now_int < 0:
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message="match-now must be a non-negative integer.",
-            extra={
-                "match_now": match_now_int,
-                "wr_now": wr_now_float,
-                "wr_future": wr_future_float,
-                "required_no_lose_matches": None,
-            },
-        )
-
-    if not (0 <= wr_now_float <= 100) or not (0 < wr_future_float <= 100):
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message="Win rates must be between 0 and 100 (wr-future must be greater than 0).",
-            extra={
-                "match_now": match_now_int,
-                "wr_now": wr_now_float,
-                "wr_future": wr_future_float,
-                "required_no_lose_matches": None,
-            },
-        )
-
-    if wr_future_float <= wr_now_float:
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message="The target win rate (wr-future) must be greater than the current win rate (wr-now).",
-            extra={
-                "match_now": match_now_int,
-                "wr_now": wr_now_float,
-                "wr_future": wr_future_float,
-                "required_no_lose_matches": None,
-            },
-        )
-
-    current_wins = match_now_int * wr_now_float / 100.0
-    wr_future_ratio = wr_future_float / 100.0
-    denominator = wr_future_ratio - 1.0
-    numerator = current_wins - match_now_int * wr_future_ratio
-
-    if denominator == 0:
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message=f"It is not possible to reach a {wr_future_float}% win rate with a finite number of matches.",
-            extra={
-                "match_now": match_now_int,
-                "wr_now": wr_now_float,
-                "wr_future": wr_future_float,
-                "required_no_lose_matches": None,
-            },
-        )
-
-    required_matches = numerator / denominator
-    required_matches_int = int(required_matches) + (1 if required_matches % 1 > 0 else 0)
-
-    if required_matches_int < 0:
-        raise AppError(
-            status_code=400,
-            code="BAD_REQUEST",
-            message="The target win rate cannot be achieved with only consecutive wins from your current record.",
-            extra={
-                "match_now": match_now_int,
-                "wr_now": wr_now_float,
-                "wr_future": wr_future_float,
-                "required_no_lose_matches": None,
-            },
-        )
+    # Solve (wins + x) / (matches + x) = target for x consecutive wins. With
+    # wr_now < wr_future < 100 the result is never negative.
+    current_wins = match_now * wr_now / 100.0
+    target = wr_future / 100.0
+    required_matches = math.ceil((current_wins - match_now * target) / (target - 1.0))
 
     return {
         "status": "success",
-        "match_now": match_now_int,
-        "wr_now": wr_now_float,
-        "wr_future": wr_future_float,
-        "required_no_lose_matches": required_matches_int,
+        "match_now": match_now,
+        "wr_now": wr_now,
+        "wr_future": wr_future,
+        "required_no_lose_matches": required_matches,
         "message": (
-            f"To achieve a win rate of {wr_future_float}%, "
-            f"you need {required_matches_int} consecutive wins without any losses."
+            f"To achieve a win rate of {wr_future}%, "
+            f"you need {required_matches} consecutive wins without any losses."
         ),
     }
 
@@ -254,6 +162,6 @@ def win_rate(
     },
     deprecated=True,
 )
-async def ip(request: Request):
+def ip(request: Request) -> object:
     client_ip = extract_client_ip(request, public_only=True)
     return fetch_ip_get("c/ip", client_ip)

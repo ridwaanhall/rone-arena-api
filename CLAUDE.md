@@ -58,17 +58,20 @@ rone-arena-api/
 │   │   │   ├── academy.py      # Game guides, builds, resources
 │   │   │   ├── addon.py        # Utility endpoints (IP lookup, etc.)
 │   │   │   └── root.py         # Root & metadata endpoints
-│   │   └── dependencies.py
+│   │   ├── dependencies.py     # Availability gate, UserJwt
+│   │   └── params.py           # Shared Annotated params (HeroIdentifier, PageSize, Lang, Rank...)
 │   ├── core/
 │   │   ├── config.py           # Environment & configuration
 │   │   ├── errors.py           # Custom error handling
 │   │   ├── exceptions.py       # FastAPI exception handlers
 │   │   ├── security.py         # JWT, auth helpers
 │   │   ├── enums.py            # Game-related enums
-│   │   ├── hero_limits.py      # Hero validation & limits
-│   │   └── http.py             # HTTP client for upstream
+│   │   └── http.py             # Pooled httpx client for upstream
 │   ├── schemas/                # Pydantic models (request/response)
 │   ├── services/               # Business logic layer
+│   │   ├── source.py           # Query builders (build_query, eq, sort_by...) + post_source
+│   │   ├── heroes.py           # Hero source IDs, cached hero index, require_hero_id
+│   │   ├── academy.py          # Academy source IDs, ratings
 │   ├── utils/
 │   │   ├── client_ip.py
 │   │   ├── filters.py
@@ -165,6 +168,8 @@ uvicorn app.main:app --reload
 
 ```bash
 pytest tests/
+# Also hit the real upstream and assert on returned data:
+LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
 ```
 
 Test coverage includes:

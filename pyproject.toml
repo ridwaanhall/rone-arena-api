@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 
 dependencies = [
     "fastapi[standard]>=0.135.2",
-    "requests>=2.32.0,<3",
+    "httpx>=0.28.1",
     "cryptography==50.0.0",
     "fastapi-cloud-cli>=0.22.0",
 ]

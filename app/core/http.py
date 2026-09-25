@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-import requests
+import httpx
 
 from app.core.exceptions import AppError
 
@@ -121,23 +121,16 @@ class UpstreamHeaderBuilder:
         return headers
 
 
-def request_json(
-    *,
-    method: str,
-    url: str,
-    headers: dict[str, str],
-    payload: dict[str, Any] | None = None,
-    params: dict[str, Any] | None = None,
-) -> Any:
+# One pooled client that lives as long as the process. httpx.Client is
+# thread-safe (sync routes run in a threadpool), and reusing it keeps upstream
+# TLS connections alive instead of paying a fresh handshake on every call.
+_client = httpx.Client(timeout=30.0, follow_redirects=True)
+
+
+def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
     try:
-        if method == "GET":
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-        else:
-            if payload is None:
-                response = requests.post(url, headers=headers, params=params, timeout=30)
-            else:
-                response = requests.post(url, json=payload, headers=headers, params=params, timeout=30)
-    except requests.RequestException as exc:
+        response = _client.request(method, url, headers=headers, **kwargs)
+    except httpx.HTTPError as exc:
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data", details=str(exc)) from exc
 
     if response.status_code != 200:
@@ -154,6 +147,18 @@ def request_json(
         raise AppError(status_code=502, code="UPSTREAM_INVALID_RESPONSE", message="Failed to fetch data", details="Invalid JSON from upstream") from exc
 
 
+def request_json(
+    *,
+    method: str,
+    url: str,
+    headers: dict[str, str],
+    payload: dict[str, Any] | None = None,
+    params: dict[str, Any] | None = None,
+) -> Any:
+    """Send a request whose body (if any) is JSON."""
+    return _send(method, url, headers, json=payload, params=params)
+
+
 def request_form(
     *,
     url: str,
@@ -161,23 +166,7 @@ def request_form(
     headers: dict[str, str],
     payload: dict[str, Any],
 ) -> Any:
-    try:
-        if method == "GET":
-            response = requests.get(url, headers=headers, timeout=30)
-        else:
-            response = requests.post(url, data=payload, headers=headers, timeout=30)
-    except requests.RequestException as exc:
-        raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data", details=str(exc)) from exc
-
-    if response.status_code != 200:
-        raise AppError(
-            status_code=response.status_code,
-            code="UPSTREAM_REQUEST_FAILED",
-            message="Failed to fetch data",
-            details="Unable to fetch data from upstream service",
-        )
-
-    try:
-        return response.json()
-    except ValueError as exc:
-        raise AppError(status_code=502, code="UPSTREAM_INVALID_RESPONSE", message="Failed to fetch data", details="Invalid JSON from upstream") from exc
+    """Send a request whose body is form-encoded (the auth service)."""
+    if method == "GET":
+        return _send(method, url, headers)
+    return _send(method, url, headers, data=payload)

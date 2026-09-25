@@ -58,7 +58,7 @@ def test_hero_service_header_uses_public_forwarded_ip(monkeypatch) -> None:
         captured_headers.update(headers)
         return {"code": 0, "data": {"records": []}}
 
-    monkeypatch.setattr("app.services.heroes.request_json", fake_request_json)
+    monkeypatch.setattr("app.services.source.request_json", fake_request_json)
 
     response = client.get(
         "/api/heroes?size=1&index=1",
@@ -76,7 +76,7 @@ def test_academy_service_header_uses_public_forwarded_ip(monkeypatch) -> None:
         captured_headers.update(headers)
         return {"code": 0, "data": {"records": []}}
 
-    monkeypatch.setattr("app.services.academy.request_json", fake_request_json)
+    monkeypatch.setattr("app.services.source.request_json", fake_request_json)
 
     response = client.get(
         "/api/academy/meta/version?size=1&index=1",
