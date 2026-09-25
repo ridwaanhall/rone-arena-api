@@ -6,27 +6,35 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for building on Rone Arena. Accepted projects are listed on https://arena.rone.dev/showcase with your name linked to you, and every endpoint you list opens in the playground so other developers can reproduce your pages.
+        Thanks for building on Rone Arena. Accepted projects are listed on [arena.rone.dev/showcase](https://arena.rone.dev/showcase) with your name linked to you, and every endpoint you list opens in the playground so other developers can reproduce your pages.
 
-        **Shortcut:** the showcase page has a prompt you can paste into Claude, Codex, or any coding assistant inside your project. It reads your code and fills in every field below for you.
+        **Fastest way:** copy the prompt from [the showcase page](https://arena.rone.dev/showcase#add-your-project) into Claude, Codex, or any coding assistant opened in your project. It reads your code and writes the entry below for you, plus a link that opens this form already filled in.
 
-        A filled-in example (Arena Academy) is on the showcase page under "Add your project".
-
-  - type: input
-    id: name
+  - type: textarea
+    id: entry
     attributes:
-      label: Project name
-      description: What the project is called. Keep "MLBB" and "Mobile Legends" out of the name; those marks belong to Moonton.
-      placeholder: Arena Academy
-    validations:
-      required: true
-
-  - type: input
-    id: url
-    attributes:
-      label: Live URL
-      description: Where anyone can open it right now. A website, an app store page, or a bot invite.
-      placeholder: https://arena-academy.rone.dev/
+      label: Showcase entry
+      description: |
+        One Python dict, in the same format as `app/web/showcase.py`, so it can be pasted in as-is.
+        - `name`: the project name. Keep "MLBB" and "Mobile Legends" out of it; those marks belong to Moonton.
+        - `url`: where anyone can open it right now.
+        - `about`: one or two sentences on what it is and who it is for.
+        - `shows`: what another developer learns from it.
+        - `contributors`: `(name, link)` pairs. The link can be a personal website, GitHub, X, or Instagram.
+        - `features`: `(feature, [(method, path), ...])` pairs, one per page or feature. Paths exactly as the API docs list them, with parameters in braces (`/api/heroes/{hero_identifier}/stats`, not `/api/heroes/1/stats`).
+      render: python
+      placeholder: |
+        {
+            "name": "Arena Academy",
+            "url": "https://arena-academy.rone.dev/",
+            "about": "A hero encyclopedia and stats site for Mobile Legends: Bang Bang.",
+            "shows": "How to build a full website on the public hero and academy endpoints, without any sign-in.",
+            "contributors": [("ridwaanhall", "https://ridwaanhall.com")],
+            "features": [
+                ("Home: top win rates this week", [("GET", "/api/heroes/rank")]),
+                ("Hero page: lore, skills, relations", [("GET", "/api/heroes/{hero_identifier}"), ("GET", "/api/heroes/{hero_identifier}/relations")]),
+            ],
+        },
     validations:
       required: true
 
@@ -34,58 +42,8 @@ body:
     id: source
     attributes:
       label: Source code
-      description: Optional. A public repository, if the code is open.
+      description: Optional. A public repository, if the code is open. It helps reviewers check the endpoints.
       placeholder: https://github.com/you/your-project
-
-  - type: textarea
-    id: about
-    attributes:
-      label: About
-      description: One or two sentences. What it is and who it is for.
-      placeholder: A hero encyclopedia and stats site for Mobile Legends. Every hero page, ranking, and guide is rendered from public Rone Arena endpoints.
-    validations:
-      required: true
-
-  - type: input
-    id: shows
-    attributes:
-      label: Shows you
-      description: What another developer learns from it, for example which endpoint group or pattern it demonstrates.
-      placeholder: How to build a full website on the public hero and academy endpoints, without any sign-in.
-    validations:
-      required: true
-
-  - type: textarea
-    id: features
-    attributes:
-      label: Features and endpoints
-      description: |
-        One line per page or feature: the feature, a pipe (`|`), then the endpoints it calls, comma separated.
-        Write paths exactly as the API docs list them, with path parameters in braces (`/api/heroes/{hero_identifier}/stats`, not `/api/heroes/1/stats`).
-      placeholder: |
-        Home: top win rates this week | GET /api/heroes/rank
-        Hero page: lore, skills, relations | GET /api/heroes/{hero_identifier}, GET /api/heroes/{hero_identifier}/relations
-        Tools: win-rate calculator | GET /api/addon/win-rate-calculator
-    validations:
-      required: true
-
-  - type: input
-    id: contributor
-    attributes:
-      label: Contributor name
-      description: The name to credit on the showcase. Separate several names with commas.
-      placeholder: ridwaanhall
-    validations:
-      required: true
-
-  - type: textarea
-    id: contributor_url
-    attributes:
-      label: Contributor link
-      description: One link per name, in the same order. A personal website, GitHub, X, or Instagram.
-      placeholder: https://ridwaanhall.com
-    validations:
-      required: true
 
   - type: textarea
     id: screenshot
@@ -100,7 +58,7 @@ body:
       options:
         - label: The project is live and anyone can open it.
           required: true
-        - label: Every endpoint listed above is one the project actually calls.
+        - label: Every endpoint in the entry is one the project actually calls.
           required: true
         - label: The name does not use "MLBB", "Mobile Legends", or Moonton branding.
           required: true

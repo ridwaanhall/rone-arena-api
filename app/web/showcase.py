@@ -3,11 +3,13 @@
 Each feature lists the endpoints (method, OpenAPI path) it is built from, so
 readers can open the same request in the playground and reproduce the page.
 Anyone can add a project: the showcase issue form
-(`.github/ISSUE_TEMPLATE/showcase.yml`) collects the same fields, and an
-accepted submission becomes one more entry here.
+(`.github/ISSUE_TEMPLATE/showcase.yml`) asks for one entry in exactly this
+format, so an accepted submission is pasted into `SHOWCASE` as-is.
 """
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 REPO_URL = "https://github.com/ridwaanhall/rone-arena-api"
@@ -64,6 +66,11 @@ SHOWCASE: list[dict[str, Any]] = [
 ]
 
 
+def slug(name: str) -> str:
+    """Page anchor for a project; community names may carry any punctuation."""
+    return "project-" + (re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") or "unnamed")
+
+
 def with_playground_links(web_paths: dict[tuple[str, str], str]) -> list[dict[str, Any]]:
     """Attach the playground page for each endpoint a feature uses."""
     products = []
@@ -80,64 +87,68 @@ def with_playground_links(web_paths: dict[tuple[str, str], str]) -> list[dict[st
                 }
             )
         contributors = [{"name": name, "url": url} for name, url in product["contributors"]]
-        products.append({**product, "features": features, "contributors": contributors})
+        products.append({**product, "slug": slug(product["name"]), "features": features, "contributors": contributors})
     return products
 
 
-# The showcase issue form, field by field, in the order the form asks for them.
-# `id` must match the field id in `.github/ISSUE_TEMPLATE/showcase.yml`.
-SUBMISSION_FIELDS: list[dict[str, str]] = [
-    {"id": "name", "label": "Project name", "help": "What the project is called. Keep \"MLBB\" and \"Mobile Legends\" out of the name; those marks belong to Moonton."},
-    {"id": "url", "label": "Live URL", "help": "Where anyone can open it right now: a website, an app store page, or a bot invite."},
-    {"id": "source", "label": "Source code", "help": "Optional. A public repository, if the code is open."},
-    {"id": "about", "label": "About", "help": "One or two sentences: what it is and who it is for."},
-    {"id": "shows", "label": "Shows you", "help": "What another developer learns from it, for example which endpoint group or pattern it demonstrates."},
-    {"id": "features", "label": "Features and endpoints", "help": "One line per page or feature: the feature, a pipe, then the endpoints it calls, comma separated. Use the paths exactly as the API docs list them."},
-    {"id": "contributor", "label": "Contributor name", "help": "The name to credit on the showcase. Add more names separated by commas."},
-    {"id": "contributor_url", "label": "Contributor link", "help": "One link per name, in the same order: a personal website, GitHub, X, or Instagram."},
-    {"id": "screenshot", "label": "Screenshot", "help": "Optional. Drag an image into the field so reviewers can see it."},
+# The keys of one showcase entry, in order, with what to write in each.
+ENTRY_KEYS: list[tuple[str, str]] = [
+    ("name", "What the project is called. Keep \"MLBB\" and \"Mobile Legends\" out of the name; those marks belong to Moonton."),
+    ("url", "Where anyone can open it right now: a website, an app store page, or a bot invite."),
+    ("about", "One or two sentences: what it is and who it is for."),
+    ("shows", "What another developer learns from it, for example which endpoint group or pattern it demonstrates."),
+    ("contributors", "A list of (name, link) pairs, one per person to credit. The link can be a personal website, GitHub, X, or Instagram."),
+    ("features", "A list of (feature, endpoints) pairs, one per page or feature. Endpoints are (method, path) pairs, with the path exactly as the API docs list it."),
 ]
 
 
-def submission_example(product: dict[str, Any]) -> str:
-    """Render one showcase entry the way the issue form expects it filled in."""
-    features = "\n".join(
-        f"{label} | " + ", ".join(f"{method} {path}" for method, path in endpoints)
-        for label, endpoints in product["features"]
+def _text(value: str) -> str:
+    # JSON string syntax is valid Python and always uses double quotes, like the file.
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _pairs(pairs: list[tuple[str, str]]) -> str:
+    return "[" + ", ".join(f"({_text(first)}, {_text(second)})" for first, second in pairs) + "]"
+
+
+def format_entry(product: dict[str, Any]) -> str:
+    """Write one entry as Python source, in the same layout as `SHOWCASE` above."""
+    features = "\n".join(f"        ({_text(label)}, {_pairs(endpoints)})," for label, endpoints in product["features"])
+    return (
+        "{\n"
+        f'    "name": {_text(product["name"])},\n'
+        f'    "url": {_text(product["url"])},\n'
+        f'    "about": {_text(product["about"])},\n'
+        f'    "shows": {_text(product["shows"])},\n'
+        f'    "contributors": {_pairs(product["contributors"])},\n'
+        '    "features": [\n'
+        f"{features}\n"
+        "    ],\n"
+        "},"
     )
-    names, links = zip(*product["contributors"])
-    values = {
-        "name": product["name"],
-        "url": product["url"],
-        "source": "(optional)",
-        "about": product["about"],
-        "shows": product["shows"],
-        "features": features,
-        "contributor": ", ".join(names),
-        "contributor_url": "\n".join(links),
-        "screenshot": "(optional)",
-    }
-    return "\n\n".join(f"### {field['label']}\n{values[field['id']]}" for field in SUBMISSION_FIELDS)
 
 
 def llm_prompt(base_url: str) -> str:
     """A prompt a contributor pastes into a coding assistant inside their own project."""
-    headings = "\n".join(f"### {field['label']}" for field in SUBMISSION_FIELDS)
+    example = format_entry(SHOWCASE[0])
     return f"""I want to submit this project to the Rone Arena API showcase: {base_url}showcase
 
-Read this codebase and find every call to the Rone Arena API (paths that start with /api/, for example /api/heroes/rank or /api/user/info). Then fill in the showcase submission below.
+Read this codebase and find every call to the Rone Arena API (paths that start with /api/, for example /api/heroes/rank or /api/user/info). Then write this project's showcase entry.
 
 Rules:
 - Use only what the code shows. Do not invent features, URLs, or endpoints.
-- Write each endpoint as its method and the path exactly as the API docs list it, with path parameters in braces: GET /api/heroes/{{hero_identifier}}/stats, not GET /api/heroes/1/stats. The full list is at {base_url}api/openapi.json
-- Features and endpoints: one line per page or feature, formatted as `Feature | METHOD /path, METHOD /path`. Group calls under the page that shows their data.
-- About: one or two plain sentences. Shows you: one sentence on what another developer can learn from this project.
+- Write each endpoint as a (method, path) pair, with the path exactly as the API docs list it and path parameters in braces: ("GET", "/api/heroes/{{hero_identifier}}/stats"), not ("GET", "/api/heroes/1/stats"). The full list is at {base_url}api/openapi.json
+- features: one (feature, endpoints) pair per page or feature. Group calls under the page that shows their data.
+- about: one or two plain sentences. shows: one sentence on what another developer can learn from this project.
+- contributors: one (name, link) pair per person. The link can be a personal website, GitHub, X, or Instagram.
 - The project name must not contain "MLBB" or "Mobile Legends".
-- If you cannot find something (the live URL, my name or link), write TODO so I can fill it in.
+- If you cannot find something (the live URL, my name or link), write "TODO" so I can fill it in.
 
-Reply with exactly these sections as Markdown, in this order:
+Output format: one Python dict literal, in a ```python code block, with exactly the keys, order, and layout of this example. Use double-quoted strings and tuples, keep the trailing comma after the closing brace, and write nothing else in the block:
 
-{headings}
+```python
+{example}
+```
 
-Leave the Screenshot section empty. After the sections, give me one link that opens the form with the text fields already filled in: start from {SUBMIT_URL} and add title=[Showcase]: <project name>, then name, url, source, about, shows, features, contributor and contributor_url as query parameters, each value URL-encoded.
+After the code block, give me one link that opens the submission form with the entry already filled in: {SUBMIT_URL}&title=%5BShowcase%5D%3A%20<project name, URL-encoded>&entry=<the entry, URL-encoded>
 """

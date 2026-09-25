@@ -23,7 +23,7 @@ from app.core.config import (
     API_URL,
 )
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
-from app.web.showcase import SHOWCASE, SUBMISSION_FIELDS, SUBMIT_URL, llm_prompt, submission_example, with_playground_links
+from app.web.showcase import ENTRY_KEYS, SHOWCASE, SUBMIT_URL, format_entry, llm_prompt, with_playground_links
 
 router = APIRouter(tags=["web"])
 
@@ -137,8 +137,8 @@ def showcase_page(request: Request) -> HTMLResponse:
             "seo_keywords": "rone arena api examples, arena academy, arena card, api integration example, showcase",
             "products": _showcase_products(_operations_by_group(request.app)),
             "submit_url": SUBMIT_URL,
-            "submission_fields": SUBMISSION_FIELDS,
-            "submission_example": submission_example(SHOWCASE[0]),
+            "entry_keys": ENTRY_KEYS,
+            "entry_example": format_entry(SHOWCASE[0]),
             "llm_prompt": llm_prompt(context["base_url"]),
         }
     )

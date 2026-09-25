@@ -69,32 +69,56 @@ def test_showcase_links_sister_sites_to_real_endpoints() -> None:
 
 
 def test_showcase_credits_contributors_and_invites_submissions() -> None:
-    from app.web.showcase import SHOWCASE, SUBMISSION_FIELDS, SUBMIT_URL
+    from app.web.showcase import SHOWCASE, SUBMIT_URL, slug
 
     response = client.get("/showcase")
 
     for product in SHOWCASE:
         assert product["contributors"], product["name"]
+        assert f'id="{slug(product["name"])}"' in response.text
         for name, url in product["contributors"]:
             assert f'href="{url}"' in response.text and f">{name}</a>" in response.text
     assert response.text.count(f'href="{SUBMIT_URL}"') >= 2
-    assert 'id="llm-prompt"' in response.text and 'data-copy-from="llm-prompt"' in response.text
-    assert "### Features and endpoints" in response.text
-    assert "Home: top win rates this week | GET /api/heroes/rank" in response.text
+    for block in ("llm-prompt", "entry-example"):
+        assert f'id="{block}"' in response.text and f'data-copy-from="{block}"' in response.text
 
 
-def test_showcase_issue_form_matches_the_documented_fields() -> None:
-    # The page, the LLM prompt, and the prefilled link all name fields by these ids.
+def test_showcase_entry_format_pastes_back_into_showcase() -> None:
+    # Submissions are pasted into SHOWCASE as-is, so the format the page and the
+    # LLM prompt teach must parse back to exactly the entry it came from.
+    import ast
+
+    from app.web.showcase import ENTRY_KEYS, SHOWCASE, format_entry, llm_prompt
+
+    for product in SHOWCASE:
+        assert list(product) == [key for key, _ in ENTRY_KEYS]
+        source = format_entry(product)
+        assert source.endswith("},")
+        assert ast.literal_eval(source[:-1]) == product
+    assert format_entry(SHOWCASE[0]) in llm_prompt("https://arena.rone.dev/")
+
+
+def test_showcase_slug_survives_community_names() -> None:
+    from app.web.showcase import slug
+
+    assert slug("Arena Academy") == "project-arena-academy"
+    assert slug("Hero's Hub! v2") == "project-hero-s-hub-v2"
+    assert slug("???") == "project-unnamed"
+
+
+def test_showcase_issue_form_takes_one_python_entry() -> None:
+    # The prompt's prefilled link fills the form field by its id.
     import re
 
-    from app.web.showcase import SUBMISSION_FIELDS
+    from app.web.showcase import llm_prompt
 
     form_path = os.path.join(os.path.dirname(__file__), "..", ".github", "ISSUE_TEMPLATE", "showcase.yml")
     with open(form_path, encoding="utf-8") as handle:
         form = handle.read()
-    fields = re.findall(r"- type: (?:input|textarea)\n    id: (\w+)\n    attributes:\n      label: (.+)", form)
 
-    assert fields == [(field["id"], field["label"]) for field in SUBMISSION_FIELDS]
+    assert re.findall(r"- type: (?:input|textarea)\n    id: (\w+)", form) == ["entry", "source", "screenshot"]
+    assert "render: python" in form
+    assert "&entry=" in llm_prompt("https://arena.rone.dev/")
 
 
 def test_home_page_shows_both_sister_sites() -> None:
