@@ -1,53 +1,49 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="workspace">
+<div class="workbench">
 	{% include "sidebar.html" %}
 
-	<section class="stack-lg" style="min-width: 0">
-		<header class="page-head" style="margin-bottom: 0">
+	<div style="min-width: 0">
+		<header class="bench-head">
 			<nav class="tabs" aria-label="API groups">
 				{% for group in groups %}
-					<a href="/web/{{ group }}" class="tab{{ ' is-active' if current_group == group else '' }}" style="display: inline-flex; align-items: center"{% if current_group == group %} aria-current="page"{% endif %}>{{ group_meta[group]["title"] }}</a>
+					<a href="/web/{{ group }}" class="tab{{ ' is-active' if current_group == group else '' }}"{% if current_group == group %} aria-current="page"{% endif %}>{{ group_meta[group]["title"] }}</a>
 				{% endfor %}
 			</nav>
-			<p class="eyebrow eyebrow--accent" style="margin-top: 12px">Playground</p>
-			<h1 class="page-title">{{ web_title if web_title else title }}</h1>
-			<p class="page-lede">{{ subtitle }}</p>
+			{# A single-endpoint page uses the endpoint's own title as its h1 instead of repeating it. #}
+			{% if not selected_web_path %}
+				<h1>{{ web_title if web_title else title }}</h1>
+				<p class="lede">{{ subtitle }}</p>
+			{% endif %}
+			<p class="bench-base" data-api-base-panel>
+				Requests go to <code id="api-base-active">{{ api_url }}</code>{% if is_debug %} <span class="tag tag--caution">debug</span>{% endif %}.
+				Forms are generated from the OpenAPI schema.
+			</p>
 		</header>
 
-		<div class="base-bar" data-api-base-panel>
-			<span class="eyebrow">API base</span>
-			<code id="api-base-active" class="break-all">{{ api_url }}</code>
-			{% if is_debug %}<span class="badge badge--warning">Debug</span>{% endif %}
-			<span class="help" style="margin-left: auto">Forms are generated from the OpenAPI schema and call this base directly.</span>
-		</div>
-
 		{% if sidebar_operations %}
-			<div class="jump-mobile stack-sm" data-mobile-endpoint-strip>
-				<p class="eyebrow">Jump to endpoint</p>
-				<div class="jump-strip">
+			<div class="jump-block" data-mobile-endpoint-strip>
+				<p class="help" style="margin-top: 8px">Jump to endpoint</p>
+				<nav class="jump" aria-label="Endpoints">
 					{% for operation in sidebar_operations %}
 						{% set active = selected_web_path and operation.web_path.rstrip('/') == selected_web_path.rstrip('/') %}
-						<a href="{{ operation.web_path }}" class="{{ 'is-active' if active else '' }}">
-							<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
-							{{ operation.web_path.removeprefix('/web/' ~ current_group) or '/' }}
+						<a href="{{ operation.web_path }}"{% if active %} aria-current="page"{% endif %}>
+							<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>{{ operation.web_path.removeprefix('/web/' ~ current_group) or '/' }}
 						</a>
 					{% endfor %}
-				</div>
+				</nav>
 			</div>
 		{% endif %}
 
 		{% if not operations %}
-			<div class="card card-pad muted">No endpoint metadata found for this group.</div>
+			<p class="note">No endpoint metadata found for this group.</p>
 		{% else %}
-			<div class="stack-lg">
-				{% for operation in operations %}
-					{% include "web/endpoint_card.html" %}
-				{% endfor %}
-			</div>
+			{% for operation in operations %}
+				{% include "web/endpoint_card.html" %}
+			{% endfor %}
 		{% endif %}
-	</section>
+	</div>
 </div>
 {% endblock %}
 

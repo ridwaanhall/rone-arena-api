@@ -1,71 +1,52 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<article class="article stack-lg">
-	<header class="stack">
-		<a href="/blog" class="btn btn--ghost btn--sm" style="align-self: flex-start; margin-left: -10px">
-			<svg style="transform: rotate(180deg)"><use href="#i-arrow" /></svg>
-			Back to Blog
-		</a>
-		<div class="row" style="gap: 6px">
-			<span class="badge">{{ blog_post.get('category', 'Article') }}</span>
-			{% if blog_post.get('is_featured') %}<span class="badge badge--accent">Featured</span>{% endif %}
-			{% if blog_post.get('is_pinned') %}<span class="badge badge--warning">Pinned</span>{% endif %}
-		</div>
-		<h1 class="article-title">{{ blog_post['title'] }}</h1>
-		<p class="page-lede">{{ blog_post['excerpt'] }}</p>
-		<div class="post-meta">
-			<span>{{ blog_post['published_at'] }}</span>
-			<span class="sep"></span>
-			<span>{{ blog_post['read_time'] }}</span>
-		</div>
-	</header>
+<article class="article">
+	<a href="/blog" class="link back">Back to Blog</a>
+	<h1>{{ blog_post['title'] }}</h1>
+	<p class="lede">{{ blog_post['excerpt'] }}</p>
+	<p class="meta">{{ blog_post['published_at'] }}, {{ blog_post['read_time'] }}, {{ blog_post.get('category', 'Article') }}</p>
 
-	<img class="post-cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" style="border: 1px solid var(--border)" />
+	<img class="cover" src="{{ blog_post['cover_image'] }}" alt="{{ blog_post['title'] }}" fetchpriority="high" />
 
 	{% if blog_post.get('key_points') %}
 		<div class="keypoints">
-			<p class="eyebrow">Key points</p>
+			<h2>In short</h2>
 			<ul>
 				{% for point in blog_post['key_points'] %}<li>{{ point }}</li>{% endfor %}
 			</ul>
 		</div>
 	{% endif %}
 
-	{% for section in blog_post['sections'] %}
-		<section class="article-section">
-			<h2>{{ section['heading'] }}</h2>
-			<p>{{ section['body'] }}</p>
+	<div class="article-body">
+		{% for section in blog_post['sections'] %}
+			<section>
+				<h2>{{ section['heading'] }}</h2>
+				<p>{{ section['body'] }}</p>
 
-			{% if section.get('bullets') %}
-				<ul>
-					{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
-				</ul>
-			{% endif %}
+				{% if section.get('bullets') %}
+					<ul>
+						{% for item in section['bullets'] %}<li>{{ item }}</li>{% endfor %}
+					</ul>
+				{% endif %}
 
-			{% if section.get('callout') %}
-				<div class="alert alert--accent" style="margin-top: 14px">
-					<svg><use href="#i-alert" /></svg>
-					<span>{{ section['callout'] }}</span>
-				</div>
-			{% endif %}
+				{% if section.get('callout') %}
+					<p class="note">{{ section['callout'] }}</p>
+				{% endif %}
 
-			{% if section.get('image') %}
-				<figure class="article-figure">
-					<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" />
-					{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
-				</figure>
-			{% elif section.get('image_note') %}
-				<p class="help" style="margin-top: 8px">{{ section['image_note'] }}</p>
-			{% endif %}
-		</section>
-	{% endfor %}
+				{% if section.get('image') %}
+					<figure>
+						<img src="{{ section['image'] }}" alt="{{ section['heading'] }}" loading="lazy" />
+						{% if section.get('image_note') %}<figcaption>{{ section['image_note'] }}</figcaption>{% endif %}
+					</figure>
+				{% elif section.get('image_note') %}
+					<p class="help" style="margin-top: 8px">{{ section['image_note'] }}</p>
+				{% endif %}
+			</section>
+		{% endfor %}
+	</div>
 
-	<hr class="divider" />
-	<a href="/blog" class="btn btn--secondary" style="align-self: flex-start">
-		<svg style="transform: rotate(180deg)"><use href="#i-arrow" /></svg>
-		All articles
-	</a>
+	<p style="margin-top: 48px; padding-top: 16px; border-top: 1.5px solid var(--ink)"><a href="/blog" class="link">All posts</a></p>
 </article>
 
 <script type="application/ld+json">

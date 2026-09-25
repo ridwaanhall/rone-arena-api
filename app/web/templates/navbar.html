@@ -1,77 +1,58 @@
 {% set path = request.url.path %}
 {% set nav_items = [
-	("/", "Home", path == "/"),
-	("/web/user", "Playground", path.startswith("/web")),
+	("/web/heroes", "Playground", path.startswith("/web")),
+	("/showcase", "Showcase", path.startswith("/showcase")),
 	("/blog", "Tutorials", path.startswith("/blog")),
 	("/api/docs", "API Docs", False),
 ] %}
-<header class="navbar">
-	<div class="container">
-		<div class="navbar-inner">
-			<a href="/" class="brand" aria-label="Rone Arena home">
-				<span class="brand-mark"><svg><use href="#i-logo" /></svg></span>
-				<span class="brand-name">Rone Arena</span>
-				<span class="badge badge--outline brand-version">v{{ api_version }}</span>
-			</a>
+<header class="masthead">
+	<div class="wrap">
+		<div class="masthead-row">
+			<a href="/" class="wordmark"{% if path == "/" %} aria-current="page"{% endif %}>Rone Arena <span>API</span></a>
 
-			<nav class="nav-links" aria-label="Primary">
+			<nav class="nav" aria-label="Primary">
 				{% for href, label, active in nav_items %}
-					<a href="{{ href }}" class="nav-link{{ ' is-active' if active else '' }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+					<a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
 				{% endfor %}
 			</nav>
 
-			<div class="nav-actions">
-				<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener" class="btn btn--ghost btn--icon nav-hide-sm" aria-label="GitHub repository" title="GitHub repository">
-					<svg><use href="#i-github" /></svg>
-				</a>
-				<button id="donate-modal-trigger" type="button" class="btn btn--ghost nav-hide-sm">
-					<svg style="color: var(--accent)"><use href="#i-heart" /></svg>
-					Donate
-				</button>
-				<button id="theme-toggle" type="button" class="btn btn--ghost btn--icon" aria-label="Toggle color theme" title="Toggle color theme">
-					<svg class="theme-icon-light"><use href="#i-moon" /></svg>
-					<svg class="theme-icon-dark"><use href="#i-sun" /></svg>
+			<div class="masthead-end">
+				<a href="https://github.com/ridwaanhall/rone-arena-api/releases" class="version only-wide" target="_blank" rel="noreferrer noopener" title="Release notes">v{{ api_version }}</a>
+				<button id="donate-modal-trigger" type="button" class="button button--bare button--small only-wide">Donate</button>
+				<button id="theme-toggle" type="button" class="button button--bare button--small" aria-label="Switch color theme">
+					<span class="theme-light-label">Dark</span><span class="theme-dark-label">Light</span>
 				</button>
 
-				<button id="user-signin-button" type="button" class="btn btn--primary">Sign In</button>
+				<button id="user-signin-button" type="button" class="button button--small">Sign In</button>
 
 				<div class="menu-anchor">
-					<button id="user-menu-trigger" type="button" class="user-trigger hidden" aria-haspopup="menu" aria-controls="user-menu-panel">
-						<span id="user-badge" class="row" style="gap: 8px; flex-wrap: nowrap">
+					<button id="user-menu-trigger" type="button" class="user-button hidden" aria-haspopup="menu" aria-controls="user-menu-panel" aria-expanded="false">
+						<span id="user-badge" style="display: contents">
 							<img id="user-avatar" class="avatar" src="" alt="" />
-							<span class="user-label truncate"><span id="user-name">Player</span><span id="user-country-inline" class="subtle"></span></span>
+							<span class="name"><span id="user-name">Player</span><span id="user-country-inline" class="faint"></span></span>
 						</span>
-						<svg style="width: 14px; height: 14px; color: var(--text-subtle)"><use href="#i-chevron" /></svg>
 					</button>
-
 					<div id="user-menu-panel" class="menu hidden" role="menu">
-						<div class="menu-head stack-sm">
-							<span id="jwt-status" class="badge badge--success"><span class="dot"></span>Not Signed In</span>
-							<p class="help">Role (Zone) <span id="user-role-zone" class="mono" style="color: var(--text)">-</span></p>
+						<div class="menu-meta">
+							<p id="jwt-status">Not Signed In</p>
+							<p class="faint">Role (Zone): <span id="user-role-zone" class="mono">-</span></p>
 						</div>
-						<hr class="divider" style="margin: 0 4px 6px" />
-						<button id="jwt-copy-action" type="button" class="menu-item" role="menuitem"><svg><use href="#i-key" /></svg><span data-label>Copy JWT</span></button>
-						<button id="jwt-auth-action" type="button" class="menu-item menu-item--danger" role="menuitem"><svg><use href="#i-logout" /></svg><span data-label>Sign Out</span></button>
+						<button id="jwt-copy-action" type="button" class="menu-item" role="menuitem"><span data-label>Copy JWT</span></button>
+						<button id="jwt-auth-action" type="button" class="menu-item menu-item--danger" role="menuitem"><span data-label>Sign Out</span></button>
 					</div>
 				</div>
 
-				<button id="nav-toggle" type="button" class="btn btn--ghost btn--icon nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
-					<svg><use href="#i-menu" /></svg>
-				</button>
+				<button id="nav-toggle" type="button" class="button button--bare button--small menu-toggle" aria-expanded="false" aria-controls="nav-drawer">Menu</button>
 			</div>
 		</div>
 
-		<div id="nav-drawer" class="nav-drawer hidden">
-			<nav class="stack-sm" aria-label="Mobile">
-				{% for href, label, active in nav_items %}
-					<a href="{{ href }}" class="nav-link{{ ' is-active' if active else '' }}">{{ label }}</a>
-				{% endfor %}
-				<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener" class="nav-link">GitHub</a>
-				<button type="button" class="btn btn--secondary" data-open-donate>
-					<svg style="color: var(--accent)"><use href="#i-heart" /></svg>
-					Donate
-				</button>
-			</nav>
-		</div>
+		<nav id="nav-drawer" class="drawer hidden" aria-label="Mobile">
+			<a href="/">Home</a>
+			{% for href, label, active in nav_items %}
+				<a href="{{ href }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+			{% endfor %}
+			<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub</a>
+			<button type="button" data-open-donate>Donate</button>
+		</nav>
 	</div>
 </header>

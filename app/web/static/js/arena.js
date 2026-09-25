@@ -183,7 +183,7 @@
 		const remaining = auth.expiresAt - Date.now();
 		const hours = Math.floor(remaining / (1000 * 60 * 60));
 		const minutes = Math.floor((remaining / (1000 * 60)) % 60);
-		status.lastChild.textContent = `Signed in · ${hours}h ${minutes}m left`;
+		status.lastChild.textContent = `Signed in, ${hours}h ${minutes}m left on this JWT`;
 		signInButton?.classList.add("hidden");
 		trigger?.classList.remove("hidden");
 
@@ -198,7 +198,7 @@
 			avatar.alt = `${displayName} avatar`;
 		}
 		if (name) name.textContent = displayName;
-		if (country) country.textContent = regCountry ? ` · ${regCountry}` : "";
+		if (country) country.textContent = regCountry ? ` (${regCountry})` : "";
 		if (roleZone) {
 			roleZone.textContent = roleId != null ? `${roleId} (${zoneId ?? "-"})` : "-";
 		}
@@ -309,19 +309,26 @@
 		return roleId && zoneId ? { role_id: roleId, zone_id: zoneId } : null;
 	}
 
+	// Step 2 (enter the code) stays greyed out until a code has been sent.
+	function setCodeStepReady(ready) {
+		loginBlock?.classList.toggle("is-waiting", !ready);
+		if (vcInput) vcInput.disabled = !ready;
+		if (loginButton) loginButton.disabled = !ready;
+	}
+
 	function openSignIn() {
 		if (!modals.signin) {
 			window.location.href = "/web/user/auth/send-vc";
 			return;
 		}
-		loginBlock?.classList.add("hidden");
+		setCodeStepReady(false);
 		setSignInStatus("Fill Role ID and Zone ID, then click Send VC.");
 		openModal(modals.signin, roleInput);
 	}
 
 	function closeSignIn() {
 		closeModal(modals.signin);
-		loginBlock?.classList.add("hidden");
+		setCodeStepReady(false);
 		if (vcInput) vcInput.value = "";
 		setSignInStatus("");
 	}
@@ -355,7 +362,7 @@
 				setSignInStatus(`Send VC failed (code: ${code}) - ${message}`, "error");
 				return;
 			}
-			loginBlock?.classList.remove("hidden");
+			setCodeStepReady(true);
 			setSignInStatus("Code sent. Check your in-game mail for the verification code.", "info");
 			vcInput?.focus();
 		} catch {

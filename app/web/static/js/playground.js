@@ -401,16 +401,6 @@
 		});
 	}
 
-	function setupResponseExampleToggles() {
-		document.querySelectorAll("[data-resp-example-toggle]").forEach((button) => {
-			const body = button.closest("[data-resp-example-wrapper]")?.querySelector("[data-resp-example-body]");
-			button.addEventListener("click", () => {
-				const hidden = body?.classList.toggle("hidden");
-				button.setAttribute("aria-expanded", String(!hidden));
-			});
-		});
-	}
-
 	function setupCopyButtons() {
 		document.addEventListener("click", async (event) => {
 			const button = event.target.closest("[data-copy-btn]");
@@ -563,7 +553,7 @@
 
 			setResponse(
 				form,
-				`HTTP ${response.status} · ${elapsed} ms`,
+				`HTTP ${response.status}, ${elapsed} ms`,
 				parsed ? JSON.stringify(parsed, null, 2) : rawText || "(empty response)",
 				snippets,
 				parsed
@@ -580,7 +570,6 @@
 	auth()?.renderNavbarState?.();
 	void hydrateUserInfoIfMissing();
 	setupDescriptionToggles();
-	setupResponseExampleToggles();
 	setupCopyButtons();
 	setupLanguageTabs();
 	setupResponseTabs();

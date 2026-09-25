@@ -1,98 +1,65 @@
 {% extends "layout.html" %}
 
-{% macro post_meta(post) -%}
-	<div class="post-meta">
-		<span>{{ post['published_at'] }}</span>
-		<span class="sep"></span>
-		<span>{{ post['read_time'] }}</span>
-	</div>
-{%- endmacro %}
-
-{% macro post_badges(post, show_featured=True) -%}
-	<div class="row" style="gap: 6px">
-		<span class="badge">{{ post.get('category', 'Article') }}</span>
-		{% if show_featured and post.get('is_featured') %}<span class="badge badge--accent">Featured</span>{% endif %}
-		{% if post.get('is_pinned') %}<span class="badge badge--warning">Pinned</span>{% endif %}
-	</div>
-{%- endmacro %}
-
 {% block content %}
 <header class="page-head">
-	<p class="eyebrow eyebrow--accent">Knowledge hub</p>
-	<h1 class="page-title">{{ web_title if web_title else "Tutorial & Blog" }}</h1>
-	<p class="page-lede">{{ subtitle }}</p>
-	<div class="row">
-		<span class="badge">{{ blog_posts | length }} posts</span>
-		<span class="badge badge--warning">{{ pinned_posts | length }} pinned</span>
-		<span class="badge badge--accent">{{ featured_posts | length }} featured</span>
-	</div>
+	<h1>{{ web_title if web_title else "Tutorial & Blog" }}</h1>
+	<p class="lede">{{ subtitle }}</p>
 </header>
 
 {% if not blog_posts %}
-	<div class="card card-pad muted">No blog content available yet.</div>
+	<p class="note">No posts yet.</p>
 {% else %}
-	<div class="stack-lg">
-		{% if featured_posts %}
-			{% set hero_post = featured_posts[0] %}
-			<article class="card featured">
-				<a href="/blog/{{ hero_post['slug'] }}" class="featured-media" aria-hidden="true" tabindex="-1">
-					<img src="{{ hero_post['cover_image'] }}" alt="" fetchpriority="high" />
-				</a>
-				<div class="featured-body">
-					{{ post_badges(hero_post) }}
-					<h2><a href="/blog/{{ hero_post['slug'] }}">{{ hero_post['title'] }}</a></h2>
-					<p class="muted">{{ hero_post['excerpt'] }}</p>
-					{{ post_meta(hero_post) }}
-					{% if hero_post.get('key_points') %}
-						<ul class="prose" style="margin: 0">
-							{% for point in hero_post['key_points'][:3] %}<li>{{ point }}</li>{% endfor %}
-						</ul>
-					{% endif %}
-					<a href="/blog/{{ hero_post['slug'] }}" class="btn btn--primary" style="align-self: flex-start">
-						Read Featured Post
-						<svg><use href="#i-arrow" /></svg>
-					</a>
-				</div>
-			</article>
-		{% endif %}
-
-		{% if pinned_posts %}
-			<section class="stack">
-				<div class="row-between">
-					<h2 style="font-size: var(--text-lg)">Pinned</h2>
-					<span class="help">High-priority reading</span>
-				</div>
-				<div class="post-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
-					{% for post in pinned_posts %}
-						<a href="/blog/{{ post['slug'] }}" class="card card--link card-pad stack-sm">
-							{{ post_badges(post, show_featured=False) }}
-							<h3 style="font-size: var(--text-lg)">{{ post['title'] }}</h3>
-							<p class="muted" style="font-size: var(--text-sm)">{{ post['excerpt'] }}</p>
-						</a>
-					{% endfor %}
-				</div>
-			</section>
-		{% endif %}
-
-		<section class="stack">
-			<div class="row-between">
-				<h2 style="font-size: var(--text-lg)">All articles</h2>
-				<span class="help">Newest first</span>
+	{% if featured_posts %}
+		{% set lead = featured_posts[0] %}
+		<article class="lead-post">
+			<a href="/blog/{{ lead['slug'] }}" tabindex="-1" aria-hidden="true">
+				<img class="cover" src="{{ lead['cover_image'] }}" alt="" fetchpriority="high" />
+			</a>
+			<div>
+				<p class="meta">{{ lead.get('category', 'Article') }}{% if lead.get('is_pinned') %}, pinned{% endif %}</p>
+				<h2 style="margin-top: 8px"><a href="/blog/{{ lead['slug'] }}">{{ lead['title'] }}</a></h2>
+				<p>{{ lead['excerpt'] }}</p>
+				{% if lead.get('key_points') %}
+					<ul>
+						{% for point in lead['key_points'][:3] %}<li>{{ point }}</li>{% endfor %}
+					</ul>
+				{% endif %}
+				<p class="meta">{{ lead['published_at'] }}, {{ lead['read_time'] }}</p>
+				<a class="button" style="margin-top: 18px" href="/blog/{{ lead['slug'] }}">Read Featured Post</a>
 			</div>
-			<div class="post-grid">
-				{% for post in blog_posts %}
-					<a href="/blog/{{ post['slug'] }}" class="card card--link post-card">
-						<img class="post-cover" src="{{ post['cover_image'] }}" alt="" loading="lazy" />
-						<div class="stack-sm" style="padding: 0 4px 4px">
-							{{ post_badges(post) }}
+		</article>
+	{% endif %}
+
+	{% if pinned_posts | length > 1 %}
+		<section class="section" style="padding-block: 32px">
+			<div class="section-aside">
+				<h2 class="section-title">Pinned</h2>
+				<p>High-priority reading</p>
+			</div>
+			<div class="post-list" style="border-top: 0">
+				{% for post in pinned_posts %}
+					<a class="post-row" href="/blog/{{ post['slug'] }}" style="grid-template-columns: 1fr">
+						<div>
 							<h3>{{ post['title'] }}</h3>
-							<p class="muted" style="font-size: var(--text-sm)">{{ post['excerpt'] }}</p>
-							{{ post_meta(post) }}
+							<p>{{ post['excerpt'] }}</p>
 						</div>
 					</a>
 				{% endfor %}
 			</div>
 		</section>
-	</div>
+	{% endif %}
+
+	<section class="post-list" aria-label="All posts">
+		{% for post in blog_posts %}
+			<a class="post-row" href="/blog/{{ post['slug'] }}">
+				<span class="meta">{{ post['published_at'] }}</span>
+				<div>
+					<h3>{{ post['title'] }}</h3>
+					<p>{{ post['excerpt'] }}</p>
+				</div>
+				<span class="kind">{{ post.get('category', 'Article') }}, {{ post['read_time'] }}</span>
+			</a>
+		{% endfor %}
+	</section>
 {% endif %}
 {% endblock %}

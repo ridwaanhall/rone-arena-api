@@ -22,26 +22,70 @@ def test_landing_page_has_docs_and_demo_options() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Open API Docs" in response.text
-    assert "Open Playground" in response.text
+    assert "Read the API docs" in response.text
+    assert "Open the playground" in response.text
     assert "/api/docs" in response.text
     assert "/web/user" in response.text
-    assert "family=Bricolage+Grotesque" in response.text
-    assert "Geist+Mono" in response.text
+    assert "family=Archivo:wdth,wght" in response.text
+    assert "IBM+Plex+Mono" in response.text
     assert "rone.dev/static/img/favicon/favicon.ico" in response.text
     assert "application/ld+json" in response.text
     assert "/static/css/arena.css?v=" in response.text
     assert "/static/js/arena.js?v=" in response.text
+    assert "/static/js/home.js?v=" in response.text
+    assert "data-live-rank" in response.text
     assert "Not Signed In" in response.text
     assert "Sign In" in response.text
-    assert "API Version" in response.text
+    assert "API version" in response.text
 
 
-def test_landing_page_counts_endpoints_per_group() -> None:
+def test_landing_page_indexes_every_endpoint() -> None:
     response = client.get("/")
-    heroes_count = len(get_group_operations(app, "heroes"))
+    operations = [op for group in ("user", "heroes", "academy", "addon") for op in get_group_operations(app, group)]
 
-    assert f"{heroes_count} endpoints" in response.text
+    assert f"{len(operations)} endpoints in 4 groups" in response.text
+    for operation in operations:
+        assert f'href="{operation["web_path"]}"' in response.text
+
+
+def test_showcase_links_sister_sites_to_real_endpoints() -> None:
+    from app.web.showcase import SHOWCASE
+
+    response = client.get("/showcase")
+    documented = {
+        (method.upper(), path)
+        for path, item in client.get("/api/openapi.json").json()["paths"].items()
+        for method in item
+    }
+
+    assert response.status_code == 200
+    assert "https://arena-academy.rone.dev/" in response.text
+    assert "https://arena-card.rone.dev/" in response.text
+    for product in SHOWCASE:
+        for _, endpoints in product["features"]:
+            for method, path in endpoints:
+                # A renamed or removed endpoint would silently leave a dead showcase row.
+                assert (method, path) in documented, (product["name"], method, path)
+
+
+def test_home_page_shows_both_sister_sites() -> None:
+    response = client.get("/")
+
+    assert "Arena Academy" in response.text
+    assert "Arena Card" in response.text
+    assert 'href="/showcase"' in response.text
+
+
+def test_ui_avoids_generic_ai_template_tells() -> None:
+    # Guard rails from the design research: no stock fonts, no decorative glow,
+    # no gradient text, no em dashes in interface copy.
+    css = client.get("/static/css/arena.css").text
+    pages = [client.get(path).text for path in ("/", "/showcase", "/web/heroes", "/blog")]
+
+    for banned in ("Inter", "Geist", "Space Grotesk", "backdrop-filter", "radial-gradient", "background-clip: text"):
+        assert banned not in css
+    for page in pages:
+        assert "—" not in page.split("<main>")[1].split("</main>")[0]
 
 
 def test_site_script_manages_session_and_theme() -> None:

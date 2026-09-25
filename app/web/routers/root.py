@@ -23,6 +23,7 @@ from app.core.config import (
     API_URL,
 )
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
+from app.web.showcase import with_playground_links
 
 router = APIRouter(tags=["web"])
 
@@ -49,6 +50,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "group_meta": GROUP_META,
         "groups": WEB_GROUPS,
         "current_group": current_group,
+        "group_counts": {group: len(get_group_operations(request.app, group)) for group in WEB_GROUPS},
         "current_year": datetime.now(UTC).year,
         "api_version": PROJECT_VERSION,
         "asset_version": ASSET_VERSION,
@@ -67,6 +69,19 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
     }
 
 
+def _operations_by_group(app) -> dict[str, list[dict[str, object]]]:
+    return {group: get_group_operations(app, group) for group in WEB_GROUPS}
+
+
+def _showcase_products(operations_by_group: dict[str, list[dict[str, object]]]) -> list[dict[str, object]]:
+    web_paths = {
+        (str(operation["method"]), str(operation["api_path"])): str(operation["web_path"])
+        for operations in operations_by_group.values()
+        for operation in operations
+    }
+    return with_playground_links(web_paths)
+
+
 def _normalize_path(value: str) -> str:
     normalized = value.rstrip("/")
     return normalized or "/"
@@ -76,14 +91,15 @@ def _normalize_path(value: str) -> str:
 def landing_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     if IS_AVAILABLE:
-        group_counts = {group: len(get_group_operations(request.app, group)) for group in WEB_GROUPS}
+        operations_by_group = _operations_by_group(request.app)
         context.update(
             {
-                "group_counts": group_counts,
-                "endpoint_total": sum(group_counts.values()),
-                "title": "Home / Rone Arena API & Web",
+                "operations_by_group": operations_by_group,
+                "endpoint_total": sum(len(operations) for operations in operations_by_group.values()),
+                "products": _showcase_products(operations_by_group),
+                "title": "Rone Arena API: Mobile Legends: Bang Bang game data as JSON",
                 "web_title": "Home",
-                "seo_description": "Modern landing page for the Rone Arena API. Access docs and a full interactive web playground for all endpoints.",
+                "seo_description": "Free REST API for Mobile Legends: Bang Bang game data: heroes, win rates, builds, counters, academy guides, and player records, with an interactive playground.",
                 "seo_keywords": "rone arena, mobile legends data, api docs, web playground, analytics api",
             }
         )
@@ -108,6 +124,21 @@ def landing_page(request: Request) -> HTMLResponse:
             }
         )
     return templates.TemplateResponse(request, "root/landing_page.html", context, status_code=503)
+
+
+@router.get(path="/showcase", include_in_schema=False, response_class=HTMLResponse, name="web.showcase")
+def showcase_page(request: Request) -> HTMLResponse:
+    context = _shared_context(request)
+    context.update(
+        {
+            "title": "Showcase: sites built on the Rone Arena API",
+            "web_title": "Showcase",
+            "seo_description": "Arena Academy and Arena Card are built on the Rone Arena API. See which endpoints power each page and open them in the playground.",
+            "seo_keywords": "rone arena api examples, arena academy, arena card, api integration example",
+            "products": _showcase_products(_operations_by_group(request.app)),
+        }
+    )
+    return templates.TemplateResponse(request, "root/showcase_page.html", context)
 
 
 @router.get(path="/web", include_in_schema=False)

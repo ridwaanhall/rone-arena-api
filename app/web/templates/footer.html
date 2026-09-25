@@ -1,49 +1,48 @@
 <footer class="footer">
-	<div class="container">
-		<div class="footer-grid">
-			<div class="stack-sm" style="max-width: 36ch">
-				<a href="/" class="brand">
-					<span class="brand-mark"><svg><use href="#i-logo" /></svg></span>
-					<span class="brand-name">Rone Arena</span>
-				</a>
-				<p class="muted" style="font-size: var(--text-sm)">
-					A community data API and interactive playground for the game Mobile Legends: Bang Bang. Built for developers, analysts, and fans.
-				</p>
+	<div class="wrap">
+		<div class="footer-cols">
+			<div class="about">
+				<a href="/" class="wordmark">Rone Arena <span>API</span></a>
+				<p>A free, community-maintained REST API for Mobile Legends: Bang Bang game data, with an interactive playground for every endpoint.</p>
 			</div>
-
 			<div>
-				<h4>Playground</h4>
-				<div class="footer-links">
+				<h2>Playground</h2>
+				<ul>
 					{% for group in groups %}
-						<a href="/web/{{ group }}">{{ group_meta[group]["title"] }}</a>
+						<li><a href="/web/{{ group }}">{{ group_meta[group]["title"] }}</a></li>
 					{% endfor %}
-				</div>
+				</ul>
 			</div>
-
 			<div>
-				<h4>Developers</h4>
-				<div class="footer-links">
-					<a href="/api/docs">Swagger UI</a>
-					<a href="/api/redoc">ReDoc</a>
-					<a href="/api/openapi.json">OpenAPI JSON</a>
-					<a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub repository</a>
-				</div>
+				<h2>Reference</h2>
+				<ul>
+					<li><a href="/api/docs">Swagger UI</a></li>
+					<li><a href="/api/redoc">ReDoc</a></li>
+					<li><a href="/api/openapi.json">OpenAPI JSON</a></li>
+					<li><a href="/api">API status</a></li>
+				</ul>
 			</div>
-
 			<div>
-				<h4>Project</h4>
-				<div class="footer-links">
-					<a href="/blog">Tutorials &amp; blog</a>
-					<a href="https://github.com/ridwaanhall/rone-arena-api/blob/main/HOSTED_API_TERMS.md" target="_blank" rel="noreferrer noopener">Hosted API terms</a>
-					<a href="https://github.com/ridwaanhall/rone-arena-api/blob/main/LICENSE" target="_blank" rel="noreferrer noopener">BSD 3-Clause license</a>
-					<a href="https://rone.dev" target="_blank" rel="noreferrer noopener">RoneAI</a>
-				</div>
+				<h2>Built on it</h2>
+				<ul>
+					<li><a href="https://arena-academy.rone.dev/" target="_blank" rel="noreferrer noopener">Arena Academy</a></li>
+					<li><a href="https://arena-card.rone.dev/" target="_blank" rel="noreferrer noopener">Arena Card</a></li>
+					<li><a href="/showcase">How they use the API</a></li>
+				</ul>
+			</div>
+			<div>
+				<h2>Project</h2>
+				<ul>
+					<li><a href="/blog">Tutorials</a></li>
+					<li><a href="https://github.com/ridwaanhall/rone-arena-api" target="_blank" rel="noreferrer noopener">GitHub</a></li>
+					<li><a href="https://github.com/ridwaanhall/rone-arena-api/blob/main/HOSTED_API_TERMS.md" target="_blank" rel="noreferrer noopener">Hosted API terms</a></li>
+					<li><a href="https://github.com/ridwaanhall/rone-arena-api/blob/main/LICENSE" target="_blank" rel="noreferrer noopener">BSD 3-Clause license</a></li>
+				</ul>
 			</div>
 		</div>
-
 		<div class="footer-base">
-			<p>&copy; 2024&ndash;{{ current_year }} ridwaanhall / RoneAI &middot; v{{ api_version }}</p>
-			<p style="max-width: 80ch">Unofficial project, not affiliated with or endorsed by Moonton. "Mobile Legends: Bang Bang" and all related marks and assets belong to their respective owners.</p>
+			<p>&copy; 2024&ndash;{{ current_year }} ridwaanhall, RoneAI. Version {{ api_version }}.</p>
+			<p>Unofficial project, not affiliated with or endorsed by Moonton. "Mobile Legends: Bang Bang" and all related marks and assets belong to their respective owners.</p>
 		</div>
 	</div>
 </footer>

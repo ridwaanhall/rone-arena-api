@@ -3,14 +3,14 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-	{% set page_title = title if title else "Home / Rone Arena API & Web" %}
-	{% set page_description = seo_description if seo_description else "Interactive web interface for the Rone Arena API with docs, endpoint forms, readable responses, and code snippets." %}
+	{% set page_title = title if title else "Rone Arena API" %}
+	{% set page_description = seo_description if seo_description else "Free REST API for Mobile Legends: Bang Bang game data, with an interactive playground." %}
 	<title>{{ page_title }}</title>
 	<meta name="description" content="{{ page_description }}" />
-	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'rone arena api, mobile legends data api, fastapi, analytics, hero data, openapi, web interface' }}" />
+	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'rone arena api, mobile legends data api, hero data, openapi' }}" />
 	<meta name="robots" content="index, follow" />
-	<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)" />
-	<meta name="theme-color" content="#0c0d10" media="(prefers-color-scheme: dark)" />
+	<meta name="theme-color" content="#f7f7f4" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#121310" media="(prefers-color-scheme: dark)" />
 	<meta property="og:type" content="website" />
 	<meta property="og:title" content="{{ page_title }}" />
 	<meta property="og:description" content="{{ page_description }}" />
@@ -22,23 +22,21 @@
 	<link rel="canonical" href="{{ request.url }}" />
 	<link rel="icon" type="image/x-icon" href="https://rone.dev/static/img/favicon/favicon.ico" />
 
-	{# Apply the saved theme before first paint so there is no light/dark flash. #}
+	{# Apply a saved theme before first paint. Without one, the system setting decides. #}
 	<script>
 		(() => {
 			try {
 				const theme = localStorage.getItem("arena_theme");
-				if (theme === "light" || theme === "dark") {
-					document.documentElement.dataset.theme = theme;
-				}
+				if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
 			} catch {
-				/* storage unavailable: follow the system theme */
+				/* storage unavailable */
 			}
 		})();
 	</script>
 
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-	<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist+Mono:wght@400..600&family=Geist:wght@400..700&display=swap" rel="stylesheet" />
+	<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 	<link rel="stylesheet" href="/static/css/arena.css?v={{ asset_version }}" />
 
 	{% if is_analytics_host %}
@@ -54,11 +52,10 @@
 	{% endif %}
 </head>
 <body>
-	{% include "icons.html" %}
 	{% include "navbar.html" %}
 
-	<main class="page">
-		<div class="container">
+	<main>
+		<div class="wrap">
 			{% block content %}{% endblock %}
 		</div>
 	</main>
@@ -66,71 +63,69 @@
 	{% include "footer.html" %}
 
 	<div id="signin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signin-title">
-		<div class="dialog stack">
-			<div class="stack-sm">
-				<p class="eyebrow eyebrow--accent">Account</p>
-				<h2 id="signin-title">Sign in with a verification code</h2>
-				<p class="muted">Enter your in-game Role ID and Zone ID, send a code to your in-game mail, then confirm it here.</p>
-			</div>
+		<div class="dialog">
+			<h2 id="signin-title">Sign in</h2>
+			<p class="quiet" style="margin-top: 10px">User endpoints need a JWT. You get one by confirming a code the game sends to your in-game mail.</p>
 
-			<div class="params">
-				<div class="field">
-					<label class="label" for="signin-role-id">Role ID</label>
-					<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="1234567890" />
-				</div>
-				<div class="field">
-					<label class="label" for="signin-zone-id">Zone ID</label>
-					<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="1234" />
-				</div>
-			</div>
-
-			<div class="row">
-				<button id="signin-send-vc" type="button" class="btn btn--secondary">Send VC</button>
-				<span id="signin-vc-hint" class="help">The code expires in 5 minutes.</span>
-			</div>
-
-			<div id="signin-login-block" class="stack-sm hidden">
-				<div class="field">
-					<label class="label" for="signin-vc">Verification code</label>
-					<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" />
-				</div>
-				<button id="signin-login" type="button" class="btn btn--primary btn--block">Sign In</button>
-			</div>
+			<ol class="steps">
+				<li class="step">
+					<div class="step-body">
+						<span class="label">Your Role ID and Zone ID</span>
+						<div class="field-pair">
+							<label class="sr-only" for="signin-role-id">Role ID</label>
+							<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Role ID" />
+							<label class="sr-only" for="signin-zone-id">Zone ID</label>
+							<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Zone ID" />
+						</div>
+						<div>
+							<button id="signin-send-vc" type="button" class="button">Send VC</button>
+						</div>
+						<p id="signin-vc-hint" class="help">The code arrives in your in-game mail and expires in 5 minutes.</p>
+					</div>
+				</li>
+				<li id="signin-login-block" class="step is-waiting">
+					<div class="step-body">
+						<label class="label" for="signin-vc">The code from your mail</label>
+						<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" disabled />
+						<div>
+							<button id="signin-login" type="button" class="button button--mark" disabled>Sign In</button>
+						</div>
+					</div>
+				</li>
+			</ol>
 
 			<p id="signin-status" class="status-line" aria-live="polite"></p>
 
-			<div class="dialog-foot" style="margin-top: 0">
-				<button id="signin-cancel" type="button" class="btn btn--ghost">Close</button>
+			<div class="dialog-actions">
+				<button id="signin-cancel" type="button" class="button button--bare">Close</button>
 			</div>
 		</div>
 	</div>
 
 	<div id="signout-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signout-confirm-title">
 		<div class="dialog">
-			<p class="eyebrow">Account session</p>
-			<h2 id="signout-confirm-title" style="margin-top: 8px">Sign out?</h2>
-			<p class="muted" style="margin-top: 10px">Are you sure you want to sign out? Your cached JWT will be cleared from this browser.</p>
-			<div class="dialog-foot">
-				<button id="signout-cancel" type="button" class="btn btn--ghost">Cancel</button>
-				<button id="signout-confirm" type="button" class="btn btn--danger">Sign Out</button>
+			<h2 id="signout-confirm-title">Sign out</h2>
+			<p class="quiet" style="margin-top: 10px">Are you sure you want to sign out? The JWT saved in this browser will be removed.</p>
+			<div class="dialog-actions">
+				<button id="signout-cancel" type="button" class="button button--bare">Cancel</button>
+				<button id="signout-confirm" type="button" class="button button--danger">Sign Out</button>
 			</div>
 		</div>
 	</div>
 
 	<div id="donate-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="donate-title">
 		<div class="dialog">
-			<p class="eyebrow eyebrow--accent">Support the project</p>
-			<h2 id="donate-title" style="margin-top: 8px">Keep the arena running</h2>
-			<p class="muted" style="margin-top: 10px">Donations cover hosting and ongoing development. Any platform below works.</p>
-			<div class="link-list" style="margin-top: 18px">
-				<a class="link-row" href="https://github.com/sponsors/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>GitHub Sponsors</strong><span>github.com/sponsors/ridwaanhall</span></a>
-				<a class="link-row" href="https://paypal.me/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>PayPal</strong><span>paypal.me/ridwaanhall</span></a>
-				<a class="link-row" href="https://buymeacoffee.com/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>Buy Me a Coffee</strong><span>buymeacoffee.com/ridwaanhall</span></a>
-				<a class="link-row" href="https://saweria.co/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>Saweria</strong><span>saweria.co/ridwaanhall</span></a>
-				<a class="link-row" href="https://sociabuzz.com/ridwaanhall/support" target="_blank" rel="noreferrer noopener"><strong>Sociabuzz</strong><span>sociabuzz.com/ridwaanhall/support</span></a>
-			</div>
-			<div class="dialog-foot">
-				<button id="donate-close" type="button" class="btn btn--ghost">Close</button>
+			<h2 id="donate-title">Donate</h2>
+			<p class="quiet" style="margin-top: 10px">Rone Arena is free to use. Donations pay for hosting and the time spent keeping it running.</p>
+			<ul class="plain-list">
+				<li><a href="https://github.com/sponsors/ridwaanhall" target="_blank" rel="noreferrer noopener">GitHub Sponsors <span>github.com/sponsors/ridwaanhall</span></a></li>
+				<li><a href="https://paypal.me/ridwaanhall" target="_blank" rel="noreferrer noopener">PayPal <span>paypal.me/ridwaanhall</span></a></li>
+				<li><a href="https://buymeacoffee.com/ridwaanhall" target="_blank" rel="noreferrer noopener">Buy Me a Coffee <span>buymeacoffee.com/ridwaanhall</span></a></li>
+				<li><a href="https://saweria.co/ridwaanhall" target="_blank" rel="noreferrer noopener">Saweria <span>saweria.co/ridwaanhall</span></a></li>
+				<li><a href="https://sociabuzz.com/ridwaanhall/support" target="_blank" rel="noreferrer noopener">Sociabuzz <span>sociabuzz.com/ridwaanhall/support</span></a></li>
+			</ul>
+			<div class="dialog-actions">
+				<button id="donate-close" type="button" class="button button--bare">Close</button>
 			</div>
 		</div>
 	</div>

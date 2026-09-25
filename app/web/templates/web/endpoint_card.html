@@ -1,89 +1,73 @@
 {% set op_id = operation.operation_id %}
-<article
+<section
 	id="{{ op_id }}"
-	class="card card-pad endpoint{{ ' is-deprecated' if operation.deprecated else '' }}"
+	class="endpoint{{ ' is-deprecated' if operation.deprecated else '' }}"
 	data-operation-id="{{ op_id }}"
 	{% if operation.deprecated %}data-deprecated="true"{% endif %}
+	aria-labelledby="{{ op_id }}-title"
 >
-	<header class="endpoint-head">
-		<div class="row-between">
-			<div class="endpoint-route">
-				<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
-				<code>{{ operation.api_path }}</code>
+	<p class="endpoint-route">
+		<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
+		<code>{{ operation.api_path }}</code>
+	</p>
+	{% set heading = "h1" if selected_web_path else "h2" %}
+	<{{ heading }} class="endpoint-title" id="{{ op_id }}-title">
+		{{ operation.summary }}
+		{% if operation.requires_auth %}<span class="tag tag--info" title="Send Authorization: Bearer &lt;jwt&gt;">JWT</span>{% endif %}
+		{% if operation.deprecated %}<span class="tag tag--caution">Deprecated</span>{% endif %}
+	</{{ heading }}>
+	{% if not selected_web_path %}
+		<p class="endpoint-tools"><a class="link" href="{{ operation.web_path }}">Open on its own page</a></p>
+	{% endif %}
+
+	{% if operation.deprecated %}
+		<p class="note">Deprecated. It may change or disappear in a future version, so avoid it in new integrations.</p>
+	{% endif %}
+
+	{% if operation.description_html %}
+		<div data-desc-wrapper>
+			<div class="prose desc" data-desc-content>
+				{{ operation.description_html | safe }}
+				<div class="desc-fade hidden" data-desc-fade></div>
 			</div>
-			<a href="{{ operation.web_path }}" class="btn btn--ghost btn--sm" title="Open this endpoint on its own page">
-				Open only this
-				<svg><use href="#i-arrow" /></svg>
-			</a>
+			<button type="button" class="button button--bare button--small hidden" style="margin: 6px 0 0 -10px" data-desc-toggle>Show more</button>
 		</div>
-		<div class="row" style="gap: 10px">
-			<h2 class="endpoint-title">{{ operation.summary }}</h2>
-			{% if operation.requires_auth %}
-				<span class="badge badge--violet" title="Bearer JWT required (Authorization header)"><svg style="width: 12px; height: 12px"><use href="#i-shield" /></svg>Auth</span>
-			{% endif %}
-			{% if operation.deprecated %}
-				<span class="badge badge--warning">Deprecated</span>
-			{% endif %}
-		</div>
-	</header>
+	{% endif %}
 
-	<div class="endpoint-body">
-		{% if operation.deprecated %}
-			<div class="alert alert--warning">
-				<svg><use href="#i-alert" /></svg>
-				<span>This endpoint is deprecated and may be removed or changed in a future version. Avoid it in new integrations.</span>
-			</div>
-		{% endif %}
+	{% if operation.response_example_json %}
+		<details class="example" data-resp-example-wrapper>
+			<summary data-resp-example-toggle>Example response</summary>
+			<pre class="code" data-resp-example-body>{{ operation.response_example_json }}</pre>
+		</details>
+	{% endif %}
 
-		{% if operation.description_html %}
-			<div data-desc-wrapper>
-				<div class="prose collapse-fade" data-desc-content>
-					{{ operation.description_html | safe }}
-					<div class="hidden" data-desc-fade></div>
-				</div>
-				<button type="button" class="btn btn--ghost btn--sm hidden" style="margin-top: 6px; margin-left: -10px" data-desc-toggle>Show more</button>
-			</div>
-		{% endif %}
-
-		{% if operation.response_example_json %}
-			<div class="disclosure" data-resp-example-wrapper>
-				<button type="button" class="disclosure-btn" aria-expanded="false" data-resp-example-toggle>
-					<span class="row"><span>Example response</span><span class="badge badge--success">200</span></span>
-					<svg data-resp-example-chevron><use href="#i-chevron" /></svg>
-				</button>
-				<div class="hidden" data-resp-example-body>
-					<pre class="code code--sm" style="border: 0; border-radius: 0">{{ operation.response_example_json }}</pre>
-				</div>
-			</div>
-		{% endif %}
-
-		<form
-			class="api-operation-form stack"
-			data-method="{{ operation.method }}"
-			data-api-path="{{ operation.api_path }}"
-			data-requires-auth="{{ 'true' if operation.requires_auth else 'false' }}"
-			novalidate
-		>
-			{% if operation.parameters %}
-				<div class="params">
-					{% for parameter in operation.parameters %}
-						{% set field_id = "f-" ~ op_id ~ "-" ~ parameter.name %}
-						{% set is_group = parameter.is_array and parameter.option_values %}
-						<div class="field{{ ' field--wide' if is_group else '' }}">
-							<div class="field-head">
-								<label class="label" {% if not is_group %}for="{{ field_id }}"{% endif %}>
-									{{- parameter.label -}}
-									{%- if parameter.required %}<span class="req" title="Required">*</span>{% endif -%}
-									{%- if parameter.title and parameter.title != parameter.name %}<code>{{ parameter.name }}</code>{% endif -%}
-								</label>
-								<span class="field-where">{{ parameter.location }}</span>
-							</div>
-
+	<form
+		class="api-operation-form"
+		data-method="{{ operation.method }}"
+		data-api-path="{{ operation.api_path }}"
+		data-requires-auth="{{ 'true' if operation.requires_auth else 'false' }}"
+		novalidate
+	>
+		{% if operation.parameters or operation.request_body %}
+			<div class="params">
+				{% for parameter in operation.parameters %}
+					{% set field_id = "f-" ~ op_id ~ "-" ~ parameter.name %}
+					{% set is_group = parameter.is_array and parameter.option_values %}
+					<div class="param">
+						<div class="param-name">
+							{% if is_group %}
+								<span class="label" id="{{ field_id }}-label">{{ parameter.label }}{% if parameter.required %}<span class="req" title="Required">*</span>{% endif %}</span>
+							{% else %}
+								<label class="label" for="{{ field_id }}">{{ parameter.label }}{% if parameter.required %}<span class="req" title="Required">*</span>{% endif %}</label>
+							{% endif %}
+							<code>{{ parameter.name }} &middot; {{ parameter.location }}</code>
+						</div>
+						<div class="param-control">
 							{% if is_group %}
 								<div
-									class="chips"
+									class="toggles"
 									role="group"
-									aria-label="{{ parameter.label }}"
+									aria-labelledby="{{ field_id }}-label"
 									data-param-in="{{ parameter.location }}"
 									data-param-name="{{ parameter.name }}"
 									data-array="true"
@@ -93,7 +77,7 @@
 								>
 									{% for option in parameter.option_values %}
 										{% set option_id = field_id ~ "-" ~ loop.index %}
-										<span class="chip">
+										<span class="toggle">
 											<input id="{{ option_id }}" type="checkbox" data-param-choice="true" value="{{ option }}" {% if option in parameter.default_selected %}checked{% endif %} />
 											<label for="{{ option_id }}">{{ option }}</label>
 										</span>
@@ -109,7 +93,7 @@
 									data-form-field="true"
 									{% if parameter.required %}required{% endif %}
 								>
-									{% if not parameter.required %}<option value="">Default</option>{% endif %}
+									{% if not parameter.required %}<option value="">(server default)</option>{% endif %}
 									{% for option in parameter.enum_values %}
 										<option value="{{ option }}" {% if parameter.default == option %}selected{% endif %}>{{ option }}</option>
 									{% endfor %}
@@ -130,93 +114,91 @@
 									{% if parameter.required %}required{% endif %}
 								/>
 							{% endif %}
-
 							<p class="help">
 								{{ parameter.description_html | safe }}
-								{% if parameter.minimum is not none %}<span class="constraint">Minimum: {{ parameter.minimum }}.</span>{% endif %}
-								{% if parameter.maximum is not none %}<span class="constraint">Maximum: {{ parameter.maximum }}.</span>{% endif %}
-								{% if parameter.min_items is not none %}<span class="constraint">Min items: {{ parameter.min_items }}.</span>{% endif %}
-								{% if parameter.max_items is not none %}<span class="constraint">Max items: {{ parameter.max_items }}.</span>{% endif %}
-								{% if parameter.min_length is not none %}<span class="constraint">Min length: {{ parameter.min_length }}.</span>{% endif %}
-								{% if parameter.max_length is not none %}<span class="constraint">Max length: {{ parameter.max_length }}.</span>{% endif %}
+								{% if parameter.minimum is not none %}<span class="limit">Minimum: {{ parameter.minimum }}.</span>{% endif %}
+								{% if parameter.maximum is not none %}<span class="limit">Maximum: {{ parameter.maximum }}.</span>{% endif %}
+								{% if parameter.min_items is not none %}<span class="limit">Min items: {{ parameter.min_items }}.</span>{% endif %}
+								{% if parameter.max_items is not none %}<span class="limit">Max items: {{ parameter.max_items }}.</span>{% endif %}
+								{% if parameter.min_length is not none %}<span class="limit">Min length: {{ parameter.min_length }}.</span>{% endif %}
+								{% if parameter.max_length is not none %}<span class="limit">Max length: {{ parameter.max_length }}.</span>{% endif %}
 							</p>
 						</div>
-					{% endfor %}
-				</div>
-			{% endif %}
-
-			{% if operation.request_body %}
-				<div class="field">
-					<div class="field-head">
-						<label class="label" for="f-{{ op_id }}-body">Request body{% if operation.request_body.required %}<span class="req">*</span>{% endif %}</label>
-						<span class="field-where">json</span>
 					</div>
-					<textarea
-						id="f-{{ op_id }}-body"
-						class="textarea"
-						rows="5"
-						spellcheck="false"
-						data-request-body="true"
-						data-form-field="true"
-						{% if operation.request_body.required %}required{% endif %}
-					>{{ operation.request_body.example_json }}</textarea>
-				</div>
-			{% endif %}
+				{% endfor %}
 
-			<div class="run-bar">
-				<button type="submit" class="btn btn--primary" data-execute>
-					<svg style="width: 13px; height: 13px"><use href="#i-play" /></svg>
-					Execute
-				</button>
-				<span class="run-target">{{ operation.method }} {{ operation.api_path }}</span>
+				{% if operation.request_body %}
+					<div class="param">
+						<div class="param-name">
+							<label class="label" for="f-{{ op_id }}-body">Request body{% if operation.request_body.required %}<span class="req">*</span>{% endif %}</label>
+							<code>application/json</code>
+						</div>
+						<div class="param-control">
+							<textarea
+								id="f-{{ op_id }}-body"
+								class="textarea"
+								rows="5"
+								spellcheck="false"
+								data-request-body="true"
+								data-form-field="true"
+								{% if operation.request_body.required %}required{% endif %}
+							>{{ operation.request_body.example_json }}</textarea>
+						</div>
+					</div>
+				{% endif %}
+			</div>
+		{% endif %}
+
+		<div class="run">
+			<button type="submit" class="button button--mark" data-execute>Send request</button>
+			<span class="run-target">{{ operation.method }} {{ operation.api_path }}</span>
+		</div>
+
+		<p class="form-error hidden" role="alert" data-form-validation-message></p>
+
+		<div class="response hidden" data-response-wrapper>
+			<div class="response-bar">
+				<div class="tabs" role="tablist" aria-label="Response views">
+					<button type="button" class="tab is-active" role="tab" aria-selected="true" data-response-tab="readable">Table</button>
+					<button type="button" class="tab" role="tab" aria-selected="false" data-response-tab="raw">JSON</button>
+					<button type="button" class="tab" role="tab" aria-selected="false" data-response-tab="code">Code</button>
+				</div>
+				<span class="response-status" data-response-status aria-live="polite"></span>
 			</div>
 
-			<p class="form-error hidden" role="alert" data-form-validation-message></p>
-
-			<section class="response hidden" data-response-wrapper aria-label="Response">
-				<div class="response-head">
-					<div class="tabs" role="tablist">
-						<button type="button" class="tab is-active" role="tab" data-response-tab="readable">Readable</button>
-						<button type="button" class="tab" role="tab" data-response-tab="raw">Raw JSON</button>
-						<button type="button" class="tab" role="tab" data-response-tab="code">Code</button>
-					</div>
-					<span class="response-status" data-response-status></span>
+			<div class="response-pane" data-response-pane="readable">
+				<div class="pane-tools">
+					<span>Nested objects become nested tables. Image URLs show a preview.</span>
+					<button type="button" class="button button--small" data-readable-mode-toggle>View: Key-Value</button>
 				</div>
+				<div class="readable" data-response-readable></div>
+			</div>
 
-				<div class="response-pane" data-response-pane="readable">
-					<div class="response-toolbar">
-						<span class="help">Nested objects and arrays render as tables; image URLs preview inline.</span>
-						<button type="button" class="btn btn--secondary btn--sm" data-readable-mode-toggle>View: Key-Value</button>
-					</div>
-					<div class="readable" data-response-readable></div>
+			<div class="response-pane hidden" data-response-pane="raw">
+				<div class="pane-tools">
+					<span>Response body, formatted.</span>
+					<button type="button" class="button button--small" data-copy-btn data-copy-target="response"><span data-label>Copy Response</span></button>
 				</div>
+				<pre class="code" data-response-content></pre>
+			</div>
 
-				<div class="response-pane hidden" data-response-pane="raw">
-					<div class="response-toolbar">
-						<span class="help">Formatted JSON body</span>
-						<button type="button" class="btn btn--secondary btn--sm" data-copy-btn data-copy-target="response"><svg><use href="#i-copy" /></svg><span data-label>Copy Response</span></button>
-					</div>
-					<pre class="code" data-response-content></pre>
+			<div class="response-pane hidden" data-response-pane="code">
+				<div class="pane-tools">
+					<span>Languages</span>
+					<button type="button" class="button button--small" data-copy-btn data-copy-target="language"><span data-label>Copy Snippet</span></button>
 				</div>
-
-				<div class="response-pane hidden" data-response-pane="code">
-					<div class="response-toolbar">
-						<span class="eyebrow">Languages</span>
-						<button type="button" class="btn btn--secondary btn--sm" data-copy-btn data-copy-target="language"><svg><use href="#i-copy" /></svg><span data-label>Copy Snippet</span></button>
-					</div>
-					<div class="seg" style="margin-bottom: 12px" data-languages-wrapper>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="curl">curl</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="python">python</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="javascript">javascript</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="go">go</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="node">node (axios)</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="php">php</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="java">java</button>
-						<button type="button" class="seg-item" data-lang-tab data-lang-key="csharp">csharp</button>
-					</div>
-					<pre class="code" data-language-content></pre>
+				<div class="langs" style="margin-bottom: 12px" data-languages-wrapper>
+					<button type="button" class="lang" data-lang-tab data-lang-key="curl">curl</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="python">python</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="javascript">javascript</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="go">go</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="node">node (axios)</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="php">php</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="java">java</button>
+					<button type="button" class="lang" data-lang-tab data-lang-key="csharp">csharp</button>
 				</div>
-			</section>
-		</form>
-	</div>
-</article>
+				<pre class="code" data-language-content></pre>
+			</div>
+		</div>
+	</form>
+</section>
