@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,8 +26,21 @@ from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 
 router = APIRouter(tags=["web"])
 
-_TEMPLATES_DIR = Path(__file__).resolve().parents[1] / "templates"
+_WEB_DIR = Path(__file__).resolve().parents[1]
+_TEMPLATES_DIR = _WEB_DIR / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+
+
+def _asset_version() -> str:
+    """Content hash of the web static files, used as a cache-busting query string."""
+    digest = hashlib.sha256()
+    for path in sorted((_WEB_DIR / "static").rglob("*")):
+        if path.is_file():
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:10]
+
+
+ASSET_VERSION = _asset_version()
 
 
 def _shared_context(request: Request, current_group: str | None = None) -> dict[str, object]:
@@ -37,6 +51,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "current_group": current_group,
         "current_year": datetime.now(UTC).year,
         "api_version": PROJECT_VERSION,
+        "asset_version": ASSET_VERSION,
         "is_available": IS_AVAILABLE,
         "is_maintenance": IS_MAINTENANCE,
         "is_high_traffic": IS_HIGH_TRAFFIC,
@@ -61,8 +76,11 @@ def _normalize_path(value: str) -> str:
 def landing_page(request: Request) -> HTMLResponse:
     context = _shared_context(request)
     if IS_AVAILABLE:
+        group_counts = {group: len(get_group_operations(request.app, group)) for group in WEB_GROUPS}
         context.update(
             {
+                "group_counts": group_counts,
+                "endpoint_total": sum(group_counts.values()),
                 "title": "Home / Rone Arena API & Web",
                 "web_title": "Home",
                 "seo_description": "Modern landing page for the Rone Arena API. Access docs and a full interactive web playground for all endpoints.",
@@ -140,9 +158,9 @@ def web_endpoint_page(request: Request, group: str, endpoint_path: str) -> HTMLR
     group_title = str(GROUP_META[group]["title"]).strip()
     context.update(
         {
-            "title": f"{operation_summary} - {group_title[:-1] if group_title.endswith('s') else group_title} Endpoint / Rone Arena API & Web",
-            "web_title": f"{group_title[:-1] if group_title.endswith('s') else group_title} Endpoint",
-            "subtitle": "Interactive request form for this API endpoint.",
+            "title": f"{operation_summary} - {group_title} API / Rone Arena API & Web",
+            "web_title": operation_summary,
+            "subtitle": f"{group_title} endpoint. Fill in the form, execute it, and inspect the response.",
             "seo_description": f"Execute and inspect a {GROUP_META[group]['title']} endpoint from the Rone Arena API web interface.",
             "seo_keywords": f"rone arena api endpoint, {group}, curl, readable response",
             "operations": matched_operations,

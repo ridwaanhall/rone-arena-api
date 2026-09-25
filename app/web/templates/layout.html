@@ -3,134 +3,45 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-	<title>{{ title if title else "Home / Rone Arena API & Web" }}</title>
-	<meta name="description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API with docs, endpoint forms, readable responses, and cURL output.' }}" />
+	{% set page_title = title if title else "Home / Rone Arena API & Web" %}
+	{% set page_description = seo_description if seo_description else "Interactive web interface for the Rone Arena API with docs, endpoint forms, readable responses, and code snippets." %}
+	<title>{{ page_title }}</title>
+	<meta name="description" content="{{ page_description }}" />
 	<meta name="keywords" content="{{ seo_keywords if seo_keywords else 'rone arena api, mobile legends data api, fastapi, analytics, hero data, openapi, web interface' }}" />
 	<meta name="robots" content="index, follow" />
-	<meta name="theme-color" content="#000000" />
+	<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#0c0d10" media="(prefers-color-scheme: dark)" />
 	<meta property="og:type" content="website" />
-	<meta property="og:title" content="{{ title if title else 'Home / Rone Arena API & Web' }}" />
-	<meta property="og:description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API.' }}" />
+	<meta property="og:title" content="{{ page_title }}" />
+	<meta property="og:description" content="{{ page_description }}" />
 	<meta property="og:url" content="{{ request.url }}" />
 	<meta property="og:image" content="https://rone.dev/static/img/favicon/favicon.ico" />
 	<meta name="twitter:card" content="summary" />
-	<meta name="twitter:title" content="{{ title if title else 'Home / Rone Arena API & Web' }}" />
-	<meta name="twitter:description" content="{{ seo_description if seo_description else 'Interactive web interface for the Rone Arena API.' }}" />
+	<meta name="twitter:title" content="{{ page_title }}" />
+	<meta name="twitter:description" content="{{ page_description }}" />
 	<link rel="canonical" href="{{ request.url }}" />
 	<link rel="icon" type="image/x-icon" href="https://rone.dev/static/img/favicon/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-	<style>
-		:root {
-			--scroll-thumb: #52525b;
-			--scroll-thumb-hover: #71717a;
-			--scroll-track: #09090b;
-		}
 
-		html,
-		body {
-			overflow-x: hidden;
-			font-family: "Onest", sans-serif;
-			text-rendering: optimizeLegibility;
-			-webkit-font-smoothing: antialiased;
-			background: #000;
-		}
-
-		code,
-		pre,
-		.font-mono {
-			font-family: "Space Mono", monospace;
-		}
-
-		* {
-			scrollbar-width: thin;
-			scrollbar-color: var(--scroll-thumb) var(--scroll-track);
-			scrollbar-gutter: stable;
-		}
-
-		*::-webkit-scrollbar {
-			width: 10px;
-			height: 10px;
-		}
-
-		*::-webkit-scrollbar-button {
-			display: none;
-			width: 0;
-			height: 0;
-		}
-
-		*::-webkit-scrollbar-track {
-			background: var(--scroll-track);
-			border-radius: 999px;
-		}
-
-		*::-webkit-scrollbar-thumb {
-			background: var(--scroll-thumb);
-			border-radius: 999px;
-			border: 2px solid var(--scroll-track);
-		}
-
-		*::-webkit-scrollbar-thumb:hover {
-			background: var(--scroll-thumb-hover);
-		}
-
-		*::-webkit-scrollbar-corner {
-			background: transparent;
-		}
-
-		.custom-scroll {
-			overflow: auto;
-		}
-
-		.custom-scroll::-webkit-scrollbar-thumb {
-			background: var(--scroll-thumb);
-		}
-
-		button:not(:disabled),
-		a[href],
-		[data-lang-tab],
-		[data-copy-btn],
-		[data-desc-toggle],
-		label:has(input[type="checkbox"]) {
-			cursor: pointer;
-		}
-
-		@media (max-width: 768px) {
-			* {
-				scrollbar-gutter: auto;
+	{# Apply the saved theme before first paint so there is no light/dark flash. #}
+	<script>
+		(() => {
+			try {
+				const theme = localStorage.getItem("arena_theme");
+				if (theme === "light" || theme === "dark") {
+					document.documentElement.dataset.theme = theme;
+				}
+			} catch {
+				/* storage unavailable: follow the system theme */
 			}
-		}
+		})();
+	</script>
 
-        .site-ambient-layer {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            background: radial-gradient(50rem 30rem at 8% -10%, rgba(34, 211, 238, 0.15), transparent 72%),
-                radial-gradient(44rem 26rem at 100% 0%, rgba(20, 184, 166, 0.12), transparent 70%),
-                radial-gradient(36rem 22rem at 70% 100%, rgba(139, 92, 246, 0.08), transparent 72%),
-                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.04) 1px, transparent 1.5px),
-                radial-gradient(circle at 72% 62%, rgba(255, 255, 255, 0.03) 1px, transparent 1.5px);
-            background-size:
-                auto,
-                auto,
-                auto,
-                26px 26px,
-                34px 34px;
-        }
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist+Mono:wght@400..600&family=Geist:wght@400..700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="/static/css/arena.css?v={{ asset_version }}" />
 
-        .site-ambient-vignette {
-            position: fixed;
-            inset: 0;
-            z-index: 0;
-            pointer-events: none;
-            background: radial-gradient(120% 90% at 50% 50%, transparent 44%, rgba(0, 0, 0, 0.55) 100%);
-        }
-	</style>
 	{% if is_analytics_host %}
-	<!-- Google tag (gtag.js) -->
 	<script async src="https://www.googletagmanager.com/gtag/js?id=G-CPMYRKG5XQ"></script>
 	<script>
 		window.dataLayer = window.dataLayer || [];
@@ -138,776 +49,93 @@
 			dataLayer.push(arguments);
 		}
 		gtag("js", new Date());
-
 		gtag("config", "G-CPMYRKG5XQ");
 	</script>
 	{% endif %}
 </head>
-<body class="flex min-h-screen flex-col overflow-x-hidden text-zinc-100">
-	<div class="site-ambient-layer" aria-hidden="true"></div>
-	<div class="site-ambient-vignette" aria-hidden="true"></div>
-
-	<div class="relative z-10 flex min-h-screen flex-col">
+<body>
+	{% include "icons.html" %}
 	{% include "navbar.html" %}
 
-	<div class="mx-auto flex w-full max-w-[1600px] min-w-0 flex-1 gap-3 px-3 pb-8 pt-4 sm:px-4 sm:pt-5 lg:gap-4 lg:px-6 lg:pt-6">
-		{% if request.url.path.startswith('/web') %}
-			{% include "sidebar.html" %}
-		{% endif %}
-
-		<main class="w-full min-w-0">
+	<main class="page">
+		<div class="container">
 			{% block content %}{% endblock %}
-		</main>
-	</div>
+		</div>
+	</main>
 
 	{% include "footer.html" %}
-	<div id="signout-confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="signout-confirm-title">
-		<div class="w-full bg-black max-w-md border border-zinc-700 p-5 text-zinc-200 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Account Session</p>
-			<h2 id="signout-confirm-title" class="mt-2 text-lg font-semibold text-zinc-100">Confirm Sign Out</h2>
-			<p class="mt-3 text-sm leading-6 text-zinc-400">Are you sure you want to sign out?</p>
-			<div class="mt-5 flex flex-wrap justify-end gap-2">
-				<button id="signout-cancel" type="button" class="border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">
-					Cancel
-				</button>
-				<button id="signout-confirm" type="button" class="border border-rose-700 px-3 py-1.5 text-xs text-rose-300 hover:border-rose-500 hover:text-rose-200">
-					Sign Out
-				</button>
-			</div>
-		</div>
-	</div>
-	<div id="signin-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="signin-title">
-		<div class="w-full max-w-md border border-zinc-700 bg-black p-5 text-zinc-200 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Account Login</p>
-			<h2 id="signin-title" class="mt-2 text-lg font-semibold text-zinc-100">Sign In With Verification Code</h2>
-			<p class="mt-2 text-xs leading-5 text-zinc-400">Use the same role and zone once, send VC, then submit VC to login.</p>
 
-			<div class="mt-4 grid gap-3 sm:grid-cols-2">
-				<label class="text-xs text-zinc-400">
-					<span class="mb-1 block">Role ID</span>
-					<input id="signin-role-id" type="number" min="1" class="w-full border border-zinc-700 bg-black/20 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400" placeholder="1234567890" />
-				</label>
-				<label class="text-xs text-zinc-400">
-					<span class="mb-1 block">Zone ID</span>
-					<input id="signin-zone-id" type="number" min="1" class="w-full border border-zinc-700 bg-black/20 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-400" placeholder="1234" />
-				</label>
+	<div id="signin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+		<div class="dialog stack">
+			<div class="stack-sm">
+				<p class="eyebrow eyebrow--accent">Account</p>
+				<h2 id="signin-title">Sign in with a verification code</h2>
+				<p class="muted">Enter your in-game Role ID and Zone ID, send a code to your in-game mail, then confirm it here.</p>
 			</div>
 
-			<div class="mt-4 flex flex-wrap items-center gap-2">
-				<button id="signin-send-vc" type="button" class="border border-cyan-600/80 bg-cyan-950/35 px-3 py-1.5 text-xs text-cyan-200 hover:border-cyan-400 hover:text-cyan-100">
-					Send VC
-				</button>
-				<span id="signin-vc-hint" class="text-[11px] text-zinc-500">Send VC first. VC expires in 5 minutes.</span>
-			</div>
-
-			<div id="signin-login-block" class="mt-4 hidden">
-				<label class="text-xs text-zinc-400">
-					<span class="mb-1 block">Verification Code (VC)</span>
-					<input id="signin-vc" type="number" min="1" class="w-full border border-zinc-700 bg-black/20 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-emerald-400" placeholder="4-digit code" />
-				</label>
-				<div class="mt-3 flex flex-wrap items-center gap-2">
-					<button id="signin-login" type="button" class="border border-emerald-600/80 bg-emerald-950/35 px-3 py-1.5 text-xs text-emerald-200 hover:border-emerald-400 hover:text-emerald-100">
-						Sign In
-					</button>
+			<div class="params">
+				<div class="field">
+					<label class="label" for="signin-role-id">Role ID</label>
+					<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="1234567890" />
+				</div>
+				<div class="field">
+					<label class="label" for="signin-zone-id">Zone ID</label>
+					<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="1234" />
 				</div>
 			</div>
 
-			<p id="signin-status" class="mt-4 min-h-5 text-xs text-zinc-400"></p>
+			<div class="row">
+				<button id="signin-send-vc" type="button" class="btn btn--secondary">Send VC</button>
+				<span id="signin-vc-hint" class="help">The code expires in 5 minutes.</span>
+			</div>
 
-			<div class="mt-4 flex flex-wrap justify-end gap-2">
-				<button id="signin-cancel" type="button" class="border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">
-					Close
-				</button>
+			<div id="signin-login-block" class="stack-sm hidden">
+				<div class="field">
+					<label class="label" for="signin-vc">Verification code</label>
+					<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" />
+				</div>
+				<button id="signin-login" type="button" class="btn btn--primary btn--block">Sign In</button>
+			</div>
+
+			<p id="signin-status" class="status-line" aria-live="polite"></p>
+
+			<div class="dialog-foot" style="margin-top: 0">
+				<button id="signin-cancel" type="button" class="btn btn--ghost">Close</button>
 			</div>
 		</div>
 	</div>
-	<div id="donate-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="donate-title">
-		<div class="w-full max-w-md border border-zinc-700 bg-black p-5 text-zinc-200 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Support Project</p>
-			<h2 id="donate-title" class="mt-2 text-lg font-semibold text-zinc-100">Donation Links</h2>
-			<p class="mt-2 text-xs leading-5 text-zinc-400">Support maintenance and feature updates through any platform below.</p>
 
-			<div class="mt-4 grid gap-2 text-xs">
-				<!-- GitHub Sponsors: Pink -->
-				<a href="https://github.com/sponsors/ridwaanhall" target="_blank" rel="noreferrer noopener"
-					class="border border-pink-700/70 px-3 py-2 text-pink-300 hover:border-pink-400 hover:text-pink-200">
-					GitHub Sponsors - github.com/sponsors/ridwaanhall
-				</a>
-
-				<!-- PayPal: Blue -->
-				<a href="https://paypal.me/ridwaanhall" target="_blank" rel="noreferrer noopener"
-					class="border border-blue-700/70 px-3 py-2 text-blue-300 hover:border-blue-400 hover:text-blue-200">
-					PayPal - paypal.me/ridwaanhall
-				</a>
-
-				<!-- Buy Me a Coffee: Yellow -->
-				<a href="https://buymeacoffee.com/ridwaanhall" target="_blank" rel="noreferrer noopener"
-					class="border border-yellow-600/70 px-3 py-2 text-yellow-400 hover:border-yellow-500 hover:text-yellow-300">
-					Buy Me a Coffee - buymeacoffee.com/ridwaanhall
-				</a>
-
-				<!-- Saweria: Orange -->
-				<a href="https://saweria.co/ridwaanhall" target="_blank" rel="noreferrer noopener"
-					class="border border-orange-700/70 px-3 py-2 text-orange-300 hover:border-orange-400 hover:text-orange-200">
-					Saweria - saweria.co/ridwaanhall
-				</a>
-
-				<!-- Sociabuzz: Teal -->
-				<a href="https://sociabuzz.com/ridwaanhall/support" target="_blank" rel="noreferrer noopener"
-					class="border border-teal-700/70 px-3 py-2 text-teal-300 hover:border-teal-400 hover:text-teal-200">
-					Sociabuzz - sociabuzz.com/ridwaanhall/support
-				</a>
-			</div>
-
-			<div class="mt-4 flex flex-wrap justify-end gap-2">
-				<button id="donate-close" type="button" class="border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Close</button>
+	<div id="signout-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signout-confirm-title">
+		<div class="dialog">
+			<p class="eyebrow">Account session</p>
+			<h2 id="signout-confirm-title" style="margin-top: 8px">Sign out?</h2>
+			<p class="muted" style="margin-top: 10px">Are you sure you want to sign out? Your cached JWT will be cleared from this browser.</p>
+			<div class="dialog-foot">
+				<button id="signout-cancel" type="button" class="btn btn--ghost">Cancel</button>
+				<button id="signout-confirm" type="button" class="btn btn--danger">Sign Out</button>
 			</div>
 		</div>
 	</div>
-	<script>
-	(() => {
-		const AUTH_KEY = "arena_user_auth";
-		const USER_INFO_KEY = "arena_user_info";
-		const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
 
-		// One-time migration from the pre-rebrand storage keys so signed-in
-		// visitors are not logged out by the rename. Safe to delete later.
-		(() => {
-			const renamed = [
-				["mlbb_user_auth", AUTH_KEY],
-				["mlbb_user_info", USER_INFO_KEY],
-			];
-			for (const [legacyKey, currentKey] of renamed) {
-				try {
-					const legacyValue = localStorage.getItem(legacyKey);
-					if (legacyValue !== null && localStorage.getItem(currentKey) === null) {
-						localStorage.setItem(currentKey, legacyValue);
-					}
-					if (legacyValue !== null) {
-						localStorage.removeItem(legacyKey);
-					}
-				} catch {
-					/* storage unavailable; nothing to migrate */
-				}
-			}
-		})();
-
-		function parseJson(value) {
-			try {
-				return JSON.parse(value);
-			} catch {
-				return null;
-			}
-		}
-
-		function readAuth() {
-			const raw = localStorage.getItem(AUTH_KEY);
-			if (!raw) {
-				return null;
-			}
-
-			const parsed = parseJson(raw);
-			if (!parsed || typeof parsed !== "object") {
-				localStorage.removeItem(AUTH_KEY);
-				localStorage.removeItem(USER_INFO_KEY);
-				return null;
-			}
-
-			if (typeof parsed.jwt !== "string" || typeof parsed.expiresAt !== "number") {
-				localStorage.removeItem(AUTH_KEY);
-				localStorage.removeItem(USER_INFO_KEY);
-				return null;
-			}
-
-			if (Date.now() > parsed.expiresAt) {
-				localStorage.removeItem(AUTH_KEY);
-				localStorage.removeItem(USER_INFO_KEY);
-				return null;
-			}
-
-			return parsed;
-		}
-
-		function readUserInfo(auth) {
-			if (!auth) {
-				return null;
-			}
-
-			const raw = localStorage.getItem(USER_INFO_KEY);
-			if (!raw) {
-				return null;
-			}
-
-			const parsed = parseJson(raw);
-			if (!parsed || typeof parsed !== "object") {
-				localStorage.removeItem(USER_INFO_KEY);
-				return null;
-			}
-
-			if (parsed.expiresAt !== auth.expiresAt || !parsed.data || typeof parsed.data !== "object") {
-				localStorage.removeItem(USER_INFO_KEY);
-				return null;
-			}
-
-			return parsed.data;
-		}
-
-		function renderNavbarState() {
-			const badge = document.getElementById("jwt-status");
-			const authAction = document.getElementById("jwt-auth-action");
-			const copyJwtAction = document.getElementById("jwt-copy-action");
-			const signInButton = document.getElementById("user-signin-button");
-			const userMenuTrigger = document.getElementById("user-menu-trigger");
-			const userMenuPanel = document.getElementById("user-menu-panel");
-			const userBadge = document.getElementById("user-badge");
-			const userAvatar = document.getElementById("user-avatar");
-			const userName = document.getElementById("user-name");
-			const userCountryInline = document.getElementById("user-country-inline");
-			const userRoleZone = document.getElementById("user-role-zone");
-			if (!badge) {
-				return;
-			}
-
-			const auth = readAuth();
-			if (!auth) {
-				badge.textContent = "Not Signed In";
-				if (authAction) {
-					authAction.textContent = "Sign In";
-				}
-				if (copyJwtAction) {
-					copyJwtAction.textContent = "Copy JWT";
-				}
-				if (signInButton) {
-					signInButton.classList.remove("hidden");
-					signInButton.classList.add("inline-flex");
-				}
-				if (userMenuTrigger) {
-					userMenuTrigger.classList.add("hidden");
-					userMenuTrigger.classList.remove("inline-flex");
-				}
-				if (userMenuPanel) {
-					userMenuPanel.classList.add("hidden");
-				}
-				if (userBadge && userAvatar && userName) {
-					userAvatar.src = "https://placehold.co/48x48/000000/FFFFFF?text=U";
-					userName.textContent = "Guest";
-					userBadge.classList.remove("hidden");
-					userBadge.classList.add("inline-flex");
-				}
-				if (userCountryInline) {
-					userCountryInline.textContent = "";
-				}
-				if (userRoleZone) {
-					userRoleZone.textContent = "-";
-				}
-				return;
-			}
-
-			const remaining = auth.expiresAt - Date.now();
-			const h = Math.floor(remaining / (1000 * 60 * 60));
-			const m = Math.floor((remaining / (1000 * 60)) % 60);
-
-			badge.textContent = `Signed In (${h}h ${m}m left)`;
-			if (authAction) {
-				authAction.textContent = "Sign Out";
-			}
-			if (signInButton) {
-				signInButton.classList.add("hidden");
-				signInButton.classList.remove("inline-flex");
-			}
-			if (userMenuTrigger) {
-				userMenuTrigger.classList.remove("hidden");
-				userMenuTrigger.classList.add("inline-flex");
-			}
-
-			const userInfo = readUserInfo(auth);
-			if (!userInfo || !userBadge || !userAvatar || !userName) {
-				if (userBadge && userAvatar && userName) {
-					userAvatar.src = "https://placehold.co/48x48/000000/FFFFFF?text=U";
-					userName.textContent = "Player";
-					userBadge.classList.remove("hidden");
-					userBadge.classList.add("inline-flex");
-				}
-				if (userCountryInline) {
-					userCountryInline.textContent = "";
-				}
-				if (userRoleZone) {
-					userRoleZone.textContent = "-";
-				}
-				return;
-			}
-
-			const avatar = typeof userInfo.avatar === "string" ? userInfo.avatar : "";
-			const name = typeof userInfo.name === "string" && userInfo.name.trim() ? userInfo.name.trim() : "Player";
-			const regCountry = typeof userInfo.reg_country === "string" && userInfo.reg_country.trim() ? userInfo.reg_country.trim() : "-";
-			const roleIdValue = userInfo.roleId ?? userInfo.roleid;
-			const zoneIdValue = userInfo.zoneId ?? userInfo.zoneid;
-
-			userAvatar.src = avatar || "https://placehold.co/48x48/000000/FFFFFF?text=U";
-			userName.textContent = name;
-			userBadge.classList.remove("hidden");
-			userBadge.classList.add("inline-flex");
-			if (userCountryInline) {
-				userCountryInline.textContent = regCountry !== "-" ? ` (${regCountry})` : "";
-			}
-			if (userRoleZone) {
-				const roleText = roleIdValue !== undefined && roleIdValue !== null ? String(roleIdValue) : "-";
-				const zoneText = zoneIdValue !== undefined && zoneIdValue !== null ? String(zoneIdValue) : "-";
-				userRoleZone.textContent = `${roleText} (${zoneText})`;
-			}
-		}
-
-		function clearAuth() {
-			localStorage.removeItem(AUTH_KEY);
-			localStorage.removeItem(USER_INFO_KEY);
-			renderNavbarState();
-		}
-
-		function writeAuth(jwt) {
-			if (typeof jwt !== "string" || !jwt.trim()) {
-				return;
-			}
-
-			localStorage.removeItem(USER_INFO_KEY);
-			localStorage.setItem(
-				AUTH_KEY,
-				JSON.stringify({
-					jwt,
-					expiresAt: Date.now() + AUTH_TTL_MS,
-				})
-			);
-			renderNavbarState();
-		}
-
-		function writeUserInfo(userInfo, expiresAt) {
-			if (!userInfo || typeof userInfo !== "object" || typeof expiresAt !== "number") {
-				return;
-			}
-
-			localStorage.setItem(
-				USER_INFO_KEY,
-				JSON.stringify({
-					data: userInfo,
-					expiresAt,
-				})
-			);
-			renderNavbarState();
-		}
-
-		window.ArenaWebAuth = {
-			readAuth,
-			readUserInfo,
-			writeAuth,
-			writeUserInfo,
-			clearAuth,
-			renderNavbarState,
-		};
-
-		const signOutModal = document.getElementById("signout-confirm-modal");
-		const signOutConfirm = document.getElementById("signout-confirm");
-		const signOutCancel = document.getElementById("signout-cancel");
-		const signInModal = document.getElementById("signin-modal");
-		const signInCancel = document.getElementById("signin-cancel");
-		const signInRoleIdInput = document.getElementById("signin-role-id");
-		const signInZoneIdInput = document.getElementById("signin-zone-id");
-		const signInVcInput = document.getElementById("signin-vc");
-		const signInSendVcButton = document.getElementById("signin-send-vc");
-		const signInLoginButton = document.getElementById("signin-login");
-		const signInStatus = document.getElementById("signin-status");
-		const signInLoginBlock = document.getElementById("signin-login-block");
-		const copyJwtAction = document.getElementById("jwt-copy-action");
-		const donateModal = document.getElementById("donate-modal");
-		const donateModalTrigger = document.getElementById("donate-modal-trigger");
-		const donateClose = document.getElementById("donate-close");
-		const signInButton = document.getElementById("user-signin-button");
-		const userMenuTrigger = document.getElementById("user-menu-trigger");
-		const userMenuPanel = document.getElementById("user-menu-panel");
-
-		function setSignInStatus(text, variant = "default") {
-			if (!signInStatus) {
-				return;
-			}
-			signInStatus.classList.remove("text-zinc-400", "text-cyan-300", "text-emerald-300", "text-rose-300", "text-amber-300");
-			signInStatus.classList.add(
-				variant === "success"
-					? "text-emerald-300"
-					: variant === "error"
-						? "text-rose-300"
-						: variant === "info"
-							? "text-cyan-300"
-							: variant === "warn"
-								? "text-amber-300"
-								: "text-zinc-400"
-			);
-			signInStatus.textContent = text;
-		}
-
-		function toPositiveInt(value) {
-			if (typeof value !== "string") {
-				return null;
-			}
-			const trimmed = value.trim();
-			if (!trimmed) {
-				return null;
-			}
-			const parsed = Number.parseInt(trimmed, 10);
-			return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-		}
-
-		function getSignInBasePayload() {
-			const roleId = toPositiveInt(signInRoleIdInput?.value || "");
-			const zoneId = toPositiveInt(signInZoneIdInput?.value || "");
-			if (!roleId || !zoneId) {
-				return null;
-			}
-			return {
-				role_id: roleId,
-				zone_id: zoneId,
-			};
-		}
-
-		async function copyText(value) {
-			const text = String(value || "");
-			if (!text) {
-				return false;
-			}
-
-			if (navigator.clipboard && window.isSecureContext) {
-				await navigator.clipboard.writeText(text);
-				return true;
-			}
-
-			const temp = document.createElement("textarea");
-			temp.value = text;
-			temp.style.position = "fixed";
-			temp.style.left = "-9999px";
-			document.body.appendChild(temp);
-			temp.focus();
-			temp.select();
-			const success = document.execCommand("copy");
-			temp.remove();
-			return success;
-		}
-
-		async function fetchAndCacheUserInfo() {
-			const auth = window.ArenaWebAuth.readAuth();
-			if (!auth || typeof auth.jwt !== "string") {
-				return;
-			}
-
-			try {
-				const response = await fetch("/api/user/info", {
-					method: "GET",
-					headers: {
-						accept: "application/json",
-						Authorization: `Bearer ${auth.jwt}`,
-					},
-				});
-				if (!response.ok) {
-					return;
-				}
-				const parsed = parseJson(await response.text());
-				if (parsed?.data && typeof parsed.data === "object") {
-					window.ArenaWebAuth.writeUserInfo(parsed.data, auth.expiresAt);
-				}
-			} catch {
-				// Keep auth state even if user info hydration fails.
-			}
-		}
-
-		function closeUserMenu() {
-			if (!userMenuPanel) {
-				return;
-			}
-			userMenuPanel.classList.add("hidden");
-		}
-
-		function toggleUserMenu() {
-			if (!userMenuPanel) {
-				return;
-			}
-			userMenuPanel.classList.toggle("hidden");
-		}
-
-		function closeSignOutModal() {
-			if (!signOutModal) {
-				return;
-			}
-			signOutModal.classList.add("hidden");
-			signOutModal.classList.remove("flex");
-		}
-
-		function closeSignInModal() {
-			if (!signInModal) {
-				return;
-			}
-			signInModal.classList.add("hidden");
-			signInModal.classList.remove("flex");
-			if (signInLoginBlock) {
-				signInLoginBlock.classList.add("hidden");
-			}
-			if (signInVcInput) {
-				signInVcInput.value = "";
-			}
-			setSignInStatus("", "default");
-		}
-
-		function openSignInModal() {
-			if (!signInModal) {
-				window.location.href = "/web/user/auth/send-vc";
-				return;
-			}
-			signInModal.classList.remove("hidden");
-			signInModal.classList.add("flex");
-			if (signInLoginBlock) {
-				signInLoginBlock.classList.add("hidden");
-			}
-			setSignInStatus("Fill Role ID and Zone ID, then click Send VC.", "default");
-			signInRoleIdInput?.focus();
-		}
-
-		function closeDonateModal() {
-			if (!donateModal) {
-				return;
-			}
-			donateModal.classList.add("hidden");
-			donateModal.classList.remove("flex");
-		}
-
-		function openDonateModal() {
-			if (!donateModal) {
-				return;
-			}
-			donateModal.classList.remove("hidden");
-			donateModal.classList.add("flex");
-			donateClose?.focus();
-		}
-
-		function openSignOutModal() {
-			if (!signOutModal) {
-				window.ArenaWebAuth.clearAuth();
-				return;
-			}
-			signOutModal.classList.remove("hidden");
-			signOutModal.classList.add("flex");
-			signOutConfirm?.focus();
-		}
-
-		async function postLogout(auth) {
-			if (!auth || typeof auth.jwt !== "string") {
-				return;
-			}
-
-			try {
-				await fetch("/api/user/auth/logout", {
-					method: "POST",
-					headers: {
-						accept: "application/json",
-						Authorization: `Bearer ${auth.jwt}`,
-					},
-				});
-			} catch {
-				// Even if API logout fails, clear local session to prevent stale auth state.
-			}
-		}
-
-		signOutCancel?.addEventListener("click", closeSignOutModal);
-		signInCancel?.addEventListener("click", closeSignInModal);
-		signOutConfirm?.addEventListener("click", async () => {
-			signOutConfirm.disabled = true;
-			signOutConfirm.textContent = "Signing Out...";
-			const auth = window.ArenaWebAuth.readAuth();
-			await postLogout(auth);
-			window.ArenaWebAuth.clearAuth();
-			closeSignOutModal();
-			signOutConfirm.textContent = "Sign Out";
-			signOutConfirm.disabled = false;
-		});
-
-		signOutModal?.addEventListener("click", (event) => {
-			if (event.target === signOutModal) {
-				closeSignOutModal();
-			}
-		});
-
-		signInModal?.addEventListener("click", (event) => {
-			if (event.target === signInModal) {
-				closeSignInModal();
-			}
-		});
-
-		donateModal?.addEventListener("click", (event) => {
-			if (event.target === donateModal) {
-				closeDonateModal();
-			}
-		});
-
-		donateModalTrigger?.addEventListener("click", () => {
-			openDonateModal();
-		});
-
-		donateClose?.addEventListener("click", () => {
-			closeDonateModal();
-		});
-
-		signInSendVcButton?.addEventListener("click", async () => {
-			const payload = getSignInBasePayload();
-			if (!payload) {
-				setSignInStatus("Role ID and Zone ID must be valid numbers.", "warn");
-				return;
-			}
-
-			signInSendVcButton.disabled = true;
-			signInSendVcButton.textContent = "Sending VC...";
-			try {
-				const response = await fetch("/api/user/auth/send-vc", {
-					method: "POST",
-					headers: {
-						accept: "application/json",
-						"content-type": "application/json",
-					},
-					body: JSON.stringify(payload),
-				});
-				const parsed = parseJson(await response.text());
-				const code = typeof parsed?.code === "number" ? parsed.code : response.status;
-				const message = typeof parsed?.msg === "string" ? parsed.msg : typeof parsed?.message === "string" ? parsed.message : "No message";
-				if (!response.ok || code !== 0) {
-					setSignInStatus(`Send VC failed (code: ${code}) - ${message}`, "error");
-					return;
-				}
-
-				if (signInLoginBlock) {
-					signInLoginBlock.classList.remove("hidden");
-				}
-				setSignInStatus(`Success (code: ${code}) - Check in-game mail for the verification code.`, "info");
-				signInVcInput?.focus();
-			} catch {
-				setSignInStatus("Failed to send VC. Please try again.", "error");
-			} finally {
-				signInSendVcButton.disabled = false;
-				signInSendVcButton.textContent = "Send VC";
-			}
-		});
-
-		signInLoginButton?.addEventListener("click", async () => {
-			const basePayload = getSignInBasePayload();
-			const vc = toPositiveInt(signInVcInput?.value || "");
-			if (!basePayload || !vc) {
-				setSignInStatus("Role ID, Zone ID, and VC are required for login.", "warn");
-				return;
-			}
-
-			signInLoginButton.disabled = true;
-			signInLoginButton.textContent = "Signing In...";
-
-			try {
-				const response = await fetch("/api/user/auth/login", {
-					method: "POST",
-					headers: {
-						accept: "application/json",
-						"content-type": "application/json",
-					},
-					body: JSON.stringify({
-						...basePayload,
-						vc,
-					}),
-				});
-				const parsed = parseJson(await response.text());
-				const code = typeof parsed?.code === "number" ? parsed.code : response.status;
-				const message = typeof parsed?.msg === "string" ? parsed.msg : typeof parsed?.message === "string" ? parsed.message : "No message";
-
-				if (!response.ok || code !== 0 || typeof parsed?.data?.jwt !== "string") {
-					setSignInStatus(`Sign in failed (code: ${code}) - ${message}`, "error");
-					return;
-				}
-
-				window.ArenaWebAuth.writeAuth(parsed.data.jwt);
-				await fetchAndCacheUserInfo();
-				setSignInStatus(`Sign in success (code: ${code}) - ${message}`, "success");
-				closeSignInModal();
-			} catch {
-				setSignInStatus("Sign in request failed. Please try again.", "error");
-			} finally {
-				signInLoginButton.disabled = false;
-				signInLoginButton.textContent = "Sign In";
-			}
-		});
-
-		userMenuTrigger?.addEventListener("click", (event) => {
-			event.stopPropagation();
-			toggleUserMenu();
-		});
-
-		document.addEventListener("click", (event) => {
-			if (!userMenuPanel || !userMenuTrigger) {
-				return;
-			}
-			if (userMenuPanel.classList.contains("hidden")) {
-				return;
-			}
-			const target = event.target;
-			if (!(target instanceof Node)) {
-				return;
-			}
-			if (userMenuPanel.contains(target) || userMenuTrigger.contains(target)) {
-				return;
-			}
-			closeUserMenu();
-		});
-
-		document.addEventListener("keydown", (event) => {
-			if (event.key !== "Escape") {
-				return;
-			}
-			closeUserMenu();
-			if (signInModal && !signInModal.classList.contains("hidden")) {
-				closeSignInModal();
-				return;
-			}
-			if (donateModal && !donateModal.classList.contains("hidden")) {
-				closeDonateModal();
-				return;
-			}
-			if (!signOutModal || signOutModal.classList.contains("hidden")) {
-				return;
-			}
-			closeSignOutModal();
-		});
-
-		document.getElementById("jwt-auth-action")?.addEventListener("click", () => {
-			closeUserMenu();
-			const auth = window.ArenaWebAuth.readAuth();
-			if (auth) {
-				openSignOutModal();
-				return;
-			}
-			window.location.href = "/web/user/auth/send-vc";
-		});
-
-		signInButton?.addEventListener("click", () => {
-			openSignInModal();
-		});
-
-		copyJwtAction?.addEventListener("click", async () => {
-			const auth = window.ArenaWebAuth.readAuth();
-			if (!auth || typeof auth.jwt !== "string") {
-				copyJwtAction.textContent = "No JWT";
-				setTimeout(() => {
-					copyJwtAction.textContent = "Copy JWT";
-				}, 5000);
-				return;
-			}
-
-			const ok = await copyText(auth.jwt);
-			copyJwtAction.textContent = ok ? "Copied" : "Copy failed";
-			setTimeout(() => {
-				copyJwtAction.textContent = "Copy JWT";
-			}, 5000);
-		});
-		window.ArenaWebAuth.renderNavbarState();
-	})();
-	</script>
+	<div id="donate-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="donate-title">
+		<div class="dialog">
+			<p class="eyebrow eyebrow--accent">Support the project</p>
+			<h2 id="donate-title" style="margin-top: 8px">Keep the arena running</h2>
+			<p class="muted" style="margin-top: 10px">Donations cover hosting and ongoing development. Any platform below works.</p>
+			<div class="link-list" style="margin-top: 18px">
+				<a class="link-row" href="https://github.com/sponsors/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>GitHub Sponsors</strong><span>github.com/sponsors/ridwaanhall</span></a>
+				<a class="link-row" href="https://paypal.me/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>PayPal</strong><span>paypal.me/ridwaanhall</span></a>
+				<a class="link-row" href="https://buymeacoffee.com/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>Buy Me a Coffee</strong><span>buymeacoffee.com/ridwaanhall</span></a>
+				<a class="link-row" href="https://saweria.co/ridwaanhall" target="_blank" rel="noreferrer noopener"><strong>Saweria</strong><span>saweria.co/ridwaanhall</span></a>
+				<a class="link-row" href="https://sociabuzz.com/ridwaanhall/support" target="_blank" rel="noreferrer noopener"><strong>Sociabuzz</strong><span>sociabuzz.com/ridwaanhall/support</span></a>
+			</div>
+			<div class="dialog-foot">
+				<button id="donate-close" type="button" class="btn btn--ghost">Close</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="/static/js/arena.js?v={{ asset_version }}"></script>
 	{% block scripts %}{% endblock %}
-	</div>
 </body>
 </html>

@@ -253,7 +253,7 @@ app.openapi = custom_openapi
 
 @app.middleware("http")
 async def maintenance_mode_guard(request: Request, call_next):
-    allowed_when_limited_prefixes = ("/blog", "/images/blog")
+    allowed_when_limited_prefixes = ("/blog", "/images/blog", "/static")
     if IS_AVAILABLE or request.url.path == "/" or request.url.path.startswith(allowed_when_limited_prefixes):
         return await call_next(request)
 
@@ -276,6 +276,10 @@ app.include_router(blog_router)
 # static assets
 _STATIC_IMAGES_DIR = Path(__file__).resolve().parents[1] / "images"
 app.mount("/images", StaticFiles(directory=str(_STATIC_IMAGES_DIR)), name="images")
+# Web UI stylesheet and scripts. Stays reachable during maintenance so the
+# status page renders styled.
+_WEB_STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
+app.mount("/static", StaticFiles(directory=str(_WEB_STATIC_DIR)), name="static")
 
 
 # exception handlers

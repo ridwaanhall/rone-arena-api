@@ -1,49 +1,28 @@
-<aside class="hidden w-80 shrink-0 border border-zinc-800 p-4 lg:block">
-	<p class="mb-3 text-xs uppercase tracking-[0.2em] text-zinc-400">Website Routes</p>
-	<div class="space-y-2 text-sm">
-		{% for group in groups %}
-			<a
-				href="/web/{{ group }}"
-				class="block border px-3 py-2 {{ 'border-zinc-300 text-zinc-100' if current_group == group else 'border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100' }}"
-			>
-				{{ group_meta[group]["title"] }}
-			</a>
-		{% endfor %}
+<aside class="sidebar" aria-label="Endpoints">
+	<div class="stack-sm">
+		<p class="eyebrow">{{ group_meta[current_group]["title"] }} endpoints &middot; {{ sidebar_operations | length }}</p>
+		<label class="search">
+			<span class="sr-only">Filter endpoints</span>
+			<svg><use href="#i-search" /></svg>
+			<input type="search" class="input" placeholder="Filter endpoints" data-endpoint-filter autocomplete="off" />
+		</label>
 	</div>
 
-	{% if sidebar_operations %}
-		<hr class="my-4 border-zinc-800" />
-		<p class="mb-3 text-xs uppercase tracking-[0.2em] text-zinc-500">Endpoints</p>
-		<div class="custom-scroll max-h-[70vh] space-y-2 overflow-y-auto pr-1 text-xs">
-			{% for operation in sidebar_operations %}
-				<a
-					href="{{ operation.web_path }}"
-					class="block border px-2 py-2 leading-relaxed {% if selected_web_path and operation.web_path.rstrip('/') == selected_web_path.rstrip('/') %}border-zinc-300 text-zinc-100{% elif operation.deprecated %}border-amber-800/40 text-zinc-500 hover:border-amber-600/50 hover:text-zinc-300{% else %}border-zinc-800 text-zinc-400 hover:border-zinc-500 hover:text-zinc-100{% endif %}"
-				>
-					{% set method = operation.method %}
-					{% if method == 'GET' %}
-						{% set method_class = 'border-emerald-500/60 bg-emerald-950/30 text-emerald-300' %}
-					{% elif method == 'POST' %}
-						{% set method_class = 'border-sky-500/60 bg-sky-950/30 text-sky-300' %}
-					{% elif method == 'PUT' %}
-						{% set method_class = 'border-amber-500/60 bg-amber-950/30 text-amber-300' %}
-					{% elif method == 'PATCH' %}
-						{% set method_class = 'border-cyan-500/60 bg-cyan-950/30 text-cyan-300' %}
-					{% elif method == 'DELETE' %}
-						{% set method_class = 'border-rose-500/60 bg-rose-950/30 text-rose-300' %}
-					{% else %}
-						{% set method_class = 'border-zinc-500/60 text-zinc-300' %}
-					{% endif %}
-
-					<div class="mb-1 flex items-center gap-1.5">
-						<span class="inline-flex border px-1 py-0.2 text-[10px] uppercase tracking-[0.16em] {{ method_class }}">{{ method }}</span>
-						{% if operation.deprecated %}
-							<span class="inline-flex border border-amber-700/50 px-1 py-0.5 text-[9px] uppercase tracking-[0.12em] text-amber-500/80">depr</span>
-						{% endif %}
-					</div>
-					<div>{{ operation.web_path }}</div>
-				</a>
-			{% endfor %}
-		</div>
-	{% endif %}
+	<nav class="sidebar-list" data-endpoint-list>
+		{% for operation in sidebar_operations %}
+			{% set active = selected_web_path and operation.web_path.rstrip('/') == selected_web_path.rstrip('/') %}
+			<a
+				href="{{ operation.web_path }}"
+				class="side-link{{ ' is-active' if active else '' }}{{ ' is-deprecated' if operation.deprecated else '' }}"
+				data-filter-text="{{ (operation.summary ~ ' ' ~ operation.api_path) | lower }}"
+				title="{{ operation.summary }}{{ ' (deprecated)' if operation.deprecated else '' }}"
+				{% if active %}aria-current="page"{% endif %}
+			>
+				<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
+				{# Break long paths only after a slash, never mid-segment. #}
+				<span class="side-path">{% for segment in (operation.web_path.removeprefix('/web/' ~ current_group) or '/').split('/') %}{{ segment }}{% if not loop.last %}/<wbr>{% endif %}{% endfor %}</span>
+			</a>
+		{% endfor %}
+		<p class="help hidden" data-endpoint-empty style="padding: 8px">No endpoint matches that filter.</p>
+	</nav>
 </aside>

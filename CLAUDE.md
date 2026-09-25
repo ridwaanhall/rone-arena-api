@@ -34,12 +34,21 @@
 - **Database**: None (stateless API - all data fetched from upstream game-data services)
 - **Upstream Services**: game-data services reached via `RONE_DEV_ACCESS_KEY` / `RONE_DEV_ACCESS_KEY_V2`
 - **Templates**: Jinja2 for server-side rendering
-- **Static Files**: Tailwind CSS, Alpine.js or vanilla JavaScript
+- **Static Files**: `app/web/static` (design-system CSS + vanilla JS), served at `/static`
 
 ### Frontend Stack
 - **Templating**: Jinja2 (server-rendered HTML)
-- **Styling**: Tailwind CSS v4
-- **JavaScript**: Vanilla JS (no build tools required) with localStorage for session management
+- **Styling**: One hand-written design system, `app/web/static/css/arena.css` (tokens for
+  light/dark themes, then components: `.btn`, `.card`, `.field`/`.input`/`.select`, `.chip`,
+  `.tabs`, `.badge`, `.method--get|post|...`, `.menu`, `.modal`, `.prose`). No build step and
+  no Tailwind runtime. Components read tokens only, so restyle through the tokens.
+- **Design language**: warm graphite (dark) / warm paper (light) neutrals with one ember accent
+  (`--accent`); Bricolage Grotesque for display, Geist for UI, Geist Mono for code; 8px control
+  and 12px card radii. HTTP methods always use the semantic colors (GET green, POST blue).
+- **JavaScript**: Vanilla JS, no build tools. `static/js/arena.js` (theme, nav, session/JWT cache,
+  modals; exposes `window.ArenaWebAuth`) and `static/js/playground.js` (endpoint forms,
+  readable/raw/code response tabs). Asset URLs are cache-busted with a content hash
+  (`ASSET_VERSION` in `app/web/routers/root.py`).
 - **Interactive Features**: Dynamic forms, code snippet generation, authentication modal
 
 ### Deployment
@@ -99,7 +108,9 @@ rone-arena-api/
 - `IS_HIGH_TRAFFIC`: Set to `true` to restrict the API and point callers at the high-volume host
   (both default to a restricted service when unset; maintenance wins when both are true, and
   `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment)
-- `PROJECT_VERSION`: Current version string
+
+**Version**: `PROJECT_VERSION` is hardcoded in `app/core/config.py` (not read from the
+environment). Bump it there and in `pyproject.toml` together for each release.
 
 **API URL** (single endpoint):
 - `API_URL` in `config.py` is derived, not read from the environment: `http://127.0.0.1:8000/api/`

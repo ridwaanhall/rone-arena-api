@@ -52,7 +52,10 @@ DEBUG: bool = env_bool("DEBUG", default=False)
 # =========================
 # Availability Settings
 # =========================
-PROJECT_VERSION: str = env_str("PROJECT_VERSION", default="1.0.2")
+# Release version, shown in the OpenAPI schema, /api metadata, and the web UI.
+# Hardcoded on purpose: a release is a code change, so the version lives with
+# the code instead of drifting per deployment. Keep pyproject.toml in sync.
+PROJECT_VERSION: str = "1.1.0"
 
 # Two independent reasons the service may be restricted.
 #   IS_MAINTENANCE  - the service is being worked on; no alternative host to

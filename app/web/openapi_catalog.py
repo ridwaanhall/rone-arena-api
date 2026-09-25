@@ -206,18 +206,8 @@ def _to_web_path(group: str, api_path: str) -> str:
 
 def _render_inline_markdown(text: str) -> str:
     escaped = html.escape(text)
-
-    def _bold_replacement(match: re.Match[str]) -> str:
-        return f'<strong class="font-semibold text-zinc-100">{match.group(1)}</strong>'
-
-    def _code_replacement(match: re.Match[str]) -> str:
-        return (
-            f'<code class="border border-zinc-700 px-1 py-0.5 '
-            f'font-mono text-[11px] text-zinc-200">{match.group(1)}</code>'
-        )
-
-    escaped = re.sub(r"\*\*(.+?)\*\*", _bold_replacement, escaped)
-    escaped = re.sub(r"`([^`]+)`", _code_replacement, escaped)
+    escaped = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
     return escaped
 
 
@@ -228,11 +218,6 @@ def _render_description_html(text: str) -> str:
     lines = text.splitlines()
     blocks: list[str] = []
     list_open_stack: list[bool] = []
-
-    def list_class_for_depth(depth: int) -> str:
-        if depth == 1:
-            return "my-2 list-disc space-y-1 pl-5 text-zinc-300"
-        return "mt-1 list-disc space-y-1 pl-5 text-zinc-300"
 
     def close_lists(target_depth: int = 0) -> None:
         while len(list_open_stack) > target_depth:
@@ -255,8 +240,7 @@ def _render_description_html(text: str) -> str:
 
             if depth > len(list_open_stack):
                 while len(list_open_stack) < depth:
-                    current_depth = len(list_open_stack) + 1
-                    blocks.append(f'<ul class="{list_class_for_depth(current_depth)}">')
+                    blocks.append("<ul>")
                     list_open_stack.append(False)
             elif depth < len(list_open_stack):
                 close_lists(depth)
@@ -270,9 +254,7 @@ def _render_description_html(text: str) -> str:
             continue
 
         close_lists(0)
-        blocks.append(
-            f"<p class=\"my-2 leading-6 text-zinc-300\">{_render_inline_markdown(line)}</p>"
-        )
+        blocks.append(f"<p>{_render_inline_markdown(line)}</p>")
 
     close_lists(0)
     return "".join(blocks)

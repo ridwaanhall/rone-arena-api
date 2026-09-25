@@ -1,129 +1,98 @@
 {% extends "layout.html" %}
 
+{% macro post_meta(post) -%}
+	<div class="post-meta">
+		<span>{{ post['published_at'] }}</span>
+		<span class="sep"></span>
+		<span>{{ post['read_time'] }}</span>
+	</div>
+{%- endmacro %}
+
+{% macro post_badges(post, show_featured=True) -%}
+	<div class="row" style="gap: 6px">
+		<span class="badge">{{ post.get('category', 'Article') }}</span>
+		{% if show_featured and post.get('is_featured') %}<span class="badge badge--accent">Featured</span>{% endif %}
+		{% if post.get('is_pinned') %}<span class="badge badge--warning">Pinned</span>{% endif %}
+	</div>
+{%- endmacro %}
+
 {% block content %}
-<section class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
-    <div class="border border-zinc-800 bg-[linear-gradient(130deg,rgba(6,78,59,0.18),rgba(8,47,73,0.16)_45%,rgba(39,39,42,0.2))] p-5 md:p-6">
-        <p class="text-xs uppercase tracking-[0.22em] text-emerald-300">Knowledge Hub</p>
-        <h1 class="mt-2 text-2xl font-semibold tracking-tight text-zinc-100 md:text-4xl">{{ web_title if web_title else "Tutorial & Blog" }}</h1>
-        <p class="mt-2 max-w-3xl text-sm leading-7 text-zinc-300">{{ subtitle }}</p>
-        <div class="mt-4 flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
-            <span class="border border-zinc-700/80 bg-zinc-900/70 px-2 py-1">{{ blog_posts | length }} posts</span>
-            <span class="border border-amber-700/60 bg-amber-950/20 px-2 py-1">{{ pinned_posts | length }} pinned</span>
-            <span class="border border-cyan-700/60 bg-cyan-950/20 px-2 py-1">{{ featured_posts | length }} featured</span>
-        </div>
-    </div>
+<header class="page-head">
+	<p class="eyebrow eyebrow--accent">Knowledge hub</p>
+	<h1 class="page-title">{{ web_title if web_title else "Tutorial & Blog" }}</h1>
+	<p class="page-lede">{{ subtitle }}</p>
+	<div class="row">
+		<span class="badge">{{ blog_posts | length }} posts</span>
+		<span class="badge badge--warning">{{ pinned_posts | length }} pinned</span>
+		<span class="badge badge--accent">{{ featured_posts | length }} featured</span>
+	</div>
+</header>
 
-    {% if not blog_posts %}
-        <div class="border border-zinc-800 p-6 text-sm text-zinc-400">
-            No blog content available yet.
-        </div>
-    {% else %}
-        {% if featured_posts %}
-            {% set hero_post = featured_posts[0] %}
-            <article class="grid gap-0 border border-zinc-800 bg-zinc-950/50 lg:grid-cols-[1.2fr_1fr]">
-                <a href="/blog/{{ hero_post['slug'] }}" class="block overflow-hidden border-b border-zinc-800 lg:border-b-0 lg:border-r">
-                    <img
-                        src="{{ hero_post['cover_image'] }}"
-                        alt="{{ hero_post['title'] }}"
-                        class="h-full min-h-[260px] w-full object-cover"
-                        loading="lazy"
-                    />
-                </a>
-                <div class="p-5 md:p-6">
-                    <div class="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                        {% if hero_post.get('is_pinned') %}
-                            <span class="border border-amber-700/70 bg-amber-950/20 px-2 py-1 text-amber-200">Pinned</span>
-                        {% endif %}
-                        <span class="border border-cyan-700/60 bg-cyan-950/20 px-2 py-1 text-cyan-200">Featured</span>
-                        <span class="border border-zinc-700/80 px-2 py-1">{{ hero_post.get('category', 'Article') }}</span>
-                    </div>
-                    <h2 class="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">
-                        <a href="/blog/{{ hero_post['slug'] }}" class="hover:text-cyan-200">{{ hero_post['title'] }}</a>
-                    </h2>
-                    <p class="mt-3 text-sm leading-7 text-zinc-300">{{ hero_post['excerpt'] }}</p>
-                    <div class="mt-4 flex items-center gap-2 text-[11px] text-zinc-500">
-                        <span>{{ hero_post['published_at'] }}</span>
-                        <span>•</span>
-                        <span>{{ hero_post['read_time'] }}</span>
-                    </div>
-                    {% if hero_post.get('key_points') %}
-                        <ul class="mt-4 space-y-1 text-xs text-zinc-400">
-                            {% for point in hero_post['key_points'][:3] %}
-                                <li>• {{ point }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
-                    <a href="/blog/{{ hero_post['slug'] }}" class="mt-5 inline-flex border border-cyan-700/70 px-3 py-1.5 text-xs text-cyan-200 hover:border-cyan-400">
-                        Read Featured Post
-                    </a>
-                </div>
-            </article>
-        {% endif %}
+{% if not blog_posts %}
+	<div class="card card-pad muted">No blog content available yet.</div>
+{% else %}
+	<div class="stack-lg">
+		{% if featured_posts %}
+			{% set hero_post = featured_posts[0] %}
+			<article class="card featured">
+				<a href="/blog/{{ hero_post['slug'] }}" class="featured-media" aria-hidden="true" tabindex="-1">
+					<img src="{{ hero_post['cover_image'] }}" alt="" fetchpriority="high" />
+				</a>
+				<div class="featured-body">
+					{{ post_badges(hero_post) }}
+					<h2><a href="/blog/{{ hero_post['slug'] }}">{{ hero_post['title'] }}</a></h2>
+					<p class="muted">{{ hero_post['excerpt'] }}</p>
+					{{ post_meta(hero_post) }}
+					{% if hero_post.get('key_points') %}
+						<ul class="prose" style="margin: 0">
+							{% for point in hero_post['key_points'][:3] %}<li>{{ point }}</li>{% endfor %}
+						</ul>
+					{% endif %}
+					<a href="/blog/{{ hero_post['slug'] }}" class="btn btn--primary" style="align-self: flex-start">
+						Read Featured Post
+						<svg><use href="#i-arrow" /></svg>
+					</a>
+				</div>
+			</article>
+		{% endif %}
 
-        {% if pinned_posts %}
-            <section class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-semibold uppercase tracking-[0.18em] text-amber-300">Pinned</h2>
-                    <span class="text-[11px] text-zinc-500">High-priority reading</span>
-                </div>
-                <div class="grid gap-3 md:grid-cols-2">
-                    {% for post in pinned_posts %}
-                        <article class="border border-amber-700/40 bg-amber-950/10 p-4">
-                            <div class="flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-amber-200">
-                                <span class="border border-amber-700/70 px-2 py-0.5">Pinned</span>
-                                <span class="text-zinc-400">{{ post.get('category', 'Article') }}</span>
-                            </div>
-                            <h3 class="mt-3 text-lg font-semibold text-zinc-100">
-                                <a href="/blog/{{ post['slug'] }}" class="hover:text-amber-100">{{ post['title'] }}</a>
-                            </h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-300">{{ post['excerpt'] }}</p>
-                        </article>
-                    {% endfor %}
-                </div>
-            </section>
-        {% endif %}
+		{% if pinned_posts %}
+			<section class="stack">
+				<div class="row-between">
+					<h2 style="font-size: var(--text-lg)">Pinned</h2>
+					<span class="help">High-priority reading</span>
+				</div>
+				<div class="post-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))">
+					{% for post in pinned_posts %}
+						<a href="/blog/{{ post['slug'] }}" class="card card--link card-pad stack-sm">
+							{{ post_badges(post, show_featured=False) }}
+							<h3 style="font-size: var(--text-lg)">{{ post['title'] }}</h3>
+							<p class="muted" style="font-size: var(--text-sm)">{{ post['excerpt'] }}</p>
+						</a>
+					{% endfor %}
+				</div>
+			</section>
+		{% endif %}
 
-        <section class="space-y-3">
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">All Articles</h2>
-                <span class="text-[11px] text-zinc-500">Sorted by publish date</span>
-            </div>
-            <div class="grid gap-4 md:grid-cols-2">
-                {% for post in blog_posts %}
-                    <article class="border border-zinc-800 p-4 md:p-5">
-                        <a href="/blog/{{ post['slug'] }}" class="block overflow-hidden border border-zinc-800">
-                            <img
-                                src="{{ post['cover_image'] }}"
-                                alt="{{ post['title'] }}"
-                                class="h-48 w-full object-cover"
-                                loading="lazy"
-                            />
-                        </a>
-                        <div class="mt-4 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500">
-                            <span class="border border-zinc-700/80 px-2 py-1">{{ post.get('category', 'Article') }}</span>
-                            {% if post.get('is_featured') %}
-                                <span class="border border-cyan-700/60 px-2 py-1 text-cyan-200">Featured</span>
-                            {% endif %}
-                            {% if post.get('is_pinned') %}
-                                <span class="border border-amber-700/60 px-2 py-1 text-amber-200">Pinned</span>
-                            {% endif %}
-                        </div>
-                        <div class="mt-2 flex items-center gap-2 text-[11px] text-zinc-500">
-                            <span>{{ post['published_at'] }}</span>
-                            <span>•</span>
-                            <span>{{ post['read_time'] }}</span>
-                        </div>
-                        <h3 class="mt-2 text-xl font-semibold text-zinc-100">
-                            <a href="/blog/{{ post['slug'] }}" class="hover:text-cyan-200">{{ post['title'] }}</a>
-                        </h3>
-                        <p class="mt-2 text-sm leading-6 text-zinc-400">{{ post['excerpt'] }}</p>
-                        <a href="/blog/{{ post['slug'] }}" class="mt-4 inline-flex border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:border-cyan-500 hover:text-cyan-200">
-                            Read Article
-                        </a>
-                    </article>
-                {% endfor %}
-            </div>
-        </section>
-    {% endif %}
-</section>
+		<section class="stack">
+			<div class="row-between">
+				<h2 style="font-size: var(--text-lg)">All articles</h2>
+				<span class="help">Newest first</span>
+			</div>
+			<div class="post-grid">
+				{% for post in blog_posts %}
+					<a href="/blog/{{ post['slug'] }}" class="card card--link post-card">
+						<img class="post-cover" src="{{ post['cover_image'] }}" alt="" loading="lazy" />
+						<div class="stack-sm" style="padding: 0 4px 4px">
+							{{ post_badges(post) }}
+							<h3>{{ post['title'] }}</h3>
+							<p class="muted" style="font-size: var(--text-sm)">{{ post['excerpt'] }}</p>
+							{{ post_meta(post) }}
+						</div>
+					</a>
+				{% endfor %}
+			</div>
+		</section>
+	</div>
+{% endif %}
 {% endblock %}

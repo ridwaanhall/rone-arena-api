@@ -1,256 +1,222 @@
-<article class="min-w-0 border p-4 md:p-5 {{ 'border-amber-800/50 bg-amber-950/10' if operation.deprecated else 'border-zinc-800' }}" data-operation-id="{{ operation.operation_id }}" {% if operation.deprecated %}data-deprecated="true"{% endif %}>
-    {% set method = operation.method %}
-    {% if method == 'GET' %}
-        {% set method_class = 'border-emerald-500/60 bg-emerald-950/30 text-emerald-300' %}
-    {% elif method == 'POST' %}
-        {% set method_class = 'border-sky-500/60 bg-sky-950/30 text-sky-300' %}
-    {% elif method == 'PUT' %}
-        {% set method_class = 'border-amber-500/60 bg-amber-950/30 text-amber-300' %}
-    {% elif method == 'PATCH' %}
-        {% set method_class = 'border-cyan-500/60 bg-cyan-950/30 text-cyan-300' %}
-    {% elif method == 'DELETE' %}
-        {% set method_class = 'border-rose-500/60 bg-rose-950/30 text-rose-300' %}
-    {% else %}
-        {% set method_class = 'border-zinc-500/60 text-zinc-300' %}
-    {% endif %}
+{% set op_id = operation.operation_id %}
+<article
+	id="{{ op_id }}"
+	class="card card-pad endpoint{{ ' is-deprecated' if operation.deprecated else '' }}"
+	data-operation-id="{{ op_id }}"
+	{% if operation.deprecated %}data-deprecated="true"{% endif %}
+>
+	<header class="endpoint-head">
+		<div class="row-between">
+			<div class="endpoint-route">
+				<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
+				<code>{{ operation.api_path }}</code>
+			</div>
+			<a href="{{ operation.web_path }}" class="btn btn--ghost btn--sm" title="Open this endpoint on its own page">
+				Open only this
+				<svg><use href="#i-arrow" /></svg>
+			</a>
+		</div>
+		<div class="row" style="gap: 10px">
+			<h2 class="endpoint-title">{{ operation.summary }}</h2>
+			{% if operation.requires_auth %}
+				<span class="badge badge--violet" title="Bearer JWT required (Authorization header)"><svg style="width: 12px; height: 12px"><use href="#i-shield" /></svg>Auth</span>
+			{% endif %}
+			{% if operation.deprecated %}
+				<span class="badge badge--warning">Deprecated</span>
+			{% endif %}
+		</div>
+	</header>
 
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-            <h3 class="text-lg font-semibold {{ 'text-zinc-400' if operation.deprecated else 'text-zinc-100' }}">
-                <span class="inline-flex border px-1 py-0.5 text-[10px] align-middle uppercase tracking-[0.16em] {{ method_class }}">{{ operation.method }}</span>
-                {% if operation.deprecated %}
-                    <span class="inline-flex border border-amber-600/60 bg-amber-950/40 px-1 py-0.5 text-[10px] align-middle uppercase tracking-[0.14em] text-amber-400">Deprecated</span>
-                {% endif %}
-                {% if operation.requires_auth %}
-                    <span class="inline-flex border border-violet-600/50 bg-violet-950/30 px-1 py-0.5 text-[10px] align-middle uppercase tracking-[0.14em] text-violet-300" title="Bearer JWT required (Authorization header)">Auth</span>
-                {% endif %}
-                {{ operation.summary }}
-            </h3>
-            <p class="mt-1 text-xs text-zinc-500">{{ operation.web_path }}</p>
-        </div>
-        <a href="{{ operation.web_path }}" class="cursor-pointer border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:border-zinc-400 hover:text-zinc-100">
-            Open Only This
-        </a>
-    </div>
+	<div class="endpoint-body">
+		{% if operation.deprecated %}
+			<div class="alert alert--warning">
+				<svg><use href="#i-alert" /></svg>
+				<span>This endpoint is deprecated and may be removed or changed in a future version. Avoid it in new integrations.</span>
+			</div>
+		{% endif %}
 
-    {% if operation.deprecated %}
-        <div class="mb-4 flex items-start gap-2 border border-amber-800/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-300/90">
-            <span class="mt-0.5 shrink-0 text-amber-500">&#9888;</span>
-            <span>This endpoint is deprecated and may be removed or changed in a future version. Avoid using it in new integrations.</span>
-        </div>
-    {% endif %}
+		{% if operation.description_html %}
+			<div data-desc-wrapper>
+				<div class="prose collapse-fade" data-desc-content>
+					{{ operation.description_html | safe }}
+					<div class="hidden" data-desc-fade></div>
+				</div>
+				<button type="button" class="btn btn--ghost btn--sm hidden" style="margin-top: 6px; margin-left: -10px" data-desc-toggle>Show more</button>
+			</div>
+		{% endif %}
 
-    {% if operation.description_html %}
-        <div class="mb-4" data-desc-wrapper>
-            <div class="relative min-w-0 break-words text-sm leading-6 text-zinc-300 max-h-[7.5rem]" data-desc-content>
-                {{ operation.description_html | safe }}
-                <div class="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black to-transparent hidden" data-desc-fade></div>
-            </div>
-            <button type="button" class="mt-2 hidden cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-desc-toggle>
-                Show more
-            </button>
-        </div>
-    {% endif %}
+		{% if operation.response_example_json %}
+			<div class="disclosure" data-resp-example-wrapper>
+				<button type="button" class="disclosure-btn" aria-expanded="false" data-resp-example-toggle>
+					<span class="row"><span>Example response</span><span class="badge badge--success">200</span></span>
+					<svg data-resp-example-chevron><use href="#i-chevron" /></svg>
+				</button>
+				<div class="hidden" data-resp-example-body>
+					<pre class="code code--sm" style="border: 0; border-radius: 0">{{ operation.response_example_json }}</pre>
+				</div>
+			</div>
+		{% endif %}
 
-    {% if operation.response_example_json %}
-        <div class="mb-4" data-resp-example-wrapper>
-            <button
-                type="button"
-                class="flex w-full cursor-pointer items-center justify-between border border-zinc-800 px-3 py-2 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
-                data-resp-example-toggle
-            >
-                <span class="flex items-center gap-2">
-                    <span class="text-[10px] uppercase tracking-[0.16em]">Example Response</span>
-                    <span class="inline-flex border border-zinc-700 px-1 py-0.5 text-[9px] uppercase tracking-[0.12em] text-zinc-500">200</span>
-                </span>
-                <span class="text-[10px] text-zinc-600" data-resp-example-chevron>&#9660;</span>
-            </button>
-            <div class="hidden border border-t-0 border-zinc-800 p-3" data-resp-example-body>
-                <pre class="custom-scroll max-h-64 overflow-auto font-mono text-[11px] leading-5 text-zinc-300">{{ operation.response_example_json }}</pre>
-            </div>
-        </div>
-    {% endif %}
+		<form
+			class="api-operation-form stack"
+			data-method="{{ operation.method }}"
+			data-api-path="{{ operation.api_path }}"
+			data-requires-auth="{{ 'true' if operation.requires_auth else 'false' }}"
+			novalidate
+		>
+			{% if operation.parameters %}
+				<div class="params">
+					{% for parameter in operation.parameters %}
+						{% set field_id = "f-" ~ op_id ~ "-" ~ parameter.name %}
+						{% set is_group = parameter.is_array and parameter.option_values %}
+						<div class="field{{ ' field--wide' if is_group else '' }}">
+							<div class="field-head">
+								<label class="label" {% if not is_group %}for="{{ field_id }}"{% endif %}>
+									{{- parameter.label -}}
+									{%- if parameter.required %}<span class="req" title="Required">*</span>{% endif -%}
+									{%- if parameter.title and parameter.title != parameter.name %}<code>{{ parameter.name }}</code>{% endif -%}
+								</label>
+								<span class="field-where">{{ parameter.location }}</span>
+							</div>
 
-    <form
-        class="api-operation-form space-y-4 border border-transparent transition-colors duration-300"
-        data-method="{{ operation.method }}"
-        data-api-path="{{ operation.api_path }}"
-        data-requires-auth="{{ 'true' if operation.requires_auth else 'false' }}"
-    >
-        {% if operation.parameters %}
-            <div class="grid gap-4 md:grid-cols-2">
-                {% for parameter in operation.parameters %}
-                    <div class="block border border-zinc-800 p-3 text-xs text-zinc-300">
-                        <div class="mb-2 flex items-start justify-between gap-2">
-                            <div>
-                                <span class="font-semibold text-zinc-200">{{ parameter.label }}</span>{% if parameter.required %}<span class="ml-0.5 text-rose-400" title="Required">*</span>{% endif %}
-                                {% if parameter.title and parameter.title != parameter.name %}
-                                    <code class="ml-1.5 border border-zinc-700 px-1 py-0.5 font-mono text-[10px] text-zinc-500">{{ parameter.name }}</code>
-                                {% endif %}
-                            </div>
-                            <span class="shrink-0 text-[10px] uppercase tracking-[0.14em] text-zinc-500">{{ parameter.location }}</span>
-                        </div>
+							{% if is_group %}
+								<div
+									class="chips"
+									role="group"
+									aria-label="{{ parameter.label }}"
+									data-param-in="{{ parameter.location }}"
+									data-param-name="{{ parameter.name }}"
+									data-array="true"
+									data-param-kind="checkbox-group"
+									data-form-field="true"
+									data-required="{{ 'true' if parameter.required else 'false' }}"
+								>
+									{% for option in parameter.option_values %}
+										{% set option_id = field_id ~ "-" ~ loop.index %}
+										<span class="chip">
+											<input id="{{ option_id }}" type="checkbox" data-param-choice="true" value="{{ option }}" {% if option in parameter.default_selected %}checked{% endif %} />
+											<label for="{{ option_id }}">{{ option }}</label>
+										</span>
+									{% endfor %}
+								</div>
+							{% elif parameter.enum_values %}
+								<select
+									id="{{ field_id }}"
+									class="select"
+									data-param-in="{{ parameter.location }}"
+									data-param-name="{{ parameter.name }}"
+									data-array="{{ 'true' if parameter.is_array else 'false' }}"
+									data-form-field="true"
+									{% if parameter.required %}required{% endif %}
+								>
+									{% if not parameter.required %}<option value="">Default</option>{% endif %}
+									{% for option in parameter.enum_values %}
+										<option value="{{ option }}" {% if parameter.default == option %}selected{% endif %}>{{ option }}</option>
+									{% endfor %}
+								</select>
+							{% else %}
+								<input
+									id="{{ field_id }}"
+									class="input{{ ' mono' if parameter.input_type == 'number' else '' }}"
+									type="{{ parameter.input_type }}"
+									value="{{ parameter.default_display }}"
+									placeholder="{{ 'comma separated' if parameter.is_array else ('required' if parameter.required else 'optional') }}"
+									data-param-in="{{ parameter.location }}"
+									data-param-name="{{ parameter.name }}"
+									data-array="{{ 'true' if parameter.is_array else 'false' }}"
+									data-form-field="true"
+									{% if parameter.minimum is not none %}min="{{ parameter.minimum }}"{% endif %}
+									{% if parameter.maximum is not none %}max="{{ parameter.maximum }}"{% endif %}
+									{% if parameter.required %}required{% endif %}
+								/>
+							{% endif %}
 
-                        {% if parameter.is_array and parameter.option_values %}
-                            <div
-                                class="flex flex-wrap gap-1.5 border border-zinc-700 p-2"
-                                data-param-in="{{ parameter.location }}"
-                                data-param-name="{{ parameter.name }}"
-                                data-array="true"
-                                data-param-kind="checkbox-group"
-                                data-form-field="true"
-                                data-required="{{ 'true' if parameter.required else 'false' }}"
-                            >
-                                {% for option in parameter.option_values %}
-                                    {% set option_id = "param-" ~ operation.operation_id ~ "-" ~ parameter.name ~ "-" ~ loop.index %}
-                                    <div class="inline-flex">
-                                        <input
-                                            id="{{ option_id }}"
-                                            type="checkbox"
-                                            class="peer sr-only"
-                                            data-param-choice="true"
-                                            value="{{ option }}"
-                                            {% if option in parameter.default_selected %}checked{% endif %}
-                                        />
-                                        <label
-                                            for="{{ option_id }}"
-                                            class="inline-flex cursor-pointer select-none border border-zinc-700 px-2 py-1 text-[10px] leading-none text-zinc-300 hover:border-zinc-500 hover:text-zinc-100 peer-checked:border-cyan-400 peer-checked:bg-cyan-950/35 peer-checked:text-cyan-100"
-                                        >
-                                            {{ option }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% elif parameter.enum_values %}
-                            <div class="relative">
-                                <select
-                                    class="w-full appearance-none border border-zinc-700 bg-black/20 px-3 py-2 pr-9 text-sm text-zinc-100 outline-none transition-colors focus:border-cyan-400"
-                                    data-param-in="{{ parameter.location }}"
-                                    data-param-name="{{ parameter.name }}"
-                                    data-array="{{ 'true' if parameter.is_array else 'false' }}"
-                                    data-form-field="true"
-                                    {% if parameter.required %}required{% endif %}
-                                >
-                                    {% if not parameter.required %}
-                                        <option value="">--</option>
-                                    {% endif %}
-                                    {% for option in parameter.enum_values %}
-                                        <option value="{{ option }}" {% if parameter.default == option %}selected{% endif %}>{{ option }}</option>
-                                    {% endfor %}
-                                </select>
-                                <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] text-zinc-500">▾</span>
-                            </div>
-                        {% else %}
-                            <input
-                                class="w-full border border-zinc-700 bg-black/20 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-cyan-400"
-                                type="{{ parameter.input_type }}"
-                                value="{{ parameter.default_display }}"
-                                placeholder="{{ 'comma separated' if parameter.is_array else 'value' }}"
-                                data-param-in="{{ parameter.location }}"
-                                data-param-name="{{ parameter.name }}"
-                                data-array="{{ 'true' if parameter.is_array else 'false' }}"
-                                data-form-field="true"
-                                {% if parameter.minimum is not none %}min="{{ parameter.minimum }}"{% endif %}
-                                {% if parameter.maximum is not none %}max="{{ parameter.maximum }}"{% endif %}
-                                {% if parameter.required %}required{% endif %}
-                            />
-                        {% endif %}
+							<p class="help">
+								{{ parameter.description_html | safe }}
+								{% if parameter.minimum is not none %}<span class="constraint">Minimum: {{ parameter.minimum }}.</span>{% endif %}
+								{% if parameter.maximum is not none %}<span class="constraint">Maximum: {{ parameter.maximum }}.</span>{% endif %}
+								{% if parameter.min_items is not none %}<span class="constraint">Min items: {{ parameter.min_items }}.</span>{% endif %}
+								{% if parameter.max_items is not none %}<span class="constraint">Max items: {{ parameter.max_items }}.</span>{% endif %}
+								{% if parameter.min_length is not none %}<span class="constraint">Min length: {{ parameter.min_length }}.</span>{% endif %}
+								{% if parameter.max_length is not none %}<span class="constraint">Max length: {{ parameter.max_length }}.</span>{% endif %}
+							</p>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
 
-                        <p class="mt-2 text-[11px] text-zinc-500">
-                            {{ parameter.description_html | safe }}
-                            {% if parameter.minimum is not none %}
-                                <span class="text-zinc-400">Min: {{ parameter.minimum }}.</span>
-                            {% endif %}
-                            {% if parameter.maximum is not none %}
-                                <span class="text-zinc-400">Maximum: {{ parameter.maximum }}.</span>
-                            {% endif %}
-                            {% if parameter.min_items is not none %}
-                                <span class="text-zinc-400">Min items: {{ parameter.min_items }}.</span>
-                            {% endif %}
-                            {% if parameter.max_items is not none %}
-                                <span class="text-zinc-400">Max items: {{ parameter.max_items }}.</span>
-                            {% endif %}
-                            {% if parameter.min_length is not none %}
-                                <span class="text-zinc-400">Min length: {{ parameter.min_length }}.</span>
-                            {% endif %}
-                            {% if parameter.max_length is not none %}
-                                <span class="text-zinc-400">Max length: {{ parameter.max_length }}.</span>
-                            {% endif %}
-                        </p>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+			{% if operation.request_body %}
+				<div class="field">
+					<div class="field-head">
+						<label class="label" for="f-{{ op_id }}-body">Request body{% if operation.request_body.required %}<span class="req">*</span>{% endif %}</label>
+						<span class="field-where">json</span>
+					</div>
+					<textarea
+						id="f-{{ op_id }}-body"
+						class="textarea"
+						rows="5"
+						spellcheck="false"
+						data-request-body="true"
+						data-form-field="true"
+						{% if operation.request_body.required %}required{% endif %}
+					>{{ operation.request_body.example_json }}</textarea>
+				</div>
+			{% endif %}
 
-        {% if operation.request_body %}
-            <label class="block border border-zinc-800 p-3 text-xs text-zinc-300">
-                <div class="mb-2 flex items-center justify-between gap-2">
-                    <span class="font-semibold text-zinc-200">Request Body</span>
-                    <span class="text-[10px] uppercase tracking-[0.14em] text-zinc-500">json</span>
-                </div>
-                <textarea
-                    class="min-h-20 w-full border border-zinc-700 bg-black/20 px-3 py-2 font-mono text-xs text-zinc-100 outline-none transition-colors focus:border-cyan-400"
-                    rows="5"
-                    data-request-body="true"
-                    data-form-field="true"
-                    {% if operation.request_body.required %}required{% endif %}
-                >{{ operation.request_body.example_json }}</textarea>
-            </label>
-        {% endif %}
+			<div class="run-bar">
+				<button type="submit" class="btn btn--primary" data-execute>
+					<svg style="width: 13px; height: 13px"><use href="#i-play" /></svg>
+					Execute
+				</button>
+				<span class="run-target">{{ operation.method }} {{ operation.api_path }}</span>
+			</div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            <button type="submit" class="cursor-pointer border border-cyan-500/60 bg-cyan-950/30 px-2 py-1 text-sm font-medium text-cyan-100 hover:border-cyan-300 hover:bg-cyan-900/40">
-                Execute
-            </button>
-            <span class="text-xs text-zinc-500">{{ operation.method }} {{ operation.api_path }}</span>
-        </div>
+			<p class="form-error hidden" role="alert" data-form-validation-message></p>
 
-        <p class="hidden text-xs text-rose-300" data-form-validation-message></p>
+			<section class="response hidden" data-response-wrapper aria-label="Response">
+				<div class="response-head">
+					<div class="tabs" role="tablist">
+						<button type="button" class="tab is-active" role="tab" data-response-tab="readable">Readable</button>
+						<button type="button" class="tab" role="tab" data-response-tab="raw">Raw JSON</button>
+						<button type="button" class="tab" role="tab" data-response-tab="code">Code</button>
+					</div>
+					<span class="response-status" data-response-status></span>
+				</div>
 
-        <div class="hidden min-w-0 border border-zinc-800 p-3 text-xs text-zinc-300" data-response-wrapper>
-            <p class="mb-2 text-[11px] uppercase tracking-[0.14em] text-zinc-400" data-response-status></p>
+				<div class="response-pane" data-response-pane="readable">
+					<div class="response-toolbar">
+						<span class="help">Nested objects and arrays render as tables; image URLs preview inline.</span>
+						<button type="button" class="btn btn--secondary btn--sm" data-readable-mode-toggle>View: Key-Value</button>
+					</div>
+					<div class="readable" data-response-readable></div>
+				</div>
 
-            <div class="space-y-3">
-                <section class="border border-zinc-900 p-3">
-                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <p class="text-[11px] tracking-[0.08em] text-zinc-500">Languages</p>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-copy-btn data-copy-target="language">
-                            Copy Snippet
-                        </button>
-                    </div>
-                    <div class="mb-2 flex flex-wrap gap-2" data-languages-wrapper>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="curl">curl</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="python">python</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="javascript">javascript</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="go">go</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="node">node (axios)</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="php">php</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="java">java</button>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-lang-tab data-lang-key="csharp">csharp</button>
-                    </div>
-                    <pre class="custom-scroll max-h-56 w-full max-w-full overflow-auto text-xs text-zinc-200" data-language-content></pre>
-                </section>
+				<div class="response-pane hidden" data-response-pane="raw">
+					<div class="response-toolbar">
+						<span class="help">Formatted JSON body</span>
+						<button type="button" class="btn btn--secondary btn--sm" data-copy-btn data-copy-target="response"><svg><use href="#i-copy" /></svg><span data-label>Copy Response</span></button>
+					</div>
+					<pre class="code" data-response-content></pre>
+				</div>
 
-                <section class="border border-zinc-900 p-3">
-                    <div class="mb-2 flex items-center justify-between gap-2">
-                        <p class="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Readable Response</p>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-readable-mode-toggle>
-                            View: Key-Value
-                        </button>
-                    </div>
-                    <div class="custom-scroll max-h-[34rem] min-w-0 overflow-auto" data-response-readable></div>
-                </section>
-
-                <section class="border border-zinc-900 p-3">
-                    <div class="mb-2 flex items-center justify-between gap-2">
-                        <p class="text-[11px] uppercase tracking-[0.14em] text-zinc-500">Raw JSON</p>
-                        <button type="button" class="cursor-pointer border border-zinc-700 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100" data-copy-btn data-copy-target="response">
-                            Copy Response
-                        </button>
-                    </div>
-                    <pre class="custom-scroll max-h-72 w-full max-w-full overflow-auto text-xs text-zinc-200" data-response-content></pre>
-                </section>
-            </div>
-        </div>
-    </form>
+				<div class="response-pane hidden" data-response-pane="code">
+					<div class="response-toolbar">
+						<span class="eyebrow">Languages</span>
+						<button type="button" class="btn btn--secondary btn--sm" data-copy-btn data-copy-target="language"><svg><use href="#i-copy" /></svg><span data-label>Copy Snippet</span></button>
+					</div>
+					<div class="seg" style="margin-bottom: 12px" data-languages-wrapper>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="curl">curl</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="python">python</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="javascript">javascript</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="go">go</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="node">node (axios)</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="php">php</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="java">java</button>
+						<button type="button" class="seg-item" data-lang-tab data-lang-key="csharp">csharp</button>
+					</div>
+					<pre class="code" data-language-content></pre>
+				</div>
+			</section>
+		</form>
+	</div>
 </article>

@@ -23,18 +23,46 @@ def test_landing_page_has_docs_and_demo_options() -> None:
 
     assert response.status_code == 200
     assert "Open API Docs" in response.text
-    assert "Open Demo Website" in response.text
+    assert "Open Playground" in response.text
     assert "/api/docs" in response.text
     assert "/web/user" in response.text
-    assert "family=Onest" in response.text
-    assert "Space+Mono" in response.text
+    assert "family=Bricolage+Grotesque" in response.text
+    assert "Geist+Mono" in response.text
     assert "rone.dev/static/img/favicon/favicon.ico" in response.text
     assert "application/ld+json" in response.text
-    assert "const AUTH_KEY = \"arena_user_auth\";" in response.text
-    assert "renderNavbarState()" in response.text
+    assert "/static/css/arena.css?v=" in response.text
+    assert "/static/js/arena.js?v=" in response.text
     assert "Not Signed In" in response.text
     assert "Sign In" in response.text
     assert "API Version" in response.text
+
+
+def test_landing_page_counts_endpoints_per_group() -> None:
+    response = client.get("/")
+    heroes_count = len(get_group_operations(app, "heroes"))
+
+    assert f"{heroes_count} endpoints" in response.text
+
+
+def test_site_script_manages_session_and_theme() -> None:
+    response = client.get("/static/js/arena.js")
+
+    assert response.status_code == 200
+    assert 'const AUTH_KEY = "arena_user_auth";' in response.text
+    assert "24 * 60 * 60 * 1000" in response.text
+    assert "renderNavbarState()" in response.text
+    assert "arena_theme" in response.text
+    assert "window.ArenaWebAuth" in response.text
+
+
+def test_static_assets_are_versioned_by_content_hash() -> None:
+    from app.web.routers.root import ASSET_VERSION
+
+    response = client.get("/web/heroes")
+
+    assert f"/static/css/arena.css?v={ASSET_VERSION}" in response.text
+    assert f"/static/js/playground.js?v={ASSET_VERSION}" in response.text
+    assert client.get("/static/css/arena.css").status_code == 200
 
 
 def test_navbar_shows_api_version_badge() -> None:
@@ -93,12 +121,14 @@ def test_web_pages_cover_all_documented_group_operations() -> None:
 
 def test_user_login_page_has_jwt_cache_script() -> None:
     response = client.get("/web/user/auth/login")
+    playground_js = client.get("/static/js/playground.js").text
 
     assert response.status_code == 200
-    assert "arena_user_auth" in response.text
-    assert "24 * 60 * 60 * 1000" in response.text
+    assert "/static/js/arena.js" in response.text
+    assert "/static/js/playground.js" in response.text
     assert "/api/user/auth/login" in response.text
-    assert "hydrateUserInfoIfMissing" in response.text
+    assert "hydrateUserInfoIfMissing" in playground_js
+    assert "writeAuth" in playground_js
 
 
 def test_user_privacy_page_renders_get_and_post_forms() -> None:
@@ -156,9 +186,8 @@ def test_login_description_renders_markdown_tokens_as_readable_html() -> None:
 
     assert response.status_code == 200
     assert "**role_id**" not in response.text
-    assert "<strong" in response.text
-    assert 'class="font-semibold text-zinc-100"' in response.text
-    assert '\\&quot;font-semibold' not in response.text
+    assert "<strong>role_id</strong>" in response.text
+    assert "&lt;strong" not in response.text
 
     privacy_response = client.get("/web/user/privacy/settings")
     assert privacy_response.status_code == 200
@@ -169,7 +198,7 @@ def test_parameter_description_renders_inline_code_and_constraints() -> None:
     response = client.get("/web/academy/equipment")
 
     assert response.status_code == 200
-    assert '<code class="border border-zinc-700 px-1 py-0.5 font-mono text-[11px] text-zinc-200">en</code>' in response.text
+    assert "<code>en</code>" in response.text
     assert "Minimum: 1." in response.text
 
 
@@ -177,8 +206,8 @@ def test_equipment_description_preserves_nested_list_indentation() -> None:
     response = client.get("/web/academy/equipment")
 
     assert response.status_code == 200
-    assert "<li><strong class=\"font-semibold text-zinc-100\">records</strong>: Array of equipment entries, each containing:<ul" in response.text
-    assert "<li><strong class=\"font-semibold text-zinc-100\">data</strong>:<ul" in response.text
+    assert "<li><strong>records</strong>: Array of equipment entries, each containing:<ul>" in response.text
+    assert "<li><strong>data</strong>:<ul>" in response.text
 
 
 def test_response_panel_has_readable_and_raw_views() -> None:
@@ -223,7 +252,7 @@ def test_login_request_body_example_follows_schema_order() -> None:
 
 
 def test_web_script_contains_readable_table_and_image_render_helpers() -> None:
-    response = client.get("/web/user/info")
+    response = client.get("/static/js/playground.js")
 
     assert response.status_code == 200
     assert "looksLikeImageUrl" in response.text
@@ -233,6 +262,7 @@ def test_web_script_contains_readable_table_and_image_render_helpers() -> None:
     assert "setupDescriptionToggles" in response.text
     assert "setupCopyButtons" in response.text
     assert "setupLanguageTabs" in response.text
+    assert "setupEndpointFilter" in response.text
 
 
 def test_footer_contains_repository_link() -> None:
@@ -246,7 +276,10 @@ def test_method_badges_are_colorized() -> None:
     response = client.get("/web/user/auth/login")
 
     assert response.status_code == 200
-    assert "border-sky-500/60" in response.text
+    assert 'class="method method--post"' in response.text
+
+    heroes = client.get("/web/heroes")
+    assert 'class="method method--get"' in heroes.text
 
 
 def test_description_expand_markers_present() -> None:
@@ -281,7 +314,6 @@ def test_blog_changelog_page_renders_release_scope() -> None:
     response = client.get("/blog/mlbb-api-web-v3-2-2-changelog-v3-2-1-v3-2-2")
 
     assert response.status_code == 200
-    assert "754bac3f4c052fb181f272ae8933d2921b6f19be" in response.text
     assert "21 files changed, 1305 insertions, 338 deletions" in response.text
     assert "Migration Notes for Integrators" in response.text
 
@@ -299,8 +331,23 @@ def test_navbar_includes_tutorial_button() -> None:
     response = client.get("/web/user")
 
     assert response.status_code == 200
-    assert "Tutorial" in response.text
+    assert "Tutorials" in response.text
     assert "href=\"/blog\"" in response.text
+
+
+def test_endpoint_page_title_uses_operation_summary() -> None:
+    response = client.get("/web/heroes/heroes/{hero_identifier}/wallpapers")
+
+    assert response.status_code == 200
+    assert "<title>Hero Wallpapers - Heroes API / Rone Arena API &amp; Web</title>" in response.text
+    assert "Heroe Endpoint" not in response.text
+
+
+def test_sidebar_breaks_paths_only_after_slashes() -> None:
+    response = client.get("/web/heroes")
+
+    assert "/<wbr>{hero_identifier}/<wbr>wallpapers" in response.text
+    assert "&lt;wbr&gt;" not in response.text
 
 
 

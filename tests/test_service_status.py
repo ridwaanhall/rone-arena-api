@@ -24,6 +24,7 @@ from app.main import app
 client = TestClient(app)
 home = client.get("/")
 api = client.get("/api/heroes")
+stylesheet = client.get("/static/css/arena.css", follow_redirects=False)
 try:
     body = api.json()
 except ValueError:
@@ -34,6 +35,7 @@ print(json.dumps({
     "maintenance_panel": "Under Maintenance" in home.text,
     "high_traffic_panel": "503 Service Unavailable" in home.text,
     "api_status": api.status_code,
+    "stylesheet_status": stylesheet.status_code,
     "message": body.get("message", ""),
     "alternative": (body.get("details") or {}).get("alternative_endpoint"),
 }))
@@ -61,6 +63,8 @@ def test_maintenance_shows_maintenance_page_and_offers_no_alternative() -> None:
     assert state["home_status"] == 503
     assert state["maintenance_panel"] is True
     assert state["api_status"] == 503
+    # The status page must still load its stylesheet.
+    assert state["stylesheet_status"] == 200
     assert "under maintenance" in state["message"].lower()
     # There is nowhere to fail over to while the service itself is down.
     assert state["alternative"] is None

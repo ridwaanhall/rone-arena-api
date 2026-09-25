@@ -1,156 +1,148 @@
 {% extends "layout.html" %}
 
 {% block content %}
-{% if is_maintenance %}
-<section class="mx-auto w-full max-w-5xl">
-	<div class="relative overflow-hidden border border-amber-400/50 bg-amber-950/20 p-5 sm:p-8 md:p-10">
-		<div class="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-amber-500/20 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-yellow-500/15 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-amber-200/80">Service Status</p>
-		<h1 class="relative z-10 mt-3 text-2xl font-semibold tracking-tight text-amber-50 sm:text-3xl md:text-4xl">
-			Under Maintenance
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-7 text-amber-100/90 sm:text-base">
-			{{ maintenance_message }}
-		</p>
-
-		{% if date_available %}
-		<div class="relative z-10 mt-6 border border-amber-300/50 bg-black/25 p-4 sm:p-5">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-amber-100/80">Expected Back</p>
-			<p class="mt-2 font-mono text-sm text-amber-100 sm:text-base">{{ date_available }}</p>
-		</div>
+{% if is_maintenance or not is_available %}
+<section class="status-hero stack-lg" style="padding-block: 32px">
+	<div class="card card-pad stack">
+		<span class="badge {{ 'badge--warning' if is_maintenance else 'badge--danger' }}" style="align-self: flex-start"><span class="dot"></span>Service status</span>
+		<h1 class="page-title">{{ "Under Maintenance" if is_maintenance else "503 Service Unavailable" }}</h1>
+		{% if is_maintenance %}
+			<p class="page-lede">{{ maintenance_message }}</p>
+			{% if date_available %}
+				<div class="panel" style="padding: 14px 16px">
+					<p class="eyebrow">Expected back</p>
+					<p class="mono" style="margin-top: 4px; font-size: var(--text-md)">{{ date_available }}</p>
+				</div>
+			{% endif %}
+		{% else %}
+			<p class="page-lede">This host is temporarily unavailable due to high traffic. Use the alternative endpoint below while scaling is in progress.</p>
+			<div class="panel" style="padding: 14px 16px">
+				<p class="eyebrow">Recommended endpoint</p>
+				<a href="{{ alternative_endpoint }}" target="_blank" rel="noopener noreferrer" class="rv-link mono" style="display: inline-block; margin-top: 4px">{{ alternative_endpoint }}</a>
+			</div>
 		{% endif %}
-
-		<div class="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-zinc-300">
-			<span class="border border-zinc-700 px-3 py-1">API and interactive web routes are paused</span>
-			<span class="border border-zinc-700 px-3 py-1">Tutorial pages remain accessible under /blog</span>
-			<span class="border border-zinc-700 px-3 py-1">No action needed - existing integrations resume automatically</span>
-		</div>
-
-		<div class="relative z-10 mt-6 flex flex-wrap gap-2 text-xs">
-			<a href="/blog" class="border border-amber-400/60 px-3 py-1.5 text-amber-200 hover:border-amber-300 hover:text-amber-100">Read the blog</a>
-			<a href="/api" class="border border-zinc-700 px-3 py-1.5 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100">Check API status</a>
-		</div>
-	</div>
-</section>
-{% elif not is_available %}
-<section class="mx-auto w-full max-w-5xl">
-	<div class="relative overflow-hidden border border-rose-400/50 bg-rose-950/20 p-5 sm:p-8 md:p-10">
-		<div class="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-rose-500/20 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-orange-500/20 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-rose-200/80">Service Status</p>
-		<h1 class="relative z-10 mt-3 text-2xl font-semibold tracking-tight text-rose-50 sm:text-3xl md:text-4xl">
-			503 Service Unavailable
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-7 text-rose-100/90 sm:text-base">
-			The current endpoint is temporarily unavailable due to high traffic.
-			Please use the alternative endpoint below while maintenance and scaling are in progress.
-		</p>
-
-		<div class="relative z-10 mt-6 border border-rose-300/50 bg-black/25 p-4 sm:p-5">
-			<p class="text-[11px] uppercase tracking-[0.16em] text-rose-100/80">Recommended Endpoint</p>
-			<a
-				href="{{ alternative_endpoint }}"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="mt-2 inline-flex break-all text-cyan-200 underline decoration-cyan-300/70 underline-offset-4 hover:text-cyan-100"
-			>
-				<code class="border border-cyan-300/40 bg-black/30 px-2 py-1 font-mono text-xs sm:text-sm">
-					{{ alternative_endpoint }}
-				</code>
-			</a>
-		</div>
-
-		<div class="relative z-10 mt-5 flex flex-wrap gap-2 text-xs text-zinc-300">
-			<span class="border border-zinc-700 px-3 py-1">Base URL remains reachable for status updates</span>
-			<span class="border border-zinc-700 px-3 py-1">API and interactive web routes are currently restricted</span>
-			<span class="border border-zinc-700 px-3 py-1">Tutorial pages remain accessible under /blog</span>
+		<ul class="prose" style="margin: 0">
+			<li>API and interactive playground routes are paused on this host.</li>
+			<li>Tutorials stay available under <code>/blog</code>.</li>
+			<li>No action needed: existing integrations resume automatically.</li>
+		</ul>
+		<div class="row">
+			<a href="/blog" class="btn btn--primary">Read the tutorials</a>
+			<a href="/api" class="btn btn--secondary">Check API status</a>
 		</div>
 	</div>
 </section>
 {% else %}
-<section class="mx-auto w-full max-w-6xl space-y-4 sm:space-y-6">
-	<div class="relative border border-zinc-800 p-4 sm:p-6 md:p-10">
-		<div class="pointer-events-none absolute -right-24 top-0 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl"></div>
-		<div class="pointer-events-none absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-teal-500/10 blur-3xl"></div>
-		<div class="pointer-events-none absolute right-0 top-20 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl"></div>
-
-		<p class="relative z-10 text-xs uppercase tracking-[0.24em] text-zinc-500">Rone Arena API</p>
-		<div class="relative z-10 mt-2 inline-flex border border-cyan-500/60 bg-cyan-950/40 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-cyan-200">
-			API Version {{ api_version }}
+<section class="hero">
+	<div class="hero-grid">
+		<div class="stack-lg">
+			<span class="badge badge--accent" style="align-self: flex-start"><span class="dot"></span>API Version {{ api_version }}</span>
+			<h1 class="hero-title">Game data for Mobile Legends, <em>ready to query.</em></h1>
+			<p class="hero-lede">
+				Rone Arena is a free community REST API for heroes, win rates, builds, counters, and player records, with an interactive playground that turns every endpoint into a form.
+			</p>
+			<div class="row" style="gap: 12px">
+				<a href="/web/heroes" class="btn btn--primary btn--lg">
+					Open Playground
+					<svg><use href="#i-arrow" /></svg>
+				</a>
+				<a href="/api/docs" class="btn btn--secondary btn--lg">Open API Docs</a>
+			</div>
+			<p class="help">Unofficial and community maintained. Not affiliated with Moonton.</p>
 		</div>
-		<h1 class="relative z-10 mt-3 max-w-4xl text-xl font-semibold tracking-tight text-zinc-100 sm:text-3xl md:text-4xl">
-			Rone Arena API &amp; Interactive Web Playground
-		</h1>
-		<p class="relative z-10 mt-4 max-w-3xl text-sm leading-6 text-zinc-300 md:text-base md:leading-7">
-			Check endpoint docs or use the updated playground.
-			APIs include easy forms, response tables, previews, and cURL for quick integration.
-		</p>
 
-		<div class="relative z-10 mt-6 grid gap-3 sm:gap-4 md:mt-8 md:grid-cols-2">
-			<a href="/web/user" 
-				class="group relative border border-zinc-700 p-5 transition hover:-translate-y-0.5 hover:border-teal-300">
-				
-				<span class="absolute top-2 right-2 bg-teal-600 px-2 py-1 text-xs">
-					Recommended
-				</span>
+		<div class="card terminal" aria-label="Example request">
+			<div class="terminal-bar"><i></i><i></i><i></i><span class="eyebrow" style="margin-left: 6px">GET /api/heroes/hirara/wallpapers</span></div>
+<pre><span class="t-cmd">$ curl {{ api_url }}/heroes/hirara/wallpapers?device=mobile</span>
 
-				<p class="text-xs uppercase tracking-[0.18em] text-zinc-500 group-hover:text-teal-200">
-					Option 1
-				</p>
-				<h2 class="mt-2 text-xl font-medium text-zinc-100">Open Demo Website</h2>
-				<p class="mt-2 text-sm text-zinc-400">
-					Interactive requests, readable tables, and quick auth flow.
-				</p>
-			</a>
-			<a href="/api/docs" class="group border border-zinc-700 p-5 transition hover:-translate-y-0.5 hover:border-cyan-300">
-				<p class="text-xs uppercase tracking-[0.18em] text-zinc-500 group-hover:text-cyan-200">Option 2</p>
-				<h2 class="mt-2 text-xl font-medium text-zinc-100">Open API Docs</h2>
-				<p class="mt-2 text-sm text-zinc-400">Swagger UI with examples and full schema access.</p>
-			</a>
+{
+  <span class="t-key">"code"</span>: <span class="t-num">0</span>,
+  <span class="t-key">"data"</span>: {
+    <span class="t-key">"records"</span>: [{
+      <span class="t-key">"caption"</span>: <span class="t-str">"133_hirara_web1"</span>,
+      <span class="t-key">"heroid"</span>: [<span class="t-num">133</span>],
+      <span class="t-key">"pictures"</span>: [{
+        <span class="t-key">"resolution"</span>: <span class="t-str">"1080x1920"</span>,
+        <span class="t-key">"url"</span>: <span class="t-str">"https://akmweb…/ff8f39.jpg"</span>
+      }]
+    }],
+    <span class="t-key">"total"</span>: <span class="t-num">10</span>
+  }
+}</pre>
 		</div>
 	</div>
+</section>
 
-	<div class="relative overflow-hidden border border-cyan-700/40 bg-gradient-to-br from-black via-cyan-950/20 to-black p-4 sm:p-6">
-		<div class="pointer-events-none absolute -left-24 -top-16 h-52 w-52 rounded-full bg-cyan-500/15 blur-3xl"></div>
-		<div class="pointer-events-none absolute -right-24 -bottom-20 h-60 w-60 rounded-full bg-sky-500/10 blur-3xl"></div>
+<section style="margin-top: 40px">
+	<div class="stat-grid">
+		<div class="card card-pad"><p class="eyebrow">Endpoints</p><p class="stat-value">{{ endpoint_total }}</p><p class="help">documented in OpenAPI</p></div>
+		<div class="card card-pad"><p class="eyebrow">Service groups</p><p class="stat-value">{{ groups | length }}</p><p class="help">{{ groups | join(", ") }}</p></div>
+		<div class="card card-pad"><p class="eyebrow">Languages</p><p class="stat-value">17</p><p class="help">localized game content</p></div>
+		<div class="card card-pad"><p class="eyebrow">Snippets</p><p class="stat-value">8</p><p class="help">curl to C#, generated per request</p></div>
+	</div>
+</section>
 
-		<p class="relative z-10 text-xs uppercase tracking-[0.22em] text-zinc-500">API Base</p>
-		<h2 class="relative z-10 mt-2 text-xl font-semibold text-zinc-100">One endpoint for every request</h2>
-		<p class="relative z-10 mt-2 text-sm leading-6 text-zinc-300">
-			The docs and the playground both call {{ api_url }}. Local runs use the dev server; every
-			other deployment follows its own base URL.
-		</p>
+<section style="margin-top: 64px">
+	<div class="section-head">
+		<p class="eyebrow eyebrow--accent">Explore</p>
+		<h2 class="section-title">Pick a service group</h2>
+		<p class="page-lede">Each group opens in the playground with live request forms built from the schema.</p>
+	</div>
+	<div class="feature-grid">
+		{% set group_icons = {"user": "i-user", "heroes": "i-sword", "academy": "i-grad", "addon": "i-wrench"} %}
+		{% for group in groups %}
+			<a href="/web/{{ group }}" class="card card--link card-pad">
+				<div class="group-card">
+					<div class="row" style="gap: 12px">
+						<span class="icon-tile"><svg><use href="#{{ group_icons.get(group, 'i-layers') }}" /></svg></span>
+						<span class="badge">{{ group_counts.get(group, 0) }} endpoints</span>
+						<svg class="arrow" style="width: 18px; height: 18px"><use href="#i-arrow" /></svg>
+					</div>
+					<h3 style="font-size: var(--text-lg)">{{ group_meta[group]["title"] }}</h3>
+					<p class="muted" style="font-size: var(--text-sm)">{{ group_meta[group]["description"] }}</p>
+				</div>
+			</a>
+		{% endfor %}
+	</div>
+</section>
 
-		<div class="relative z-10 mt-4 border border-cyan-700/50 bg-cyan-950/25 px-3 py-2 text-xs">
-			<p class="text-[10px] uppercase tracking-[0.18em] text-cyan-400">Base URL</p>
-			<p class="mt-2 font-mono break-all text-cyan-200">{{ api_url }}</p>
+<section style="margin-top: 64px">
+	<div class="section-head">
+		<p class="eyebrow eyebrow--accent">Playground</p>
+		<h2 class="section-title">Built for fast integration</h2>
+	</div>
+	<div class="feature-grid">
+		<div class="card card-pad stack-sm">
+			<span class="icon-tile"><svg><use href="#i-bolt" /></svg></span>
+			<h3 style="font-size: var(--text-md); margin-top: 6px">Live request forms</h3>
+			<p class="muted" style="font-size: var(--text-sm)">Path, query, enum, and body fields generated from OpenAPI. Execute right in the browser.</p>
+		</div>
+		<div class="card card-pad stack-sm">
+			<span class="icon-tile"><svg><use href="#i-table" /></svg></span>
+			<h3 style="font-size: var(--text-md); margin-top: 6px">Readable responses</h3>
+			<p class="muted" style="font-size: var(--text-sm)">Nested JSON as tables with image previews, plus the raw body one tab away.</p>
+		</div>
+		<div class="card card-pad stack-sm">
+			<span class="icon-tile"><svg><use href="#i-code" /></svg></span>
+			<h3 style="font-size: var(--text-md); margin-top: 6px">Copy-ready snippets</h3>
+			<p class="muted" style="font-size: var(--text-sm)">curl, Python, JavaScript, Go, Node, PHP, Java, and C# for the exact request you ran.</p>
+		</div>
+		<div class="card card-pad stack-sm">
+			<span class="icon-tile"><svg><use href="#i-key" /></svg></span>
+			<h3 style="font-size: var(--text-md); margin-top: 6px">Player sign-in</h3>
+			<p class="muted" style="font-size: var(--text-sm)">Sign in with an in-game code once. The JWT is cached for a day and sent automatically.</p>
 		</div>
 	</div>
+</section>
 
-	<div class="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Coverage</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">4 Service Groups</p>
-			<p class="mt-1 text-xs text-zinc-400">user, heroes, academy, addon</p>
+<section style="margin-top: 64px">
+	<div class="card card-pad row-between">
+		<div class="stack-sm grow">
+			<p class="eyebrow">API base</p>
+			<code class="break-all" style="font-size: var(--text-md)">{{ api_url }}</code>
+			<p class="help">The docs and the playground both call this base. Local runs use the dev server; every other deployment follows its own host.</p>
 		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Execution</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Live Request Forms</p>
-			<p class="mt-1 text-xs text-zinc-400">path, query, enum, and request-body aware</p>
-		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Response UX</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Readable Tables</p>
-			<p class="mt-1 text-xs text-zinc-400">with safe rich text and image rendering for media fields</p>
-		</div>
-		<div class="border border-zinc-800 p-4">
-			<p class="text-xs uppercase tracking-[0.16em] text-zinc-500">Developer Tools</p>
-			<p class="mt-2 text-xl font-semibold text-zinc-100">Snippets + Auth Cache</p>
-			<p class="mt-1 text-xs text-zinc-400">cURL/multi-language snippets, JWT cache, and copy actions</p>
-		</div>
+		<button type="button" class="btn btn--secondary" data-copy-command="{{ api_url }}"><svg><use href="#i-copy" /></svg><span data-label>Copy base URL</span></button>
 	</div>
 </section>
 {% endif %}
@@ -167,36 +159,5 @@
     "name": "RoneAI"
   }
 }
-</script>
-{% endblock %}
-
-{% block scripts %}
-<script>
-(() => {
-	const copyButtons = document.querySelectorAll("[data-copy-command]");
-	if (!copyButtons.length) {
-		return;
-	}
-
-	copyButtons.forEach((button) => {
-		button.addEventListener("click", async () => {
-			const command = button.getAttribute("data-copy-command") || "";
-			if (!command) {
-				return;
-			}
-
-			try {
-				await navigator.clipboard.writeText(command);
-				const previousText = button.textContent;
-				button.textContent = "Copied";
-				window.setTimeout(() => {
-					button.textContent = previousText;
-				}, 1200);
-			} catch {
-				window.prompt("Copy this command", command);
-			}
-		});
-	});
-})();
 </script>
 {% endblock %}
