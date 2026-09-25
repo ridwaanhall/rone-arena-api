@@ -719,7 +719,9 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 
 .lead-post { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 32px 40px; border-top: 1.5px solid var(--ink); }
 @media (min-width: 960px) { .lead-post { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start; } }
-.cover { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: var(--paper-2); border: 1px solid var(--rule); }
+/* height: auto lets the width/height attributes reserve space (no layout
+   shift) without fixing the height; the cap keeps tall shots in view. */
+.cover { width: 100%; height: auto; max-height: min(62vh, 520px); aspect-ratio: 16 / 9; object-fit: contain; background: var(--paper-2); border: 1px solid var(--rule); }
 .lead-post h2 { font-size: clamp(2rem, 2vw + 1.25rem, 3rem); }
 .lead-post h2 a { text-decoration: none; }
 .lead-post h2 a:hover { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 5px; }
@@ -804,7 +806,7 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .article-body ul { padding-left: 22px; margin-top: 10px; }
 .article-body .note { margin-top: 16px; font-size: 1rem; }
 .article-body figure { margin: 18px 0 0; }
-.article-body figure img { width: 100%; border: 1px solid var(--rule); background: var(--paper-2); }
+.article-body figure img { width: 100%; height: auto; max-height: min(70vh, 640px); object-fit: contain; border: 1px solid var(--rule); background: var(--paper-2); }
 .article-body figcaption { margin-top: 8px; font-size: 0.875rem; color: var(--ink-3); }
 .keypoints { margin-top: 28px; padding: 16px 18px; background: var(--paper-2); border-left: 3px solid var(--ink); }
 .keypoints h2 { font-size: 1.25rem; }
