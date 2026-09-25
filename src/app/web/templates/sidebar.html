@@ -19,8 +19,11 @@
 				{% if active %}aria-current="page"{% endif %}
 			>
 				<span class="method method--{{ operation.method | lower }}">{{ operation.method }}</span>
-				{# Break long paths only after a slash, never mid-segment. #}
-				<span class="path">{% for segment in (operation.web_path.removeprefix('/web/' ~ current_group) or '/').split('/') %}{{ segment }}{% if not loop.last %}/<wbr>{% endif %}{% endfor %}</span>
+				<span class="entry">
+					<span class="name">{{ operation.summary }}</span>
+					{# Break long paths only after a slash, never mid-segment. #}
+					<span class="path">{% for segment in (operation.web_path.removeprefix('/web/' ~ current_group) or '/').split('/') %}{{ segment }}{% if not loop.last %}/<wbr>{% endif %}{% endfor %}</span>
+				</span>
 			</a>
 		{% endfor %}
 		<p class="help hidden" data-endpoint-empty style="padding: 8px 6px">Nothing matches that filter.</p>

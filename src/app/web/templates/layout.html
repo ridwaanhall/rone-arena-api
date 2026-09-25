@@ -65,29 +65,33 @@
 	<div id="signin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="signin-title">
 		<div class="dialog">
 			<h2 id="signin-title">Sign in</h2>
-			<p class="quiet" style="margin-top: 10px">User endpoints need a JWT. You get one by confirming a code the game sends to your in-game mail.</p>
+			<p class="quiet dialog-lede">User endpoints need a JWT. You get one by confirming a code the game sends to your in-game mail.</p>
 
-			<ol class="steps">
-				<li class="step">
-					<div class="step-body">
-						<span class="label">Your Role ID and Zone ID</span>
+			<ol class="signin-steps">
+				<li class="signin-step">
+					<div class="signin-step-body">
+						<span class="signin-step-title">Your Role ID and Zone ID</span>
 						<div class="field-pair">
-							<label class="sr-only" for="signin-role-id">Role ID</label>
-							<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Role ID" />
-							<label class="sr-only" for="signin-zone-id">Zone ID</label>
-							<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="Zone ID" />
+							<label class="field">
+								<span class="field-label">Role ID</span>
+								<input id="signin-role-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="123456789" />
+							</label>
+							<label class="field">
+								<span class="field-label">Zone ID</span>
+								<input id="signin-zone-id" class="input mono" type="number" min="1" inputmode="numeric" placeholder="1234" />
+							</label>
 						</div>
-						<div>
+						<div class="field-row">
 							<button id="signin-send-vc" type="button" class="button">Send VC</button>
+							<p id="signin-vc-hint" class="help">The code arrives in your in-game mail and expires in 5 minutes.</p>
 						</div>
-						<p id="signin-vc-hint" class="help">The code arrives in your in-game mail and expires in 5 minutes.</p>
 					</div>
 				</li>
-				<li id="signin-login-block" class="step is-waiting">
-					<div class="step-body">
-						<label class="label" for="signin-vc">The code from your mail</label>
-						<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" disabled />
-						<div>
+				<li id="signin-login-block" class="signin-step is-waiting">
+					<div class="signin-step-body">
+						<label class="signin-step-title" for="signin-vc">The code from your mail</label>
+						<div class="field-row">
+							<input id="signin-vc" class="input mono" type="number" min="1" inputmode="numeric" placeholder="4-digit code" disabled />
 							<button id="signin-login" type="button" class="button button--mark" disabled>Sign In</button>
 						</div>
 					</div>
