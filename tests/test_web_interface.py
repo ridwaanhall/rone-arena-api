@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from collections import defaultdict
 
 from fastapi.testclient import TestClient
@@ -57,8 +58,8 @@ def test_showcase_links_sister_sites_to_real_endpoints() -> None:
     }
 
     assert response.status_code == 200
-    assert "https://arena-academy.rone.dev/" in response.text
-    assert "https://arena-card.rone.dev/" in response.text
+    hrefs = set(re.findall(r'href="([^"]+)"', response.text))
+    assert {"https://arena-academy.rone.dev/", "https://arena-card.rone.dev/"} <= hrefs
     for product in SHOWCASE:
         for _, endpoints in product["features"]:
             for method, path in endpoints:
@@ -106,7 +107,6 @@ def test_showcase_slug_survives_community_names() -> None:
 
 def test_showcase_issue_form_takes_one_python_entry() -> None:
     # The prompt's prefilled link fills the form field by its id.
-    import re
 
     from app.web.showcase import llm_prompt
 
@@ -545,9 +545,11 @@ def test_sitemap_lists_pages_posts_and_every_endpoint() -> None:
 
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [loc.text for loc in ElementTree.fromstring(response.text).findall("s:url/s:loc", ns)]
-    assert "https://arena.rone.dev/" in locs
-    assert "https://arena.rone.dev/blog/rone-arena-1-1-0-release-notes" in locs
-    assert "https://arena.rone.dev/web/heroes/heroes/wallpapers" in locs
+    assert {
+        "https://arena.rone.dev/",
+        "https://arena.rone.dev/blog/rone-arena-1-1-0-release-notes",
+        "https://arena.rone.dev/web/heroes/heroes/wallpapers",
+    } <= set(locs)
     assert len(locs) == len(set(locs))
     assert all(loc.startswith("https://arena.rone.dev/") for loc in locs)
 
