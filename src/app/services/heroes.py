@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from time import monotonic
 from typing import Any
 
 from app.core.exceptions import AppError, validation_error
 from app.core.security import BasePathProvider
 from app.services.source import build_query, eq, has_any_of, post_source, sort_by
 from app.utils.filters import LANE_IDS, ROLE_IDS, map_many, rank_code
+from app.utils.ttl_cache import ttl_cache
 
 # Upstream source IDs under the hero base path.
 HERO_LIST = "2756564"
@@ -18,9 +18,6 @@ HERO_WALLPAPERS = "3255326"
 HERO_STATS_BY_DAYS = {"1": "2756567", "3": "2756568", "7": "2756569", "15": "2756565", "30": "2756570"}
 # Win/pick/ban rate trends, one source per past-day window.
 HERO_TRENDS_BY_DAYS = {"7": "2674709", "15": "2687909", "30": "2690860"}
-
-_HERO_INDEX_TTL_SECONDS = 3600
-_hero_index_cache: dict[str, tuple[float, "HeroIndex"]] = {}
 
 
 def fetch_hero_post(source_id: str, payload: dict[str, Any], lang: str) -> Any:
@@ -45,6 +42,7 @@ def _as_hero_id(value: object) -> int | None:
     return None
 
 
+@ttl_cache(3600)
 def get_hero_index(lang: str) -> HeroIndex:
     """Latest hero ID and a name lookup, built from one hero-list fetch.
 
@@ -52,10 +50,6 @@ def get_hero_index(lang: str) -> HeroIndex:
     released, and without the cache every name-based request downloaded the
     whole list.
     """
-    cached = _hero_index_cache.get(lang)
-    if cached is not None and monotonic() - cached[0] < _HERO_INDEX_TTL_SECONDS:
-        return cached[1]
-
     payload = build_query(
         10000,
         1,
@@ -88,13 +82,11 @@ def get_hero_index(lang: str) -> HeroIndex:
             details="Unable to determine latest hero total from hero list source.",
         )
 
-    index = HeroIndex(max_id=max_id, ids_by_name=ids_by_name)
-    _hero_index_cache[lang] = (monotonic(), index)
-    return index
+    return HeroIndex(max_id=max_id, ids_by_name=ids_by_name)
 
 
 def clear_hero_caches() -> None:
-    _hero_index_cache.clear()
+    get_hero_index.cache_clear()
 
 
 def require_hero_id(hero_identifier: str, lang: str) -> int:

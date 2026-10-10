@@ -14,7 +14,7 @@ from app.web.openapi_catalog import get_group_operations
 client = TestClient(app)
 
 
-WEB_GROUPS = {"user", "heroes", "academy", "addon"}
+WEB_GROUPS = {"user", "heroes", "academy", "addon", "esports"}
 
 
 def test_landing_page_has_docs_and_demo_options() -> None:
@@ -40,9 +40,9 @@ def test_landing_page_has_docs_and_demo_options() -> None:
 
 def test_landing_page_indexes_every_endpoint() -> None:
     response = client.get("/")
-    operations = [op for group in ("user", "heroes", "academy", "addon") for op in get_group_operations(app, group)]
+    operations = [op for group in ("user", "heroes", "academy", "addon", "esports") for op in get_group_operations(app, group)]
 
-    assert f"{len(operations)} endpoints in 4 groups" in response.text
+    assert f"{len(operations)} endpoints in 5 groups" in response.text
     for operation in operations:
         assert f'href="{operation["web_path"]}"' in response.text
 

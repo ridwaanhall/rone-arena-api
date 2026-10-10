@@ -49,3 +49,26 @@ def test_json_405_is_not_treated_as_a_waf_block(monkeypatch) -> None:
 
     assert caught.value.status_code == 405
     assert len(calls) == 1
+
+
+def test_request_page_returns_the_response_for_html_and_cookie_access(monkeypatch) -> None:
+    client, _ = _client_answering(httpx.Response(200, headers={"set-cookie": "session=abc"}, text="<html>ok</html>"))
+    monkeypatch.setattr(upstream, "_get_client", lambda: client)
+
+    response = upstream.request_page(method="GET", url="https://upstream.test/page", headers={})
+
+    assert response.text == "<html>ok</html>"
+    assert response.headers["set-cookie"] == "session=abc"
+
+
+def test_request_page_shares_the_waf_retry_and_error_mapping(monkeypatch) -> None:
+    client, calls = _client_answering(WAF_PAGE, httpx.Response(200, text="<html></html>"))
+    monkeypatch.setattr(upstream, "_get_client", lambda: client)
+    assert upstream.request_page(method="GET", url="https://upstream.test/page", headers={}).text == "<html></html>"
+    assert len(calls) == 2
+
+    client, _ = _client_answering(httpx.Response(404, text="missing"))
+    monkeypatch.setattr(upstream, "_get_client", lambda: client)
+    with pytest.raises(AppError) as caught:
+        upstream.request_page(method="GET", url="https://upstream.test/page", headers={})
+    assert caught.value.status_code == 404

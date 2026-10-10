@@ -57,6 +57,7 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
 4. **Upstream Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
 5. **Upstream WAF answers bursts with an HTML 405**: `core/http.py` retries once, then returns 429 `UPSTREAM_RATE_LIMITED`. Don't fire many parallel upstream calls when testing; the block lasts minutes per address
 6. **The upstream IP lookup is IPv4-only**: it answers an IPv6 address with `code: -1, data: ""`. `/api/addon/ip` answers IPv6 visitors from Cloudflare's `request.cf` geolocation instead (handed to the app by `src/worker.py` through a ContextVar)
+7. **Esports endpoints scrape HTML, not JSON**: `services/esports/` parses the two league sites with BeautifulSoup. Their base URLs are Fernet tokens in `EsportsSourceProvider` (`core/security.py`), so no host name appears in the repo; fixtures in `tests/fixtures/esports/` use `*.test` hosts. Parsed results are cached for 300s (`utils/ttl_cache.py`). The Indonesian site's item images are presigned for 6h, so never cache longer. The Philippine item sequences are a CSRF-protected POST: the token comes from the match page and the request must carry that page's cookies explicitly (the pooled client's jar is shared across callers)
 
 ## Branding & Trademark Constraints
 

@@ -86,3 +86,21 @@ class BaseUserPathProvider:
     @classmethod
     def get_base_url_path_stats(cls) -> str:
         return _decrypt(cls.RONE_DEV_KEY_STATS)
+
+class EsportsSourceProvider:
+    """Base URLs of the professional-league sites, kept encrypted like the other upstreams."""
+
+    ESPORTS_ID_KEY = (
+        b"gAAAAABqyhNRY32iMPHA-ETn6gOPe7BqhN8TeJCggzDrMqsvBgzkao5Ea7zZE-dq3eElHN8UjC6bzpaZ62LZ06UxTTR7bLNdWb8YMGIQXO4QmqADCyhPuzE="
+    )
+    ESPORTS_PH_KEY = (
+        b"gAAAAABqyhNRpD5pDEU1nSWncnLRIBwaAdRlP6bEgb3HIt7XRs34Qnn67_vTUeL9D5Xl_l7T2rEoBo8Qzw7cFbnBH4iGhqBiuT4hymFk8otQn5hboHuIDOs="
+    )
+
+    @classmethod
+    def get_id_base_url(cls) -> str:
+        return _decrypt(cls.ESPORTS_ID_KEY)
+
+    @classmethod
+    def get_ph_base_url(cls) -> str:
+        return _decrypt(cls.ESPORTS_PH_KEY)

@@ -225,3 +225,42 @@ def test_wallpaper_gallery_pages_through_every_hero(device: str, resolution: str
     assert urls(first).isdisjoint(urls(second))
     for wallpaper in first + second:
         assert resolution in {picture["resolution"] for picture in wallpaper["pictures"]}
+
+
+# ---- esports (calls are sequential: the league sites sit behind a firewall too)
+
+
+def first_played(schedule: dict[str, Any]) -> dict[str, Any]:
+    matches = [m for week in schedule["weeks"] for day in week["days"] for m in day["matches"]]
+    return next(m for m in matches if m["match_id"] and m["score1"] is not None)
+
+
+def test_esports_id_schedule_standings_and_match() -> None:
+    schedule = client.get("/api/esports/id/schedule").json()
+    assert schedule["weeks"][0]["week"] == 1 and len(schedule["weeks"]) >= 8
+    assert client.get("/api/esports/id/schedule", params={"week": 1}).json()["weeks"][0]["days"]
+
+    standings = client.get("/api/esports/id/standings").json()["standings"]
+    assert standings[0]["rank"] == 1 and standings[0]["team"]["logo"]
+
+    match = client.get(f"/api/esports/id/matches/{first_played(schedule)['match_id']}")
+    assert match.status_code == 200, match.text
+    for game_team in match.json()["games"][0]["teams"]:
+        assert len(game_team["players"]) == 5
+        assert all(p["damage_dealt"] and p["gold"] and p["items"] for p in game_team["players"])
+
+
+def test_esports_ph_schedule_standings_and_match() -> None:
+    schedule = client.get("/api/esports/ph/schedule").json()
+    assert len(schedule["weeks"]) >= 1
+
+    standings = client.get("/api/esports/ph/standings").json()["standings"]
+    assert standings[0]["rank"] == 1 and standings[0]["team"]["logo"]
+
+    match = client.get(f"/api/esports/ph/matches/{first_played(schedule)['match_id']}")
+    assert match.status_code == 200, match.text
+    game = match.json()["games"][0]
+    assert game["timeline_minutes"]
+    for game_team in game["teams"]:
+        assert len(game_team["players"]) == 5
+        assert all(p["item_sequence"] and p["damage_dealt"] is not None for p in game_team["players"])

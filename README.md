@@ -24,7 +24,7 @@ It provides access to hero analytics, in-game performance data, academy resource
 
 ## Features
 
-- **Public REST API for game data**: user, heroes, academy, and addon service groups
+- **Public REST API for game data**: user, heroes, academy, addon, and esports (professional league data) service groups
 - **Web playground for all endpoints**: form-driven execution at `/web/*`
 - **Flexible hero identifier support**: hero ID or hero name (including compact slug-like names)
 - **Readable response views**: switch between Key-Value and Key-As-Header table modes
@@ -69,6 +69,7 @@ https://arena.rone.dev/web/user         # User endpoints playground
 https://arena.rone.dev/web/heroes       # Hero endpoints playground
 https://arena.rone.dev/web/academy      # Academy endpoints playground
 https://arena.rone.dev/web/addon        # Addon endpoints playground
+https://arena.rone.dev/web/esports      # Esports endpoints playground
 https://arena.rone.dev/api              # API index/status
 https://arena.rone.dev/api/docs         # Swagger UI
 https://arena.rone.dev/api/redoc        # ReDoc

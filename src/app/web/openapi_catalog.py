@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-WEB_GROUPS: tuple[str, ...] = ("user", "heroes", "academy", "addon")
+WEB_GROUPS: tuple[str, ...] = ("user", "heroes", "academy", "addon", "esports")
 
 GROUP_META: dict[str, dict[str, str]] = {
     "user": {
@@ -26,6 +26,10 @@ GROUP_META: dict[str, dict[str, str]] = {
     "addon": {
         "title": "Addon",
         "description": "Utility APIs such as calculators and IP tools.",
+    },
+    "esports": {
+        "title": "Esports",
+        "description": "Professional league schedules, standings, and match details.",
     },
 }
 

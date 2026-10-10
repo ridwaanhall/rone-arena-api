@@ -2,7 +2,7 @@
 
 ## Project Purpose
 - This repository provides an unofficial, community-maintained FastAPI service for Mobile Legends: Bang Bang game data. The brand is "Rone Arena"; the game name is only ever used descriptively.
-- API surface includes four main groups: `user`, `heroes`, `academy`, and `addon`.
+- API surface includes five main groups: `user`, `heroes`, `academy`, `addon`, and `esports`.
 - It also includes a `/web` demo interface that mirrors API operations.
 
 ## High-Level Structure
@@ -12,6 +12,7 @@
   - `heroes.py`
   - `academy.py`
   - `addon.py`
+  - `esports.py`
   - `root.py`
 - Schemas: `app/schemas/`
 - Services/upstream requests: `app/services/`
@@ -36,6 +37,7 @@
   - `/web/heroes`
   - `/web/academy`
   - `/web/addon`
+  - `/web/esports`
 - Detail route pattern: `/web/{group}/{endpoint_path}`
 - UI design direction:
   - Black background

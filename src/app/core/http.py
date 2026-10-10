@@ -109,6 +109,16 @@ class UpstreamHeaderBuilder:
         return headers
     
     @staticmethod
+    def get_esports_header(base_url: str) -> dict[str, str]:
+        return {
+            "User-Agent": UpstreamHeaderBuilder.get_random_user_agent(),
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+            "Origin": base_url,
+            "Referer": f"{base_url}/",
+            "DNT": "1",
+        }
+
+    @staticmethod
     def get_ip_check_header(client_ip: str | None = None) -> dict[str, str]:
         headers = {
             "User-Agent": UpstreamHeaderBuilder.get_random_user_agent(),
@@ -138,7 +148,7 @@ def _is_waf_block(response: httpx.Response) -> bool:
     return response.status_code == 405 and "text/html" in response.headers.get("content-type", "")
 
 
-def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
+def _fetch(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> httpx.Response:
     try:
         response = _get_client().request(method, url, headers=headers, **kwargs)
         if _is_waf_block(response):
@@ -162,7 +172,11 @@ def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
             message="Failed to fetch data",
             details="Received non-200 response from upstream",
         )
+    return response
 
+
+def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
+    response = _fetch(method, url, headers, **kwargs)
     try:
         return response.json()
     except ValueError as exc:
@@ -192,3 +206,14 @@ def request_form(
     if method == "GET":
         return _send(method, url, headers)
     return _send(method, url, headers, data=payload)
+
+
+def request_page(
+    *,
+    method: str,
+    url: str,
+    headers: dict[str, str],
+    payload: dict[str, Any] | None = None,
+) -> httpx.Response:
+    """Fetch a page or fragment; the response is returned whole so callers can read cookies and text."""
+    return _fetch(method, url, headers, data=payload)

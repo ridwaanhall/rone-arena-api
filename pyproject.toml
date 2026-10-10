@@ -19,6 +19,7 @@ dependencies = [
     "cryptography>=45",
     "fastapi[standard]>=0.135.2; sys_platform != 'emscripten'",
     "fastapi-cloud-cli>=0.22.0; sys_platform != 'emscripten'",
+    "beautifulsoup4>=4.15.0",
 ]
 
 [project.urls]

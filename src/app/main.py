@@ -18,6 +18,7 @@ from app.api.routers.root import router as root_router
 from app.api.routers.heroes import router as heroes_router
 from app.api.routers.academy import router as academy_router
 from app.api.routers.addon import router as addon_router
+from app.api.routers.esports import router as esports_router
 from app.api.routers.user import router as user_router
 from app.web.routers.root import router as web_router
 from app.web.routers.blog import router as blog_router
@@ -27,12 +28,12 @@ from app.core.errors import AppError, app_error_handler, safe_error_payload, unh
 app = FastAPI(
     debug=DEBUG,
     title="Rone Arena API",
-    summary="Unofficial community data API for the game Mobile Legends: Bang Bang, providing hero data, analytics, academy resources, user endpoints, and utility tools.",
+    summary="Unofficial community data API for the game Mobile Legends: Bang Bang, providing hero data, analytics, academy resources, user endpoints, professional league data, and utility tools.",
     description=(
         "Rone Arena API is a comprehensive community data API for the game Mobile Legends: Bang Bang, built for developers, analysts, and fans who need structured and reliable game data. "
         "It provides access to hero information including listings, rankings, positions, detailed statistics, performance trends, skill combos, counters, compatibility, and hero relationships. "
         "In addition, the API includes academy resources such as roles, equipment, emblems, spells, builds, lane distribution, win rate timelines, and performance ratings to support deeper analysis and game understanding. "
-        "User-related endpoints are available for authentication, profile data, match history, and player statistics, while utility tools such as win rate calculators and IP lookup enhance integration capabilities. "
+        "User-related endpoints are available for authentication, profile data, match history, and player statistics, while professional league schedules, standings, and match details are available for the Indonesian and Philippine leagues, while utility tools such as win rate calculators and IP lookup enhance integration capabilities. "
         "The API is designed with a consistent and RESTful structure, supports flexible hero identifiers using either ID or name, and delivers standardized responses optimized for seamless integration into applications, dashboards, and analytics systems.\n\n"
         "**Disclaimer:** Rone Arena is an unofficial, community-maintained project. It is not affiliated with, endorsed by, sponsored by, or associated with Shanghai Moonton Technology Co., Ltd. "
         "\"Mobile Legends: Bang Bang\", \"MLBB\", and all related names, marks, logos, and in-game assets are trademarks of their respective owners. "
@@ -72,6 +73,10 @@ app = FastAPI(
         {
             "name": "addon",
             "description": "Utility tools and extra features.",
+        },
+        {
+            "name": "esports",
+            "description": "Professional league schedules, standings, and match details.",
         },
     ]
 )
@@ -286,6 +291,7 @@ app.include_router(heroes_router)
 app.include_router(academy_router)
 app.include_router(user_router)
 app.include_router(addon_router)
+app.include_router(esports_router)
 
 # web routes
 app.include_router(web_router)
