@@ -18,6 +18,15 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.2.3",
+        "date": "2026-10-11",
+        "summary": "Pro league data loads faster and the site keeps working when the main server struggles.",
+        "improved": [
+            "League schedules and standings now load faster, because recent answers are shared between servers.",
+            "If the main server fails a request, you are sent to the backup server automatically.",
+        ],
+    },
+    {
         "version": "1.2.2",
         "date": "2026-10-10",
         "summary": "The Indonesian league pages now load reliably.",
