@@ -13,7 +13,7 @@
 		{% set lead = featured_posts[0] %}
 		<article class="lead-post">
 			<a href="/blog/{{ lead['slug'] }}" tabindex="-1" aria-hidden="true">
-				<img class="cover" src="{{ lead['cover_image'] }}" alt="" fetchpriority="high" />
+				<img class="cover" src="{{ lead['cover_image'] | image }}" alt="" fetchpriority="high" />
 			</a>
 			<div>
 				<p class="meta">{{ lead.get('category', 'Article') }}{% if lead.get('is_pinned') %}, pinned{% endif %}</p>

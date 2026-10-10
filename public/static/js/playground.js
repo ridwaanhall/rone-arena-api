@@ -127,7 +127,8 @@
 	}
 
 	function looksLikeImageUrl(value) {
-		return looksLikeUrl(value) && /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(value.trim());
+		const trimmed = value.trim();
+		return looksLikeUrl(value) && (trimmed.startsWith("https://wsrv.nl/") || /\.(png|jpe?g|gif|webp|svg|bmp|avif)(\?.*)?$/i.test(trimmed));
 	}
 
 	function normalizeSafeColor(value) {

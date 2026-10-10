@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel
+
+from app.core.images import wsrv_url
+
+# Image URLs scraped from the league sites are served through the image proxy too.
+Image = Annotated[str, AfterValidator(wsrv_url)]
 
 
 class Team(BaseModel):
     name: str
     full_name: str | None = None
-    logo: str | None = None
+    logo: Image | None = None
 
 
 class Record(BaseModel):
@@ -57,12 +64,12 @@ class StandingsResponse(BaseModel):
 
 class Hero(BaseModel):
     name: str
-    image: str | None = None
+    image: Image | None = None
 
 
 class Asset(BaseModel):
     id: str
-    image: str
+    image: Image
 
 
 class SequenceItem(Asset):

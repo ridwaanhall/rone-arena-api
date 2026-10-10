@@ -23,6 +23,7 @@ from app.core.config import (
     BASE_URL,
     API_URL,
 )
+from app.core.images import wsrv_url
 from app.core.paths import PUBLIC_DIR
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
@@ -65,6 +66,15 @@ def absolute_url(path: str) -> str:
     return path if path.startswith(("http://", "https://")) else f"{SITE_ORIGIN}{path}"
 
 
+def image_url(path: str) -> str:
+    """Absolute, proxied URL of a site image (blog art, share previews)."""
+    return wsrv_url(absolute_url(path))
+
+
+# `{{ path | image }}` in templates.
+templates.env.filters["image"] = image_url
+
+
 def _asset_version_for(request: Request) -> str:
     """The `?v=` value for asset URLs.
 
@@ -103,7 +113,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "canonical_url": absolute_url(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
-        "share_image": absolute_url(DEFAULT_SHARE_IMAGE),
+        "share_image": image_url(DEFAULT_SHARE_IMAGE),
         "share_image_alt": "The Rone Arena API home page with live hero rankings",
     }
 

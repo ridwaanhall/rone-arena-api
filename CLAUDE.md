@@ -12,8 +12,11 @@ Web UI conventions (design system, design language, JS layout) live in `src/app/
   `IS_AVAILABLE` in `config.py` is derived from them, not read from the environment.
 - Settings are read from `os.environ` (plus `.env` locally), and on Cloudflare Workers from the
   Worker's `env` binding (`from workers import env`), since `os.environ` is empty there.
+- `USE_WSRV` (default `true`): every image URL, SVG included, goes through the wsrv.nl proxy. `core/images.py` rewrites
+  upstream JSON (`core/http.py`), the OpenAPI examples, the esports schemas and web pages (`| image` template filter).
+  `.ico` is never proxied (wsrv cannot serve it), and wsrv rasterises SVGs.
 - **Version**: `PROJECT_VERSION` is hardcoded in `src/app/core/config.py` (not read from the
-  environment). Bump it there and in `pyproject.toml` together for each release.
+  environment). Bump it there and in `pyproject.toml` together for each release (the `bump-version` skill does this).
 - **API URL**: `API_URL` in `config.py` is derived, not read from the environment:
   `http://127.0.0.1:8000/api/` when `DEBUG=True`, otherwise `{BASE_URL}api/`, so a deployment
   automatically calls its own host and the playground avoids CORS errors locally. There is no

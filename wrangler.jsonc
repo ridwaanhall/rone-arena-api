@@ -16,6 +16,7 @@
     "DEBUG": "false",
     "IS_MAINTENANCE": "false",
     "IS_HIGH_TRAFFIC": "false",
+    "USE_WSRV": "true",
     "BASE_URL": "https://arena.rone.dev/"
   },
   "secrets": {
@@ -29,6 +30,7 @@
       "DEBUG": "false",
       "IS_MAINTENANCE": "false",
       "IS_HIGH_TRAFFIC": "false",
+      "USE_WSRV": "true",
       "BASE_URL": "https://arena.rone.dev/"
     },
     "version_metadata": {

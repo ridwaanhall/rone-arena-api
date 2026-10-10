@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from app.web.openapi_catalog import WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
-from app.web.routers.root import _shared_context, absolute_url, templates
+from app.web.routers.root import _shared_context, absolute_url, image_url, templates
 
 router = APIRouter(tags=["web"])
 
@@ -653,7 +653,7 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
             "blog_post": post,
             "toc": table_of_contents(post),
             "og_type": "article",
-            "share_image": absolute_url(str(post["cover_image"])),
+            "share_image": image_url(str(post["cover_image"])),
             "share_image_alt": str(post["title"]),
         }
     )

@@ -72,7 +72,7 @@ DEBUG: bool = env_bool("DEBUG", default=False)
 # Release version, shown in the OpenAPI schema, /api metadata, and the web UI.
 # Hardcoded on purpose: a release is a code change, so the version lives with
 # the code instead of drifting per deployment. Keep pyproject.toml in sync.
-PROJECT_VERSION: str = "1.1.0"
+PROJECT_VERSION: str = "1.2.0"
 
 # Two independent reasons the service may be restricted.
 #   IS_MAINTENANCE  - the service is being worked on; no alternative host to
@@ -182,6 +182,13 @@ ANALYTICS_HOST: str = env_str(
 
 LIVECHAT_LINK: str = env_str("LIVECHAT_LINK", default="https://ridwaanhall.com/guestbook/")
 CONTACT_FORM_LINK: str = env_str("CONTACT_FORM_LINK", default="https://ridwaanhall.com/contact/")
+
+# =========================
+# Images
+# =========================
+# Route every image URL (API responses, OpenAPI examples and web pages) through the
+# wsrv.nl image proxy. Set to false to hand out the original upstream URLs.
+USE_WSRV: bool = env_bool("USE_WSRV", default=True)
 
 # =========================
 # Security & Access Keys

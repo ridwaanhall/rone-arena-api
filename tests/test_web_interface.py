@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 from collections import defaultdict
+from urllib.parse import quote
 
 from fastapi.testclient import TestClient
 
@@ -12,6 +13,10 @@ from app.web.openapi_catalog import get_group_operations
 
 
 client = TestClient(app)
+
+
+def wsrv(url: str) -> str:
+    return f"https://wsrv.nl/?url={quote(url, safe='')}"
 
 
 WEB_GROUPS = {"user", "heroes", "academy", "addon", "esports"}
@@ -419,7 +424,7 @@ def test_blog_detail_page_uses_slug_url_and_shows_steps() -> None:
     assert response.status_code == 200
     assert "Step 1: Open the Website" in response.text
     assert "Mandatory for User Endpoints" in response.text
-    assert "/images/blog/tutorial-step-2-signin-send-vc.webp" in response.text
+    assert wsrv("https://arena.rone.dev/images/blog/tutorial-step-2-signin-send-vc.webp") in response.text
 
 
 def test_navbar_links_the_blog() -> None:
@@ -532,7 +537,7 @@ def test_blog_post_shares_as_an_article_with_its_cover() -> None:
     response = client.get("/blog/rone-arena-1-1-0-release-notes")
 
     assert '<meta property="og:type" content="article" />' in response.text
-    assert 'content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert f'content="{wsrv("https://arena.rone.dev/images/blog/release-v1.1.0-home.webp")}"' in response.text
     assert '<meta property="article:published_time" content="2026-09-25" />' in response.text
 
 

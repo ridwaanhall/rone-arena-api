@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from app.core.exceptions import AppError
+from app.core.images import wsrv_json
 
 
 class UpstreamHeaderBuilder:
@@ -178,7 +179,7 @@ def _fetch(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> htt
 def _send(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> Any:
     response = _fetch(method, url, headers, **kwargs)
     try:
-        return response.json()
+        return wsrv_json(response.json())
     except ValueError as exc:
         raise AppError(status_code=502, code="UPSTREAM_INVALID_RESPONSE", message="Failed to fetch data", details="Invalid JSON from upstream") from exc
 

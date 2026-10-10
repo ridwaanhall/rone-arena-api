@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import DEBUG, IS_AVAILABLE, PROJECT_VERSION
+from app.core.images import wsrv_json
 from app.core.paths import PUBLIC_DIR
 
 from app.api.dependencies import service_unavailable_error
@@ -250,7 +251,8 @@ def custom_openapi() -> dict[str, object]:
 
     _inline_enum_defaults_in_parameters(openapi_schema)
     _normalize_component_schema_examples(openapi_schema)
-    app.openapi_schema = openapi_schema
+    # Examples hold literal upstream image URLs; show them as the API now returns them.
+    app.openapi_schema = wsrv_json(openapi_schema)
     return app.openapi_schema
 
 
