@@ -199,5 +199,20 @@ USE_WSRV: bool = env_bool("USE_WSRV", default=True)
 # Security & Access Keys
 # =========================
 SECRET_KEY: str = env_str("SECRET_KEY")
-RONE_DEV_ACCESS_KEY: str = env_str("RONE_DEV_ACCESS_KEY")
-RONE_DEV_ACCESS_KEY_V2: str = env_str("RONE_DEV_ACCESS_KEY_V2")
+# Upstream addresses for the hero, academy and user data. Optional so a deployment without
+# them (a pull request preview) still starts; the endpoints that need one answer 503 NOT_CONFIGURED.
+RONE_DEV_ACCESS_KEY: str = env_str("RONE_DEV_ACCESS_KEY", default="")
+RONE_DEV_ACCESS_KEY_V2: str = env_str("RONE_DEV_ACCESS_KEY_V2", default="")
+
+
+def require_access_key(value: str, name: str) -> str:
+    """``value`` if the access key is configured, otherwise a 503 that says which one is missing."""
+    if not value:
+        from app.core.exceptions import AppError
+
+        raise AppError(
+            status_code=503,
+            code="NOT_CONFIGURED",
+            message=f"This deployment has no {name} set, so this endpoint is not available here.",
+        )
+    return value

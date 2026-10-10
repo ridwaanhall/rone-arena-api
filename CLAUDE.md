@@ -45,6 +45,9 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - Non-secret vars live in `wrangler.jsonc` (`vars`); the three secrets (`SECRET_KEY`,
   `RONE_DEV_ACCESS_KEY`, `RONE_DEV_ACCESS_KEY_V2`) are set on the Worker and listed under
   `secrets.required`, so a deploy fails loudly if one is missing.
+  In code only `SECRET_KEY` is required at import; the two access keys default to empty so a pull request preview
+  (which has no secrets, or only `SECRET_KEY`) still starts, and the endpoints that need one answer 503
+  `NOT_CONFIGURED` via `require_access_key` in `core/config.py`.
 - Worker constraints: top-level imports run once at deploy time and are snapshotted (no
   randomness or network at import, e.g. the httpx client is created on first use); sync routes
   run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate

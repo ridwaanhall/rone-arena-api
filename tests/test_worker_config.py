@@ -25,7 +25,8 @@ def test_worker_requires_the_secrets_the_app_reads() -> None:
     required = set(_wrangler()["secrets"]["required"])
     assert required == {"SECRET_KEY", "RONE_DEV_ACCESS_KEY", "RONE_DEV_ACCESS_KEY_V2"}
     for name in required:
-        assert f'env_str("{name}")' in config_source
+        # The two access keys have a default so previews start; the Worker still requires all three.
+        assert f'env_str("{name}"' in config_source
 
 
 def test_worker_vars_keep_the_service_fully_available() -> None:
