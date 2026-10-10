@@ -22,6 +22,10 @@ dependencies = [
     "beautifulsoup4>=4.15.0",
 ]
 
+# `uv run build` is what the Workers Builds job for pull request branches runs first; see app/build.py.
+[project.scripts]
+build = "app.build:main"
+
 [project.urls]
 Homepage = "https://arena.rone.dev"
 Documentation = "https://arena.rone.dev/api/docs"
