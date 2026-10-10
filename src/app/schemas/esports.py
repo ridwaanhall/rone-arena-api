@@ -186,7 +186,7 @@ class SimulatedStanding(BaseModel):
     # clinched: certain to be in the playoffs · eliminated: certain to miss them · alive: undecided
     status: Literal["clinched", "alive", "eliminated"]
     in_playoffs_zone: bool
-    # Percent chance (two decimals) of finishing in the playoff spots; exactly 100 or 0 once decided.
+    # Percent chance (full precision) of finishing in the playoff spots; exactly 100 or 0 once decided.
     playoff_probability: float
 
 

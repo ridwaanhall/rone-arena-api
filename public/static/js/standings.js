@@ -206,7 +206,7 @@
 			const status = el("td");
 			const [word, tone] = STATUS[row.status];
 			status.appendChild(el("span", `tag ${tone}`.trim(), word));
-			tr.appendChild(el("td", "num", `${row.playoff_probability.toFixed(2)}%`));
+			tr.appendChild(el("td", "num", `${row.playoff_probability.toFixed(5)}%`));
 			tr.appendChild(status);
 			return tr;
 		});

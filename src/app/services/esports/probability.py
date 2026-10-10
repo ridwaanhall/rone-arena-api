@@ -13,8 +13,8 @@ The model (documented because it is an estimate, not a fact):
   Indonesian and Philippine seasons (91 of 115 matches).
 
 Results are seeded from the table itself, so the same request always returns the same numbers. With the
-default sample the figure is accurate to about one percentage point (95%), so the second decimal is for
-display and ranking, not a promise of that precision.
+default sample the figure is accurate to about one percentage point (95%), so the later decimals are shown
+because they are what the simulation produced, not as a promise of that precision.
 Teams that are already through or out (the ``status`` column) get exactly 100 and 0.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ SWEEP_SHARE = 0.62
 # Match draws one request may spend. Simulations are scaled down for leagues with many matches left.
 DRAW_BUDGET = 120_000
 MAX_DRAWS = 400_000
-DEFAULT_SIMULATIONS = (300, 10_000)  # (floor, ceiling) of the automatic choice
+DEFAULT_SIMULATIONS = (300, 20_000)  # (floor, ceiling) of the automatic choice
 MAX_SIMULATIONS = 20_000
 MIN_SIMULATIONS = 100
 
@@ -61,7 +61,7 @@ def playoff_probabilities(
     model: Model = "form",
     simulations: int | None = None,
 ) -> tuple[dict[str, float], int]:
-    """Percent chance (two decimals) of finishing in the top ``spots``, and how many seasons were simulated."""
+    """Percent chance (not rounded) of finishing in the top ``spots``, and how many seasons were simulated."""
     status = {row.team: row.status for row in rows}
     exact = {team: 100.0 if state == "clinched" else 0.0 for team, state in status.items() if state != "alive"}
     teams = sorted(teams)  # one fixed order, so the draws do not depend on how the caller listed the teams
@@ -148,6 +148,6 @@ def playoff_probabilities(
                     inside[i] += 1
             start = end
 
-    result = {team: round(100 * inside[index[team]] / count, 2) for team in teams}
+    result = {team: 100 * inside[index[team]] / count for team in teams}
     result.update(exact)
     return result, count

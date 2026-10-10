@@ -352,7 +352,7 @@ def standings_markdown() -> str:
         "Philippines, and a number you choose in a custom league (default 3).",
         "- Each team gets a status: `clinched` (certain to be in the playoffs), `eliminated` (certain to miss them) or "
         "`alive`. It is exact at the end of the season and conservative before it.",
-        "- Each team has `playoff_probability`: its chance in percent (two decimals) of finishing in the playoff spots, "
+        "- Each team has `playoff_probability`: its chance in percent (full precision) of finishing in the playoff spots, "
         "from simulating the matches still to play. With `model` `form` (default) a team's chance in a match follows its "
         "record so far, with `even` it is a coin flip; the winner takes a match 2-0 in 62% of cases, the real share. "
         "`simulations` (100 to 20000) sets the sample; omit it to let the server choose. Clinched teams read 100 and "
