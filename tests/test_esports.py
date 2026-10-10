@@ -123,28 +123,38 @@ def _dump(season) -> list:
     return [[item.model_dump() for item in weeks], [item.model_dump() for item in standings]]
 
 
-def test_id_season_is_read_from_cut_out_panes_with_the_same_result(monkeypatch) -> None:
-    # The real page is 2.4 MB and parsing it whole exceeded the Worker's CPU limit (Cloudflare error 1102),
-    # so only the week panes and the standings table are cut out and parsed.
+def test_id_season_ignores_the_pop_ups_and_junk_after_the_last_week(monkeypatch) -> None:
+    # The real page is 2.4 MB, mostly pop-ups, and reading it with a DOM parser used up the Worker's whole CPU
+    # budget (Cloudflare error 1102). The weeks are read straight from the text, so unrelated markup must not matter.
+    plain = _dump(indonesia.get_season("en"))
+    junk = '<div id="modal-1"><div class="match position-relative"><div class="score">9</div></div></div>' * 50
     html = fixture("id_schedule_en.html")
-    padded = html + '<div id="modal-1"><div>' + "<p>pop-up</p>" * 2000 + "</div></div>"
-    panes = indonesia._season_panes(padded)
-
-    assert len(panes) < len(padded) // 2  # the pop-up filler is dropped
-    assert "pop-up" not in panes
-    assert 'id="t-week-1"' in panes and 'id="standing-regular-season"' in panes
-
-    sliced = _dump(indonesia.get_season("en"))
+    last = html.rindex('id="standing-regular-season"')
+    padded = html[: html.rindex("<div", 0, last)] + junk + html[html.rindex("<div", 0, last) :] + junk
+    monkeypatch.setattr(common, "request_page", lambda **kwargs: type("R", (), {"text": padded})())
     indonesia.get_season.cache_clear()
-    monkeypatch.setattr(indonesia, "_season_panes", lambda page: page)
-    assert _dump(indonesia.get_season("en")) == sliced
+
+    assert _dump(indonesia.get_season("en")) == plain
 
 
-def test_id_season_falls_back_to_the_whole_page_when_a_pane_does_not_close() -> None:
-    broken = '<div id="t-week-1"><div class="match date"></div>'
+def test_id_week_panes_stop_at_the_next_week_and_close_the_last_one() -> None:
+    html = '<div id="t-week-1"><p>one</p></div><div id="t-week-2"><div><p>two</p></div></div><p>junk</p>'
 
-    assert indonesia._season_panes(broken) == broken
-    assert indonesia._season_panes("<p>no panes</p>") == "<p>no panes</p>"
+    assert indonesia._week_panes(html) == [
+        (1, '<div id="t-week-1"><p>one</p></div>'),
+        (2, '<div id="t-week-2"><div><p>two</p></div></div>'),
+    ]
+
+
+def test_id_season_reports_a_changed_page_instead_of_failing_obscurely() -> None:
+    with pytest.raises(AppError) as unclosed:
+        indonesia._week_panes('<div id="t-week-1"><div class="match date">')
+    assert unclosed.value.code == "UPSTREAM_PAGE_CHANGED"
+
+    card_without_scores = '<div class="match date x">Friday</div><div class="match position-relative"><p>no teams</p></div>'
+    with pytest.raises(AppError) as broken:
+        indonesia._schedule_days(card_without_scores)
+    assert broken.value.status_code == 502
 
 
 def test_id_schedule_language_defaults_to_english_and_can_be_indonesian(upstream) -> None:
