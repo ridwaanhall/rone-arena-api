@@ -16,6 +16,20 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, object]] = [
     {
+        "version": "1.2.1",
+        "date": "2026-10-10",
+        "summary": "A standings simulator for pro leagues, and the site keeps working when the main server is down.",
+        "new": [
+            "A new Standings page lets you change any match result and watch the table and playoff line move.",
+            "It works for the Indonesian and Philippine seasons, or for your own league with any number of teams.",
+            "Every team shows its chance of reaching the playoffs, and whether it is already through or out.",
+            "Pages now come with a plain text version, and a new llms.txt file helps AI assistants read the site.",
+        ],
+        "improved": [
+            "If the main server has a problem, the website switches to the backup server by itself.",
+        ],
+    },
+    {
         "version": "1.2.0",
         "date": "2026-10-10",
         "summary": "Pro league match data arrives, and pictures load more reliably.",
