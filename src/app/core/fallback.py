@@ -26,3 +26,17 @@ def backup_url(url: str, backup: str) -> str | None:
 def redirect_headers(location: str, reason: str) -> dict[str, str]:
     # no-store: a cached redirect would keep sending visitors away after this host recovers.
     return {"Location": location, "Cache-Control": "no-store", "X-Rone-Fallback": reason}
+
+
+# ---- shared edge cache
+
+# Esports answers come from scraping big league pages. The app keeps them for 5 minutes per Worker copy
+# (isolate), but every new copy has to scrape once, and that first scrape can use the whole CPU budget.
+# Cloudflare's Cache API is shared by every copy in a data center, so the Worker keeps successful GET
+# answers there for the same 5 minutes and most copies never scrape at all.
+EDGE_CACHE_SECONDS = 300
+EDGE_CACHE_PREFIXES = ("/api/esports/",)
+
+
+def edge_cacheable(method: str, url: str) -> bool:
+    return method.upper() == "GET" and urlsplit(url).path.startswith(EDGE_CACHE_PREFIXES)

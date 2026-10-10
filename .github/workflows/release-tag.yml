@@ -1,7 +1,8 @@
-name: Tag release
+name: Tag and release
 
 # When a push to main raises the version in pyproject.toml, tag that commit with the
-# version (for example 1.2.1). Pushes to any other branch do nothing.
+# version (for example 1.2.1) and publish a GitHub Release for it with generated notes.
+# Pushes to any other branch do nothing.
 on:
   push:
     branches: [main]
@@ -41,3 +42,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG" "$GITHUB_SHA"
           git push origin "refs/tags/$TAG"
+
+      - name: Publish the release
+        if: steps.decide.outputs.tag != ''
+        env:
+          TAG: ${{ steps.decide.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        # Notes list the merged pull requests since the previous release, like the earlier releases.
+        run: gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes --latest
