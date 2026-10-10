@@ -856,7 +856,7 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .match-list { display: grid; gap: 0; border-top: 1.5px solid var(--ink); }
 .match-row {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) 124px minmax(0, 1fr);
 	align-items: center;
 	gap: 10px 14px;
 	padding: 8px 0 8px 10px;
@@ -866,11 +866,11 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .match-row .side:last-child { justify-content: flex-end; text-align: right; }
 .match-row .side span { overflow-wrap: anywhere; }
 .match-row .side img { width: 24px; height: 24px; border-radius: 50%; background: var(--paper-3); object-fit: cover; flex: none; }
-.match-row .select { min-height: 36px; text-align: center; }
+.match-row .select { min-height: 36px; padding-left: 8px; padding-right: 28px; text-overflow: clip; }
 /* A changed match carries the highlighter in its left margin. */
 .match-row.is-edited { box-shadow: inset 4px 0 0 var(--mark); background: var(--paper-2); }
 @media (max-width: 520px) {
-	.match-row { grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr); gap: 8px; }
+	.match-row { grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); gap: 8px; }
 	.match-row .side img { display: none; }
 }
 

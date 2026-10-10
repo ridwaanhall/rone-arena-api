@@ -374,4 +374,4 @@ def test_standings_markdown_documents_the_rules_and_both_endpoints() -> None:
     assert "/web/esports/{league}/standings/simulate.md" in text
     assert "/web/esports/standings/calculate.md" in text
     assert client.get("/web/esports/standings/calculate.md").status_code == 200
-    assert "Send `{}`" in client.get("/web/esports/standings/calculate.md").text
+    assert "\"eliminated\": 3" in client.get("/web/esports/standings/calculate.md").text

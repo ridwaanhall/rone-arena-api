@@ -361,7 +361,7 @@ def standings_markdown() -> str:
         "a custom league from team names (default Team A, Team B, ...) and results",
         "",
         "Override a match by sending `week`, `team1`, `team2`, `score1`, `score2` in `results` (either team order; "
-        "omit both scores to clear a match). Send `{}` for the current table.",
+        "omit both scores to clear a match). Send `{\"results\": []}` for the current table.",
         "",
         _fence(
             "\n".join(

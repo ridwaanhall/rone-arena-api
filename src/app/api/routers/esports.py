@@ -262,7 +262,7 @@ _SIMULATE_DESCRIPTION = (
     "Re-rank a professional league's regular season after changing match results, to see what a different "
     "result would do to the table and the playoff line.\n\n"
     "The schedule and real results are the league's live ones (see the schedule endpoints). "
-    "Send `{}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
+    "Send `{\"results\": []}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
     "playoffs; it defaults to 3 for Indonesia (`id`) and 2 for the Philippines (`ph`).\n\n"
     + _RULES
     + "\n\nThe real schedule is cached for 5 minutes."
@@ -271,7 +271,7 @@ _CALCULATE_DESCRIPTION = (
     "The same calculator for any league: give the team names (or just a count) and enter match results. "
     "The schedule is generated as a double round robin with as many weeks as teams, each week with one fewer "
     "match than teams, like the professional leagues. Nothing is fetched from a league site.\n\n"
-    "Send `{}` for 8 teams named Team A, Team B, ... and **eliminated** defaults to 3.\n\n"
+    "Only **teams** matters for the schedule (omit it and send **team_count** instead to get Team A, Team B, ...). **eliminated** defaults to 3, or less in a small league.\n\n"
     + _RULES
 )
 
@@ -310,21 +310,28 @@ _SIMULATION_EXAMPLE = {
     ],
 }
 _SIMULATE_BODIES = {
-    "current": {"summary": "Current table", "value": {}},
-    "edit": {
-        "summary": "Change one result",
+    "indonesia": {
+        "summary": "Indonesia: flip one result",
         "value": {"results": [{"week": 8, "team1": "NAVI", "team2": "TLID", "score1": 0, "score2": 2}], "eliminated": 3},
     },
+    "philippines": {
+        "summary": "Philippines: flip one result",
+        "value": {"results": [{"week": 8, "team1": "RORA", "team2": "TWIS", "score1": 0, "score2": 2}], "eliminated": 2},
+    },
+    "current": {"summary": "Current table, no changes", "value": {"results": []}},
 }
 _CALCULATE_BODIES = {
-    "default": {"summary": "8 teams, no results", "value": {}},
-    "custom": {
-        "summary": "Named teams with results",
+    "default": {
+        "summary": "8 teams with one result",
         "value": {
-            "teams": ["Alpha", "Bravo", "Charlie", "Delta"],
-            "eliminated": 1,
-            "results": [{"week": 1, "team1": "Alpha", "team2": "Bravo", "score1": 2, "score2": 1}],
+            "teams": ["Team A", "Team B", "Team C", "Team D", "Team E", "Team F", "Team G", "Team H"],
+            "eliminated": 3,
+            "results": [{"week": 1, "team1": "Team A", "team2": "Team H", "score1": 2, "score2": 0}],
         },
+    },
+    "small": {
+        "summary": "4 named teams",
+        "value": {"teams": ["Alpha", "Bravo", "Charlie", "Delta"], "eliminated": 1, "results": []},
     },
 }
 
