@@ -34,6 +34,10 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - **Production is a Cloudflare Python Worker** (`rone-arena-api`, custom domain `arena.rone.dev`):
   `wrangler.jsonc` points at `src/worker.py`, which wraps the FastAPI app with
   `workers.asgi.entrypoint`. `public/` is served as Workers Static Assets before the app runs.
+- **Release tags**: `.github/workflows/release-tag.yml` runs only on pushes to `main` that change `pyproject.toml`.
+  `.github/scripts/release_tag.py` compares the version before and after the push (not the old `4.x` tags, which
+  predate the rename) and, if it went up and no tag exists, pushes an annotated tag `X.Y.Z` (no `v`). Tag only; the
+  GitHub Release is still created by hand.
 - **Workers Builds** deploys on every push to `main` (`uv run pywrangler deploy`); other branches
   upload preview versions. pywrangler vendors `[project].dependencies` for Pyodide into
   `python_modules/`, so anything the app imports must be pure Python or Pyodide-built; keep

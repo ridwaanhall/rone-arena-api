@@ -27,3 +27,6 @@ The version is hardcoded in two places that must always match, plus the lockfile
 7. Add the matching entry with the `patch-notes` skill (the newest entry in `src/app/web/patch_notes.py` must
    equal the new version; a test enforces it).
 8. Commit as `🔖release: Bump version to X.Y.Z`. Do not push unless asked.
+9. Do not create the git tag by hand. When the bump reaches `main`, `.github/workflows/release-tag.yml` tags the
+   commit `X.Y.Z` (no `v`) if the version is higher than before the push and the tag does not exist. Other
+   branches never create tags. It only creates the tag; a GitHub Release is still written by hand.

@@ -1,0 +1,43 @@
+name: Tag release
+
+# When a push to main raises the version in pyproject.toml, tag that commit with the
+# version (for example 1.2.1). Pushes to any other branch do nothing.
+on:
+  push:
+    branches: [main]
+    paths: [pyproject.toml]
+
+permissions:
+  contents: write
+
+# Two quick pushes must not race to create the same tag.
+concurrency:
+  group: release-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    # The branch filter above already limits this to main; this keeps it true if the trigger changes.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags, to read the version before the push and to see existing tags.
+          fetch-depth: 0
+
+      - name: Decide
+        id: decide
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: python3 .github/scripts/release_tag.py
+
+      - name: Create and push the tag
+        if: steps.decide.outputs.tag != ''
+        env:
+          TAG: ${{ steps.decide.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
