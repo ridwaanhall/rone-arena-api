@@ -668,7 +668,13 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
 def sitemap(request: Request) -> Response:
     """Every indexable page: home, showcase, patch notes, blog, its posts, and the playground."""
     latest_release = str(PATCH_NOTES[0]["date"])
-    urls: list[tuple[str, str | None]] = [("/", latest_release), ("/showcase", None), ("/patch-notes", latest_release), ("/blog", None)]
+    urls: list[tuple[str, str | None]] = [
+        ("/", latest_release),
+        ("/tools/standings", None),
+        ("/showcase", None),
+        ("/patch-notes", latest_release),
+        ("/blog", None),
+    ]
     urls += [(f"/blog/{post['slug']}", str(post.get("published_at") or "") or None) for post in _BLOG_POSTS]
     for group in WEB_GROUPS:
         urls.append((f"/web/{group}", None))

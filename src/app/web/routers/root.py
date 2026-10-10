@@ -228,6 +228,21 @@ def showcase_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "root/showcase_page.html", context)
 
 
+@router.get(path="/tools/standings", include_in_schema=False, response_class=HTMLResponse, name="web.standings")
+@page_cached
+def standings_page(request: Request) -> HTMLResponse:
+    context = _shared_context(request)
+    context.update(
+        {
+            "title": "Standings simulator: try different results in a pro league table",
+            "web_title": "Standings simulator",
+            "seo_description": "Change match results and watch the Indonesian or Philippine league table, playoff line and eliminations move. Or build a custom league with any number of teams.",
+            "seo_keywords": "standings simulator, league standings calculator, mpl standings, playoff race, tiebreaker, rone arena api",
+        }
+    )
+    return templates.TemplateResponse(request, "root/standings_page.html", context)
+
+
 @router.get(path="/patch-notes", include_in_schema=False, response_class=HTMLResponse, name="web.patch_notes")
 @page_cached
 def patch_notes_page(request: Request) -> HTMLResponse:

@@ -1,6 +1,7 @@
 {% set path = request.url.path %}
 {% set nav_items = [
 	("/web/heroes", "Playground", path.startswith("/web")),
+	("/tools/standings", "Standings", path.startswith("/tools")),
 	("/showcase", "Showcase", path.startswith("/showcase")),
 	("/patch-notes", "Patch notes", path.startswith("/patch-notes")),
 	("/blog", "Blog", path.startswith("/blog")),

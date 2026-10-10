@@ -70,6 +70,14 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
 6. **The upstream IP lookup is IPv4-only**: it answers an IPv6 address with `code: -1, data: ""`. `/api/addon/ip` answers IPv6 visitors from Cloudflare's `request.cf` geolocation instead (handed to the app by `src/worker.py` through a ContextVar)
 7. **Esports endpoints scrape HTML, not JSON**: `services/esports/` parses the two league sites with BeautifulSoup. Their base URLs are Fernet tokens in `EsportsSourceProvider` (`core/security.py`), so no host name appears in the repo; fixtures in `tests/fixtures/esports/` use `*.test` hosts. Parsed results are cached for 300s (`utils/ttl_cache.py`). The Indonesian site's item images are presigned for 6h, so never cache longer. The Philippine item sequences are a CSRF-protected POST: the token comes from the match page and the request must carry that page's cookies explicitly (the pooled client's jar is shared across callers)
 
+8. **Standings formula (shared by both leagues)**: matches are first to 2 games; rank by match points, then net game wins,
+   then head-to-head among the tied teams, else `unresolved`. `services/esports/standings.py` reproduces both official tables
+   exactly (`tests/fixtures/esports/season_snapshots.json` holds the two real seasons). A season has as many weeks as teams,
+   every pair meets twice. The `/api/esports/{league}/standings/simulate` and `/standings/calculate` tools and the
+   `/tools/standings` page all call that one engine, so the page has no ranking logic of its own. Playoff cut defaults:
+   bottom 3 for Indonesia, bottom 2 for the Philippines, 3 for custom. Head-to-head among 3+ tied teams and the PH tie-breaks
+   are assumptions (no such tie exists in the data yet)
+
 ## Branding & Trademark Constraints
 
 The project was rebranded from "MLBB Public Data API" to **Rone Arena** because the MLBB /

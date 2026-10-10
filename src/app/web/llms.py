@@ -155,6 +155,7 @@ def llms_txt(app: FastAPI) -> str:
         f"- [Swagger UI]({_url('/api/docs')}): interactive API docs",
         f"- [Patch notes]({_md_url('/patch-notes')}): what changed in each release, in plain words",
         f"- [Showcase]({_md_url('/showcase')}): projects built on the API and the endpoints each page calls",
+        f"- [Standings simulator]({_md_url('/tools/standings')}): change match results and re-rank a pro league table, or a custom league",
     ]
 
     for group in WEB_GROUPS:
@@ -176,7 +177,7 @@ def llms_txt(app: FastAPI) -> str:
 
 def llms_full_txt(app: FastAPI) -> str:
     """Every markdown page in one file, for agents that want the whole site in context."""
-    parts = [home_markdown(app), patch_notes_markdown(), showcase_markdown()]
+    parts = [home_markdown(app), standings_markdown(), patch_notes_markdown(), showcase_markdown()]
     parts += [endpoint_markdown(group, operation, include_response=False) for group, operation in _all_operations(app)]
     parts += [blog_post_markdown(post) for post in _sorted_posts()]
     return "\n\n---\n\n".join(part.strip() for part in parts) + "\n"
@@ -207,6 +208,7 @@ def home_markdown(app: FastAPI) -> str:
         "",
         f"- Playground: {_url('/web/heroes')} (forms for every endpoint, with readable responses and code in eight languages)",
         f"- API docs: {_url('/api/docs')}",
+        f"- Standings simulator: {_md_url('/tools/standings')}",
         f"- Showcase: {_md_url('/showcase')}",
         f"- Patch notes: {_md_url('/patch-notes')}",
         f"- Blog: {_md_url('/blog')}",
@@ -325,6 +327,52 @@ def endpoint_markdown(group: str, operation: dict[str, Any], include_response: b
         f"- Try it in the playground: {_url(str(operation['web_path']))}",
         f"- {group_title} endpoints: {_md_url(f'/web/{group}')}",
         f"- OpenAPI schema: {_url('/api/openapi.json')}",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def standings_markdown() -> str:
+    lines = [
+        "# Standings simulator: try different results in a pro league table",
+        "",
+        "> Change match results and see the table, the playoff line and the eliminations move. Start from the real "
+        "Indonesian or Philippine season, or build a custom league with 2 to 20 teams.",
+        "",
+        f"Interactive page: {_url('/tools/standings')}. The same calculator is an API, below.",
+        "",
+        "## Rules",
+        "",
+        "- Every match is first to 2 games, so a finished match is 2-0, 2-1, 1-2 or 0-2. A 1-1 needs a deciding game.",
+        "- A team earns 1 match point per match won.",
+        "- Ranking: match points, then net game wins (games won minus games lost), then head-to-head among the "
+        "tied teams (match wins, then net game wins between them). A tie that survives all three is `unresolved`.",
+        "- These rules rebuild the official Indonesian and Philippine tables exactly. Net game wins come before head-to-head.",
+        "- A season has as many weeks as teams; every team meets every other team twice, with one fewer match per week than teams.",
+        "- Teams that miss the playoffs are the bottom of the table: the last 3 in Indonesia, the last 2 in the "
+        "Philippines, and a number you choose in a custom league (default 3).",
+        "- Each team gets a status: `clinched` (certain to be in the playoffs), `eliminated` (certain to miss them) or "
+        "`alive`. It is exact at the end of the season and conservative before it.",
+        "",
+        "## API",
+        "",
+        f"- [POST /api/esports/{{league}}/standings/simulate]({_md_url('/web/esports/{league}/standings/simulate')}): "
+        "the live Indonesia (`id`) or Philippines (`ph`) season with any results you override",
+        f"- [POST /api/esports/standings/calculate]({_md_url('/web/esports/standings/calculate')}): "
+        "a custom league from team names (default Team A, Team B, ...) and results",
+        "",
+        "Override a match by sending `week`, `team1`, `team2`, `score1`, `score2` in `results` (either team order; "
+        "omit both scores to clear a match). Send `{}` for the current table.",
+        "",
+        _fence(
+            "\n".join(
+                [
+                    f"curl -X POST '{_url('/api/esports/ph/standings/simulate')}' \\",
+                    "  -H 'Content-Type: application/json' \\",
+                    """  -d '{"results": [{"week": 8, "team1": "RORA", "team2": "TWIS", "score1": 0, "score2": 2}]}'""",
+                ]
+            ),
+            "bash",
+        ),
     ]
     return "\n".join(lines) + "\n"
 

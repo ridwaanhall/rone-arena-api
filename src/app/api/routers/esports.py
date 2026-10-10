@@ -262,7 +262,7 @@ _SIMULATE_DESCRIPTION = (
     "Re-rank a professional league's regular season after changing match results, to see what a different "
     "result would do to the table and the playoff line.\n\n"
     "The schedule and real results are the league's live ones (see the schedule endpoints). "
-    "Send `{{}}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
+    "Send `{}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
     "playoffs; it defaults to 3 for Indonesia (`id`) and 2 for the Philippines (`ph`).\n\n"
     + _RULES
     + "\n\nThe real schedule is cached for 5 minutes."
@@ -271,7 +271,7 @@ _CALCULATE_DESCRIPTION = (
     "The same calculator for any league: give the team names (or just a count) and enter match results. "
     "The schedule is generated as a double round robin with as many weeks as teams, each week with one fewer "
     "match than teams, like the professional leagues. Nothing is fetched from a league site.\n\n"
-    "Send `{{}}` for 8 teams named Team A, Team B, ... and **eliminated** defaults to 3.\n\n"
+    "Send `{}` for 8 teams named Team A, Team B, ... and **eliminated** defaults to 3.\n\n"
     + _RULES
 )
 

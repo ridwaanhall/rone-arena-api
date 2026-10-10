@@ -40,6 +40,12 @@ def home_md(request: Request) -> Response:
     return _markdown(llms.home_markdown(request.app), "/")
 
 
+@router.get(path="/tools/standings.md", include_in_schema=False)
+@page_cached
+def standings_md(request: Request) -> Response:
+    return _markdown(llms.standings_markdown(), "/tools/standings")
+
+
 @router.get(path="/showcase.md", include_in_schema=False)
 @page_cached
 def showcase_md(request: Request) -> Response:

@@ -344,3 +344,34 @@ def test_standings_tools_are_documented_in_the_playground() -> None:
 
     assert operations["/api/esports/{league}/standings/simulate"]["request_body"]
     assert operations["/api/esports/standings/calculate"]["request_body"]
+
+
+# ---- the web page
+
+
+def test_standings_page_renders_with_its_script_and_nav_link() -> None:
+    response = client.get("/tools/standings")
+
+    assert response.status_code == 200
+    assert "<h1>Standings simulator</h1>" in response.text
+    assert "/static/js/standings.js?v=" in response.text
+    assert 'data-api-base="' in response.text
+    assert 'href="/tools/standings"' in response.text
+    assert "—" not in response.text.split("<main")[1]
+
+
+def test_standings_page_is_in_the_sitemap_and_llms_txt() -> None:
+    assert "/tools/standings</loc>" in client.get("/sitemap.xml").text
+    assert "(https://arena.rone.dev/tools/standings.md)" in client.get("/llms.txt").text
+    assert "## Rules" in client.get("/llms-full.txt").text
+
+
+def test_standings_markdown_documents_the_rules_and_both_endpoints() -> None:
+    text = client.get("/tools/standings.md").text
+
+    assert text.startswith("# Standings simulator")
+    assert "net game wins" in text and "head-to-head" in text
+    assert "/web/esports/{league}/standings/simulate.md" in text
+    assert "/web/esports/standings/calculate.md" in text
+    assert client.get("/web/esports/standings/calculate.md").status_code == 200
+    assert "Send `{}`" in client.get("/web/esports/standings/calculate.md").text
