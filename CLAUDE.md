@@ -3,6 +3,8 @@
 **Rone Arena API & Web** is a REST API and web interface for **Mobile Legends: Bang Bang** game data. It is an unofficial, community-maintained project with no affiliation to or endorsement by Moonton; the game name is used descriptively only, and the brand must never incorporate the "MLBB" or "Mobile Legends" marks.
 
 Web UI conventions (design system, design language, JS layout) live in `src/app/web/CLAUDE.md`.
+Release notes for non-technical readers live in `src/app/web/patch_notes.py` (shown on `/patch-notes`); the
+`patch-notes` skill writes them and `bump-version` bumps the version.
 
 ## Configuration
 

@@ -27,6 +27,7 @@ from app.core.images import wsrv_url
 from app.core.paths import PUBLIC_DIR
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
+from app.web.patch_notes import PATCH_NOTES, SECTIONS
 from app.web.showcase import ENTRY_KEYS, SHOWCASE, SUBMIT_URL, format_entry, llm_prompt, with_playground_links
 
 router = APIRouter(tags=["web"])
@@ -194,6 +195,23 @@ def showcase_page(request: Request) -> HTMLResponse:
         }
     )
     return templates.TemplateResponse(request, "root/showcase_page.html", context)
+
+
+@router.get(path="/patch-notes", include_in_schema=False, response_class=HTMLResponse, name="web.patch_notes")
+@page_cached
+def patch_notes_page(request: Request) -> HTMLResponse:
+    context = _shared_context(request)
+    context.update(
+        {
+            "title": "Patch notes: what is new in Rone Arena API",
+            "web_title": "Patch notes",
+            "seo_description": "What is new, improved, fixed and removed in each Rone Arena API release, in plain words.",
+            "seo_keywords": "rone arena api patch notes, changelog, release notes, what is new",
+            "releases": PATCH_NOTES,
+            "sections": SECTIONS,
+        }
+    )
+    return templates.TemplateResponse(request, "root/patch_notes_page.html", context)
 
 
 @router.get(path="/web", include_in_schema=False)

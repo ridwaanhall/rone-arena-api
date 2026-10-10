@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header class="page-head">
+	<h1>Patch notes</h1>
+	<p class="lede">What changed in each release, in plain words. The newest release is first.</p>
+</header>
+
+{% for release in releases %}
+	<section class="section" id="v{{ release.version | replace(".", "-") }}">
+		<div class="section-aside">
+			<h2 class="section-title">Version {{ release.version }}</h2>
+			<p class="byline"><time datetime="{{ release.date }}">{{ release.date }}</time></p>
+			<p>{{ release.summary }}</p>
+		</div>
+		<div class="prose">
+			{% for key, heading in sections %}
+				{% if release.get(key) %}
+					<h3>{{ heading }}</h3>
+					<ul>
+						{% for point in release[key] %}<li>{{ point }}</li>{% endfor %}
+					</ul>
+				{% endif %}
+			{% endfor %}
+		</div>
+	</section>
+{% endfor %}
+{% endblock %}

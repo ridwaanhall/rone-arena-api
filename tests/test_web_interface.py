@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from markupsafe import escape
 import re
 from collections import defaultdict
 from urllib.parse import quote
@@ -136,7 +137,7 @@ def test_ui_avoids_generic_ai_template_tells() -> None:
     # Guard rails from the design research: no stock fonts, no decorative glow,
     # no gradient text, no em dashes in interface copy.
     css = client.get("/static/css/arena.css").text
-    pages = [client.get(path).text for path in ("/", "/showcase", "/web/heroes", "/blog")]
+    pages = [client.get(path).text for path in ("/", "/showcase", "/patch-notes", "/web/heroes", "/blog")]
 
     for banned in ("Inter", "Geist", "Space Grotesk", "backdrop-filter", "radial-gradient", "background-clip: text"):
         assert banned not in css
@@ -564,3 +565,31 @@ def test_robots_txt_points_at_the_sitemap() -> None:
 
     assert "Sitemap: https://arena.rone.dev/sitemap.xml" in body
     assert "Disallow: /api/" in body
+
+
+def test_patch_notes_page_lists_every_release_newest_first() -> None:
+    from app.web.patch_notes import PATCH_NOTES, SECTIONS
+
+    response = client.get("/patch-notes")
+
+    assert response.status_code == 200
+    positions = [response.text.index(f"Version {release['version']}") for release in PATCH_NOTES]
+    assert positions == sorted(positions)
+    for release in PATCH_NOTES:
+        for key, heading in SECTIONS:
+            for point in release.get(key, []):
+                assert escape(point) in response.text
+            if not release.get(key):
+                assert f"<h3>{heading}</h3>" not in response.text.split(f"Version {release['version']}")[1].split("<section")[0]
+
+
+def test_latest_patch_notes_match_the_project_version() -> None:
+    from app.web.patch_notes import PATCH_NOTES
+
+    # Bumping the version without writing its patch notes fails here.
+    assert PATCH_NOTES[0]["version"] == PROJECT_VERSION
+
+
+def test_patch_notes_are_linked_from_the_site_and_sitemap() -> None:
+    assert 'href="/patch-notes"' in client.get("/").text
+    assert "/patch-notes</loc>" in client.get("/sitemap.xml").text

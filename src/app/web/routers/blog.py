@@ -662,8 +662,8 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
 
 @router.get(path="/sitemap.xml", include_in_schema=False, name="web.sitemap")
 def sitemap(request: Request) -> Response:
-    """Every indexable page: home, showcase, blog, its posts, and the playground."""
-    urls: list[tuple[str, str | None]] = [("/", None), ("/showcase", None), ("/blog", None)]
+    """Every indexable page: home, showcase, patch notes, blog, its posts, and the playground."""
+    urls: list[tuple[str, str | None]] = [("/", None), ("/showcase", None), ("/patch-notes", None), ("/blog", None)]
     urls += [(f"/blog/{post['slug']}", str(post.get("published_at") or "") or None) for post in _BLOG_POSTS]
     for group in WEB_GROUPS:
         urls.append((f"/web/{group}", None))

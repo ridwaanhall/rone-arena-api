@@ -24,4 +24,6 @@ The version is hardcoded in two places that must always match, plus the lockfile
 6. Verify no stale version is left: grep for the old version in `pyproject.toml`,
    `src/app/core/config.py` and `uv.lock`. Do not touch blog posts or tests that
    mention older versions in their text; those describe past releases.
-7. Commit as `🔖release: Bump version to X.Y.Z`. Do not push unless asked.
+7. Add the matching entry with the `patch-notes` skill (the newest entry in `src/app/web/patch_notes.py` must
+   equal the new version; a test enforces it).
+8. Commit as `🔖release: Bump version to X.Y.Z`. Do not push unless asked.
