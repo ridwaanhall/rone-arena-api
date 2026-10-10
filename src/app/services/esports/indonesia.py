@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from html import unescape
 
 from bs4.element import Tag
 
@@ -36,68 +37,8 @@ from app.services.esports.common import (
 )
 from app.utils.ttl_cache import ttl_cache
 
-_WEEK_ID = re.compile(r"^t-week-\d+$")
-# Only the week panes and the standings table are needed from the (very large) schedule page.
-_PANE_START = re.compile(r'<div\b[^>]*\bid="(?:t-week-\d+|standing-regular-season)"')
-_DIV_TAG = re.compile(r"<(/?)div\b")
-_BETWEEN_TAGS = re.compile(r">\s+<")
-_MATCH_ID = re.compile(r"openMatchDetail\((\d+)\)")
-_CALENDAR_START = re.compile(r"dates=(\d{8}T\d{6})/")
 # The per-player "data" row has no labels, only icons; the icon names the figure.
 _STAT_BY_ICON = {"sword": "damage_dealt", "shield": "damage_taken", "tower": "tower_damage", "money": "gold"}
-
-
-def _team(element: Tag) -> Team:
-    image = element.find("img")
-    return Team(name=text_of(element.find(class_="name")), logo=attr(image, "src"))
-
-
-def _score(element: Tag) -> int | None:
-    value = text_of(element)
-    return int(value) if value else None
-
-
-def _start_at(calendar_href: str | None) -> str | None:
-    found = _CALENDAR_START.search(calendar_href) if calendar_href else None
-    if not found:
-        return None
-    return datetime.strptime(found.group(1), "%Y%m%dT%H%M%S").replace(tzinfo=UTC).isoformat()
-
-
-def _schedule_match(card: Tag) -> ScheduleMatch:
-    # One walk over the card's tags, taking the first of each kind. Separate find() calls cost
-    # about ten walks per match, and CPU time is what the Cloudflare Worker is short of.
-    opener = calendar = replay = time_box = team1 = team2 = None
-    scores: list[Tag] = []
-    for tag in card.find_all(True):
-        classes = (attr(tag, "class") or "").split()
-        if tag.name == "a":
-            if opener is None and _MATCH_ID.search(attr(tag, "onclick") or ""):
-                opener = tag
-            if calendar is None and _CALENDAR_START.search(attr(tag, "href") or ""):
-                calendar = tag
-            if replay is None and "replay" in classes:
-                replay = tag
-        elif tag.name == "div" and "score" in classes:
-            scores.append(tag)
-        if "time" in classes and time_box is None:
-            time_box = tag
-        if "team1" in classes and team1 is None:
-            team1 = tag
-        if "team2" in classes and team2 is None:
-            team2 = tag
-    match_id = _MATCH_ID.search(attr(opener, "onclick") or "")
-    score1, score2 = scores
-    return ScheduleMatch(
-        match_id=match_id.group(1) if match_id else None,
-        start_at=_start_at(attr(calendar, "href")),
-        local_time=text_of(time_box.find(class_="pt-1") if time_box else None),
-        team1=_team(need_tag(team1, "team1")),
-        team2=_team(need_tag(team2, "team2")),
-        score1=_score(score1),
-        score2=_score(score2),
-        replay_url=attr(replay, "href"),
-    )
 
 
 def _standing(row: Tag) -> Standing:
@@ -117,54 +58,107 @@ def _standing(row: Tag) -> Standing:
     )
 
 
-def _season_panes(html: str) -> str:
-    """The week panes and the standings table cut out of the page, as one small document.
+_WEEK_MARKER = '<div id="t-week-'
+_STANDINGS_MARKER = 'id="standing-regular-season"'
+_DIV_TAG = re.compile(r"<(/?)div\b")
+# Markers in a week pane, in page order: a day heading, or the start of a match card.
+_DAY_OR_CARD = re.compile(r'<div class="match (date|position-relative)[^"]*">')
+_DAY_LABEL = re.compile(r"\s*(.*?)\s*</div>", re.S)
+_TEAM = re.compile(r'class="team team([12])[^"]*"[^>]*>\s*<div class="logo">\s*<img[^>]*?src="([^"]*)"[^>]*>.*?<div class="name">\s*(.*?)\s*</div>', re.S)
+_SCORE = re.compile(r'<div class="score[^"]*">\s*(.*?)\s*</div>', re.S)
+_PLAY_TIME = re.compile(r'<div class="pt-1"[^>]*>\s*(.*?)\s*</div>', re.S)
+_REPLAY_LINK = re.compile(r'<a [^>]*class="[^"]*\breplay\b[^"]*"[^>]*>')
+_HREF = re.compile(r'href="([^"]*)"')
+_MATCH_ID = re.compile(r"openMatchDetail\((\d+)\)")
+_CALENDAR_START = re.compile(r"dates=(\d{8}T\d{6})/")
 
-    The schedule page is about 2.4 MB and most of it (match pop-ups and the like) is not read.
-    Parsing is the cost that matters on a Cloudflare Worker, so each wanted ``<div>`` is cut out
-    by counting its nested divs and only those pieces are parsed. If a pane is not closed
-    properly the whole page is returned, which is slower but gives the same result.
+
+def _balanced_div(html: str, start: int) -> str:
+    """The ``<div>`` that opens at ``start``, up to its closing tag, found by counting nested divs."""
+    depth = 0
+    for tag in _DIV_TAG.finditer(html, start):
+        depth += -1 if tag.group(1) else 1
+        if depth == 0:
+            return html[start : html.index(">", tag.start()) + 1]
+    raise AppError(
+        status_code=502,
+        code="UPSTREAM_PAGE_CHANGED",
+        message="The league site returned a page in an unexpected format (a schedule block does not close).",
+    )
+
+
+def _week_panes(html: str) -> list[tuple[int, str]]:
+    """(week number, markup) of each week pane.
+
+    The schedule page is 2.4 MB and mostly pop-ups. Reading it with a DOM parser cost about 2 seconds
+    of CPU on a Cloudflare Worker, which is the whole budget (error 1102), so the weeks are read
+    straight from the text: each pane runs up to the start of the next one, and only the last
+    pane is measured by counting nested divs.
     """
-    panes: list[str] = []
-    for start in _PANE_START.finditer(html):
-        depth = 0
-        for tag in _DIV_TAG.finditer(html, start.start()):
-            depth += -1 if tag.group(1) else 1
-            if depth == 0:
-                panes.append(html[start.start() : html.index(">", tag.start()) + 1])
-                break
-        else:
-            return html
-    if not panes:
-        return html
-    # Half of the markup is indentation; dropping the blanks between tags saves the parser a text node for each.
-    return _BETWEEN_TAGS.sub("><", "".join(panes))
+    starts = [(m.start(), int(m[1])) for m in re.finditer(r'<div id="t-week-(\d+)"', html)]
+    panes = []
+    for index, (start, week) in enumerate(starts):
+        panes.append((week, html[start : starts[index + 1][0]] if index + 1 < len(starts) else _balanced_div(html, start)))
+    return panes
+
+
+def _text(value: str) -> str:
+    return unescape(" ".join(value.split()))
+
+
+def _scheduled_match(card: str) -> ScheduleMatch:
+    teams = {m[1]: m for m in _TEAM.finditer(card)}
+    scores = [_text(m[1]) for m in _SCORE.finditer(card)][:2]
+    if "1" not in teams or "2" not in teams or len(scores) != 2:
+        raise AppError(
+            status_code=502,
+            code="UPSTREAM_PAGE_CHANGED",
+            message="The league site returned a page in an unexpected format (a match has no teams or scores).",
+        )
+    match_id = _MATCH_ID.search(card)
+    started = _CALENDAR_START.search(card)
+    time_box = _PLAY_TIME.search(card)
+    replay = _REPLAY_LINK.search(card)
+    replay_href = _HREF.search(replay[0]) if replay else None
+    return ScheduleMatch(
+        match_id=match_id[1] if match_id else None,
+        start_at=datetime.strptime(started[1], "%Y%m%dT%H%M%S").replace(tzinfo=UTC).isoformat() if started else None,
+        local_time=_text(time_box[1]) if time_box else "",
+        team1=Team(name=_text(teams["1"][3]), logo=unescape(teams["1"][2])),
+        team2=Team(name=_text(teams["2"][3]), logo=unescape(teams["2"][2])),
+        score1=int(scores[0]) if scores[0] else None,
+        score2=int(scores[1]) if scores[1] else None,
+        replay_url=unescape(replay_href[1]) if replay_href else None,
+    )
+
+
+def _schedule_days(pane: str) -> list[ScheduleDay]:
+    markers = list(_DAY_OR_CARD.finditer(pane))
+    days: list[ScheduleDay] = []
+    for index, marker in enumerate(markers):
+        end = markers[index + 1].start() if index + 1 < len(markers) else len(pane)
+        if marker[1] == "date":
+            label = _DAY_LABEL.match(pane, marker.end())
+            days.append(ScheduleDay(label=_text(label[1]) if label else "", matches=[]))
+        elif days:
+            days[-1].matches.append(_scheduled_match(pane[marker.start() : end]))
+    return days
+
+
+def _standings(html: str) -> list[Standing]:
+    start = html.find(_STANDINGS_MARKER)
+    if start < 0:
+        return []
+    block = _balanced_div(html, html.rfind("<div", 0, start))
+    return [_standing(row) for row in parse_html(block).select("tbody tr")]
 
 
 @ttl_cache(CACHE_SECONDS)
 def get_season(lang: str) -> tuple[list[ScheduleWeek], list[Standing]]:
     """Schedule weeks and standings, both read from one fetch of the schedule page in ``lang``."""
-    soup = parse_html(_season_panes(fetch_page(EsportsSourceProvider.get_id_base_url(), f"/{lang}/schedule").text))
-    weeks = [
-        ScheduleWeek(
-            week=int(need_attr(pane, "id").rsplit("-", 1)[1]),
-            days=[
-                ScheduleDay(
-                    label=text_of(date),
-                    matches=[
-                        _schedule_match(card)
-                        for card in need(date.parent, "a day's matches").find_all(class_="match")
-                        if "date" not in (attr(card, "class") or "").split()
-                    ],
-                )
-                for date in pane.find_all(class_="match")
-                if "date" in (attr(date, "class") or "").split()
-            ],
-        )
-        for pane in soup.find_all(id=_WEEK_ID)
-    ]
-    standings = [_standing(row) for row in soup.select("#standing-regular-season tbody tr")]
-    return weeks, standings
+    html = fetch_page(EsportsSourceProvider.get_id_base_url(), f"/{lang}/schedule").text
+    weeks = [ScheduleWeek(week=week, days=_schedule_days(pane)) for week, pane in _week_panes(html)]
+    return weeks, _standings(html)
 
 
 def _asset(image: Tag) -> Asset:
