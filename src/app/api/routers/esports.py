@@ -2,13 +2,21 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi.openapi.models import Example
 
 from app.api.dependencies import require_api_available
 from app.api.params import LeagueLang
-from app.core.enums import LeagueLanguageEnum
-from app.schemas.esports import MatchDetailResponse, ScheduleResponse, StandingsResponse
-from app.services.esports import indonesia, philippines
+from app.core.enums import LeagueEnum, LeagueLanguageEnum
+from app.schemas.esports import (
+    CalculateRequest,
+    MatchDetailResponse,
+    ScheduleResponse,
+    SimulateRequest,
+    StandingsResponse,
+    StandingsSimulationResponse,
+)
+from app.services.esports import indonesia, philippines, simulation
 from app.services.esports.common import select_weeks
 from app.utils.client_ip import bind_client_ip
 
@@ -236,3 +244,131 @@ def ph_match(
     ],
 ) -> MatchDetailResponse:
     return philippines.get_match(match_slug)
+
+
+# ---- standings tools
+
+_RULES = (
+    "Matches are first to 2 games, so a finished match is 2-0, 2-1, 1-2 or 0-2 (a 1-1 needs a deciding game). "
+    "A team gets 1 match point per match won. Teams are ranked by match points, then net game wins "
+    "(games won minus games lost), then head-to-head among the tied teams; a tie that survives all three "
+    "is reported as `unresolved`. The same rules reproduce the official Indonesian and Philippine tables.\n\n"
+    "Each team also gets a **status** from what it can still reach: `clinched` (certain to be in the playoffs), "
+    "`eliminated` (certain to miss them) or `alive`. The status is exact once the season is over and "
+    "conservative before that, so a decided team can still read `alive`, never the other way round.\n\n"
+    "Each team also has **playoff_probability**, its chance in percent, with every decimal the simulation gives, of finishing in the playoff spots. "
+    "It comes from simulating the matches still to play: with **model** `form` (default) a team's chance in a match follows its record "
+    "so far, with `even` every match is a coin flip, and the winner takes the match 2-0 in 62% of cases (the real share). "
+    "**simulations** sets how many seasons are simulated; omit it to let the server choose. Clinched teams read 100 and eliminated teams 0. "
+    "The same request always returns the same numbers, and with the default sample they are accurate to about one percentage point.\n\n"
+    "To edit results, send them in **results** as `week`, `team1`, `team2`, `score1`, `score2`; "
+    "either team order works, and leaving both scores out clears a match. Matches you do not mention keep their real result."
+)
+_SIMULATE_DESCRIPTION = (
+    "Re-rank a professional league's regular season after changing match results, to see what a different "
+    "result would do to the table and the playoff line.\n\n"
+    "The schedule and real results are the league's live ones (see the schedule endpoints). "
+    "Send `{\"results\": []}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
+    "playoffs; it defaults to 3 for Indonesia (`id`) and 2 for the Philippines (`ph`).\n\n"
+    + _RULES
+    + "\n\nThe real schedule is cached for 5 minutes."
+)
+_CALCULATE_DESCRIPTION = (
+    "The same calculator for any league: give the team names (or just a count) and enter match results. "
+    "The schedule is generated as a double round robin with as many weeks as teams, each week with one fewer "
+    "match than teams, like the professional leagues. Nothing is fetched from a league site.\n\n"
+    "Only **teams** matters for the schedule (omit it and send **team_count** instead to get Team A, Team B, ...). **eliminated** defaults to 3, or less in a small league.\n\n"
+    + _RULES
+)
+
+_SIM_TEAM = {"name": "NAVI", "full_name": "NAVI", "logo": _LOGO}
+_SIMULATION_EXAMPLE = {
+    "teams": 9,
+    "weeks_count": 9,
+    "playoff_spots": 6,
+    "eliminated": 3,
+    "matches_played": 61,
+    "matches_remaining": 11,
+    "edited_matches": 1,
+    "probability_model": "form",
+    "probability_simulations": 10909,
+    "weeks": [
+        {
+            "week": 8,
+            "matches": [
+                {"team1": _SIM_TEAM, "team2": {"name": "TLID", "full_name": "TLID", "logo": _LOGO}, "score1": 0, "score2": 2, "state": "edited"}
+            ],
+        }
+    ],
+    "standings": [
+        {
+            "rank": 1,
+            "team": _SIM_TEAM,
+            "match_point": 10,
+            "match_wl": {"win": 10, "lose": 4},
+            "net_game_win": 12,
+            "game_wl": {"win": 21, "lose": 9},
+            "played": 14,
+            "remaining": 4,
+            "max_match_point": 14,
+            "tiebreak": "net_game_win",
+            "status": "alive",
+            "in_playoffs_zone": True,
+            "playoff_probability": 97.33944954128441,
+        }
+    ],
+}
+_SIMULATE_BODIES: dict[str, Example] = {
+    "indonesia": {
+        "summary": "Indonesia: flip one result",
+        "value": {"results": [{"week": 8, "team1": "NAVI", "team2": "TLID", "score1": 0, "score2": 2}], "eliminated": 3},
+    },
+    "philippines": {
+        "summary": "Philippines: flip one result",
+        "value": {"results": [{"week": 8, "team1": "RORA", "team2": "TWIS", "score1": 0, "score2": 2}], "eliminated": 2},
+    },
+    "current": {"summary": "Current table, no changes", "value": {"results": []}},
+}
+_CALCULATE_BODIES: dict[str, Example] = {
+    "default": {
+        "summary": "8 teams with one result",
+        "value": {
+            "teams": ["Team A", "Team B", "Team C", "Team D", "Team E", "Team F", "Team G", "Team H"],
+            "eliminated": 3,
+            "results": [{"week": 1, "team1": "Team A", "team2": "Team H", "score1": 2, "score2": 0}],
+        },
+    },
+    "small": {
+        "summary": "4 named teams",
+        "value": {"teams": ["Alpha", "Bravo", "Charlie", "Delta"], "eliminated": 1, "results": []},
+    },
+}
+
+
+@router.post(
+    path="/{league}/standings/simulate",
+    name="api.esports.simulate_standings",
+    response_model=StandingsSimulationResponse,
+    summary="Simulate League Standings",
+    description=_SIMULATE_DESCRIPTION,
+    responses=_example(_SIMULATION_EXAMPLE),
+)
+def simulate_standings(
+    league: Annotated[LeagueEnum, Path(title="League", description="`id` for Indonesia or `ph` for the Philippines.")],
+    body: Annotated[SimulateRequest, Body(openapi_examples=_SIMULATE_BODIES)],
+) -> StandingsSimulationResponse:
+    return simulation.simulate_league(league, body)
+
+
+@router.post(
+    path="/standings/calculate",
+    name="api.esports.calculate_standings",
+    response_model=StandingsSimulationResponse,
+    summary="Calculate Custom League Standings",
+    description=_CALCULATE_DESCRIPTION,
+    responses=_example(_SIMULATION_EXAMPLE),
+)
+def calculate_standings(
+    body: Annotated[CalculateRequest, Body(openapi_examples=_CALCULATE_BODIES)],
+) -> StandingsSimulationResponse:
+    return simulation.calculate(body)

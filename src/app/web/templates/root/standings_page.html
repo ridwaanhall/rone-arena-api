@@ -1,0 +1,133 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<header class="page-head">
+	<h1>Standings simulator</h1>
+	<p class="lede">
+		Change the score of any match and watch the table, the playoff line and the eliminations move. Start from the real
+		Indonesian or Philippine season, or build your own league with any number of teams.
+	</p>
+</header>
+
+<div id="standings-tool" data-api-base="{{ api_url }}">
+	<section class="section" id="setup">
+		<div class="section-aside">
+			<h2 class="section-title">League</h2>
+			<p>Pick a league. The real results are loaded for you, and every change you make stays on this page only.</p>
+		</div>
+		<div class="tool-stack">
+			<div class="tabs" role="tablist" aria-label="League" id="mode-tabs">
+				<button type="button" class="tab is-active" role="tab" data-mode="id" aria-selected="true">Indonesia</button>
+				<button type="button" class="tab" role="tab" data-mode="ph" aria-selected="false">Philippines</button>
+				<button type="button" class="tab" role="tab" data-mode="custom" aria-selected="false">Custom league</button>
+			</div>
+
+			<div class="field-row">
+				<div class="field" id="team-count-field" hidden>
+					<label class="field-label" for="team-count">Teams (2 to 20)</label>
+					<input class="input" id="team-count" type="number" min="2" max="20" value="8" inputmode="numeric" />
+				</div>
+				<div class="field">
+					<label class="field-label" for="eliminated">Teams that miss the playoffs</label>
+					<input class="input" id="eliminated" type="number" min="0" max="19" inputmode="numeric" />
+				</div>
+				<div class="field">
+					<label class="field-label" for="model">Odds for matches to come</label>
+					<select class="select" id="model">
+						<option value="form">Based on each team's record</option>
+						<option value="even">Even: a coin flip</option>
+					</select>
+				</div>
+				<button type="button" class="button button--small" id="reset-edits">Reset my changes</button>
+			</div>
+
+			<div id="team-names" class="team-names" hidden>
+				<p class="help" id="team-names-help">Rename the teams. Changing the names starts the schedule over.</p>
+				<div class="team-names-grid" id="team-names-grid"></div>
+			</div>
+
+			<p class="status-line" id="status" role="status" aria-live="polite"></p>
+		</div>
+	</section>
+
+	<section class="section" id="table">
+		<div class="section-aside">
+			<h2 class="section-title">Standings</h2>
+			<p id="table-summary">Loading the season.</p>
+			<p class="faint" id="table-legend"></p>
+		</div>
+		<div class="table-scroll">
+			<table class="ruled standings-table" aria-live="polite">
+				<thead>
+					<tr>
+						<th scope="col" class="num">#</th>
+						<th scope="col">Team</th>
+						<th scope="col" class="num" title="Match points: one per match won">Pts</th>
+						<th scope="col" class="num" title="Matches won and lost">W-L</th>
+						<th scope="col" class="num" title="Games won minus games lost">Net</th>
+						<th scope="col" class="num" title="Games won and lost">Games</th>
+						<th scope="col" class="num" title="Matches still to play">Left</th>
+						<th scope="col" class="num" title="Chance of finishing in the playoff spots, from simulating the matches still to play">Playoffs</th>
+						<th scope="col">Status</th>
+					</tr>
+				</thead>
+				<tbody id="standings-body"></tbody>
+			</table>
+		</div>
+	</section>
+
+	<section class="section" id="matches">
+		<div class="section-aside">
+			<h2 class="section-title">Matches</h2>
+			<p>Choose a result for any match. Each match is first to 2 games, so it ends 2-0, 2-1, 1-2 or 0-2. Matches you change are marked.</p>
+		</div>
+		<div class="tool-stack">
+			<div class="tabs" role="tablist" aria-label="Week" id="week-tabs"></div>
+			<ul class="match-list" id="match-list"></ul>
+		</div>
+	</section>
+</div>
+
+<section class="section" id="how">
+	<div class="section-aside">
+		<h2 class="section-title">How the table is ranked</h2>
+	</div>
+	<div class="prose">
+		<p>Every league here plays first to 2 games. A team earns one match point for each match it wins, whatever the score.</p>
+		<ol>
+			<li>Most match points ranks higher.</li>
+			<li>If points are level, the better game difference ranks higher (games won minus games lost).</li>
+			<li>If that is level too, the teams' matches against each other decide: more wins between them, then the better game difference between them.</li>
+			<li>If they are still level, the league plays a tiebreaker match. The table marks these teams as tied.</li>
+		</ol>
+		<p>
+			These rules rebuild the official Indonesian and Philippine tables exactly. Game difference comes before the result between two
+			teams: a team can lose to another and still finish above it.
+		</p>
+		<p>
+			A season has as many weeks as teams, and every team meets every other team twice. In a custom league the schedule is made for you
+			the same way. The teams that miss the playoffs are the ones at the bottom of the table: the last 3 in Indonesia, the last 2 in
+			the Philippines, and the number you choose in a custom league.
+		</p>
+		<p>
+			The status column shows what a team can still reach. <strong>Clinched</strong> means it is certain to make the playoffs,
+			<strong>Eliminated</strong> means it cannot. <strong>Alive</strong> means it is not decided yet. Before the season ends the check is
+			careful, so a team can read Alive when it is in fact already decided, but never the other way round.
+		</p>
+		<p>
+			<strong>Playoffs</strong> is the chance, in percent, that a team finishes inside the playoff spots. It comes from playing out the
+			matches that are still to come thousands of times. A team's chance in a match follows its record so far (or a coin flip if you pick
+			Even), and the winner takes the match 2-0 about 6 times in 10, as in the real seasons. It is an estimate, accurate to about one
+			percentage point, and it changes as soon as you change a result. Clinched teams show 100.00% and eliminated teams 0.00%.
+		</p>
+		<p>
+			The same calculator is available as an API: <a href="/web/esports/{league}/standings/simulate">simulate a league</a> and
+			<a href="/web/esports/standings/calculate">calculate a custom league</a>.
+		</p>
+	</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/standings.js?v={{ asset_version }}"></script>
+{% endblock %}

@@ -14,6 +14,9 @@
 	<meta name="theme-color" content="#121310" media="(prefers-color-scheme: dark)" />
 	<link rel="canonical" href="{{ canonical_url }}" />
 	<link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+	{# For AI agents: this page as markdown, and the site index (llmstxt.org). #}
+	<link rel="alternate" type="text/markdown" href="{{ markdown_url }}" />
+	<link rel="describedby" type="text/plain" href="/llms.txt" />
 	<meta property="og:site_name" content="{{ site_name }}" />
 	<meta property="og:locale" content="en_US" />
 	<meta property="og:type" content="{{ og_type }}" />
@@ -68,6 +71,8 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 	<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 	<link rel="stylesheet" href="/static/css/arena.css?v={{ asset_version }}" />
+	{# Every API call the scripts make goes through this, so a failing host falls back to the backup. #}
+	<script src="/static/js/api.js?v={{ asset_version }}" data-api-base="{{ api_url }}" data-fallback-base="{{ fallback_api_url }}"></script>
 
 	{% if is_analytics_host %}
 	<script async src="https://www.googletagmanager.com/gtag/js?id=G-CPMYRKG5XQ"></script>

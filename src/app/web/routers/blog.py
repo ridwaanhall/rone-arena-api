@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,7 +15,7 @@ from app.web.routers.root import _shared_context, absolute_url, image_url, templ
 router = APIRouter(tags=["web"])
 
 
-_BLOG_POSTS: list[dict[str, object]] = [
+_BLOG_POSTS: list[dict[str, Any]] = [
     {
         "title": "Rone Arena 1.1.0: Hero Wallpapers, a Faster API, and a New Website",
         "slug": "rone-arena-1-1-0-release-notes",
@@ -590,7 +591,7 @@ def section_anchor(heading: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-") or "section"
 
 
-def table_of_contents(post: dict[str, object]) -> list[dict[str, str]]:
+def table_of_contents(post: dict[str, Any]) -> list[dict[str, str]]:
     """One entry per section, with an anchor that stays unique within the post."""
     entries: list[dict[str, str]] = []
     seen: set[str] = set()
@@ -604,7 +605,7 @@ def table_of_contents(post: dict[str, object]) -> list[dict[str, str]]:
     return entries
 
 
-def _get_blog_post_or_404(slug: str) -> dict[str, object]:
+def _get_blog_post_or_404(slug: str) -> dict[str, Any]:
     normalized = slug.strip().lower()
     for post in _BLOG_POSTS:
         if str(post.get("slug") or "") == normalized:
@@ -668,7 +669,13 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
 def sitemap(request: Request) -> Response:
     """Every indexable page: home, showcase, patch notes, blog, its posts, and the playground."""
     latest_release = str(PATCH_NOTES[0]["date"])
-    urls: list[tuple[str, str | None]] = [("/", latest_release), ("/showcase", None), ("/patch-notes", latest_release), ("/blog", None)]
+    urls: list[tuple[str, str | None]] = [
+        ("/", latest_release),
+        ("/tools/standings", None),
+        ("/showcase", None),
+        ("/patch-notes", latest_release),
+        ("/blog", None),
+    ]
     urls += [(f"/blog/{post['slug']}", str(post.get("published_at") or "") or None) for post in _BLOG_POSTS]
     for group in WEB_GROUPS:
         urls.append((f"/web/{group}", None))

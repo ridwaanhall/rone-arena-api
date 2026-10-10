@@ -4,6 +4,7 @@ import hashlib
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
@@ -70,6 +71,11 @@ def absolute_url(path: str) -> str:
     return path if path.startswith(("http://", "https://")) else f"{SITE_ORIGIN}{path}"
 
 
+def markdown_path(path: str) -> str:
+    """The markdown twin of a web page (llmstxt.org convention): the URL plus `.md`."""
+    return "/index.md" if path in ("", "/") else f"{path.rstrip('/')}.md"
+
+
 def image_url(path: str) -> str:
     """Absolute, proxied URL of a site image (blog art, share previews)."""
     return wsrv_url(absolute_url(path))
@@ -91,7 +97,18 @@ def _asset_version_for(request: Request) -> str:
     return str(version_id)[:10] if version_id else ASSET_VERSION
 
 
-def _shared_context(request: Request, current_group: str | None = None) -> dict[str, object]:
+def _fallback_api_url(request: Request) -> str:
+    """Where the site's scripts retry an API call that failed on this host ("" for no retry).
+
+    Not under DEBUG (local failures should stay visible), and not on the backup host itself.
+    """
+    backup = ALTERNATIVE_ENDPOINT_URL.rstrip("/")
+    if DEBUG or not backup or (urlsplit(backup).hostname or "") == (request.url.hostname or "").lower():
+        return ""
+    return f"{backup}/api"
+
+
+def _shared_context(request: Request, current_group: str | None = None) -> dict[str, Any]:
     return {
         "request": request,
         "group_meta": GROUP_META,
@@ -112,9 +129,11 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "base_url": BASE_URL,
         "is_debug": DEBUG,
         "api_url": API_URL.rstrip("/"),
+        "fallback_api_url": _fallback_api_url(request),
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
         "site_name": SITE_NAME,
         "canonical_url": absolute_url(request.url.path),
+        "markdown_url": markdown_path(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
         "share_image": image_url(DEFAULT_SHARE_IMAGE),
@@ -208,6 +227,21 @@ def showcase_page(request: Request) -> HTMLResponse:
         }
     )
     return templates.TemplateResponse(request, "root/showcase_page.html", context)
+
+
+@router.get(path="/tools/standings", include_in_schema=False, response_class=HTMLResponse, name="web.standings")
+@page_cached
+def standings_page(request: Request) -> HTMLResponse:
+    context = _shared_context(request)
+    context.update(
+        {
+            "title": "Standings simulator: try different results in a pro league table",
+            "web_title": "Standings simulator",
+            "seo_description": "Change match results and watch the Indonesian or Philippine league table, playoff line and eliminations move. Or build a custom league with any number of teams.",
+            "seo_keywords": "standings simulator, league standings calculator, mpl standings, playoff race, tiebreaker, rone arena api",
+        }
+    )
+    return templates.TemplateResponse(request, "root/standings_page.html", context)
 
 
 @router.get(path="/patch-notes", include_in_schema=False, response_class=HTMLResponse, name="web.patch_notes")

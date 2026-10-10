@@ -260,13 +260,19 @@
 		renderNavbarState();
 	}
 
+	async function apiFetch(url, init) {
+		// Retries on the backup host when this one fails; plain fetch if api.js did not load.
+		if (!window.ArenaApi) return fetch(url, init);
+		return (await window.ArenaApi.request(url, init)).response;
+	}
+
 	async function fetchAndCacheUserInfo() {
 		const auth = readAuth();
 		if (!auth) {
 			return;
 		}
 		try {
-			const response = await fetch("/api/user/info", {
+			const response = await apiFetch("/api/user/info", {
 				headers: { accept: "application/json", Authorization: `Bearer ${auth.jwt}` },
 			});
 			if (!response.ok) {
@@ -368,7 +374,7 @@
 	}
 
 	async function postJson(url, body) {
-		const response = await fetch(url, {
+		const response = await apiFetch(url, {
 			method: "POST",
 			headers: { accept: "application/json", "content-type": "application/json" },
 			body: JSON.stringify(body),
@@ -442,7 +448,7 @@
 		const auth = readAuth();
 		if (auth) {
 			try {
-				await fetch("/api/user/auth/logout", {
+				await apiFetch("/api/user/auth/logout", {
 					method: "POST",
 					headers: { accept: "application/json", Authorization: `Bearer ${auth.jwt}` },
 				});

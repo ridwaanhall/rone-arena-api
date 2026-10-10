@@ -5,7 +5,7 @@ from functools import wraps
 from typing import Any, Callable
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import Response
 
 from app.core.config import DEBUG
 
@@ -14,9 +14,10 @@ from app.core.config import DEBUG
 # kept per isolate and reused. Elsewhere pages render on every request.
 ENABLED = sys.platform == "emscripten" and not DEBUG
 
-# (host, path) -> (status code, body). Only rendered pages land here, so the key space
-# is bounded by the site's routes; 404s are never stored.
-_pages: dict[tuple[str, str], tuple[int, bytes]] = {}
+# (host, path) -> (status code, body, headers). Only rendered pages land here, so the key
+# space is bounded by the site's routes; 404s are never stored. Headers carry the content
+# type, since markdown pages and llms.txt are cached here too.
+_pages: dict[tuple[str, str], tuple[int, bytes, dict[str, str]]] = {}
 
 
 def page_cached(view: Callable[..., Response]) -> Callable[..., Response]:
@@ -32,10 +33,11 @@ def page_cached(view: Callable[..., Response]) -> Callable[..., Response]:
         key = (request.url.hostname or "", request.url.path)
         hit = _pages.get(key)
         if hit is not None:
-            return HTMLResponse(content=hit[1], status_code=hit[0])
+            return Response(content=hit[1], status_code=hit[0], headers=hit[2])
         response = view(request, *args, **kwargs)
         if response.status_code in (200, 503):
-            _pages[key] = (response.status_code, bytes(response.body))
+            headers = {name: value for name, value in response.headers.items() if name != "content-length"}
+            _pages[key] = (response.status_code, bytes(response.body), headers)
         return response
 
     return wrapper

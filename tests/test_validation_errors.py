@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from app.services import heroes as hero_service
@@ -76,7 +78,7 @@ def test_academy_dynamic_max_hero_id_rejects_above_live_total(monkeypatch) -> No
 
 
 def test_academy_dynamic_max_hero_id_accepts_current_live_total(monkeypatch) -> None:
-    captured: dict[str, object] = {}
+    captured: dict[str, Any] = {}
 
     def fake_academy_post(endpoint_id: str, payload: dict[str, object], lang: str) -> object:
         captured["payload"] = payload

@@ -96,3 +96,9 @@ def test_service_is_fully_operational_when_neither_flag_is_set() -> None:
     assert state["maintenance_panel"] is False
     assert state["high_traffic_panel"] is False
     assert state["api_status"] == 200
+
+
+def test_alternative_host_is_the_live_backup_deployment() -> None:
+    from app.core.config import ALTERNATIVE_ENDPOINT_URL
+
+    assert ALTERNATIVE_ENDPOINT_URL == "https://arena.fastapicloud.dev"

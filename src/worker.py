@@ -14,7 +14,7 @@ from app.web.warm import warm
 warm(app)
 
 
-def _edge_geo(request) -> dict[str, str] | None:
+def _edge_geo(request) -> dict[str, str | None] | None:
     cf = getattr(request, "cf", None)
     if not cf:
         return None

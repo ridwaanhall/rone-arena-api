@@ -837,6 +837,43 @@ details.example .code { margin-top: 8px; max-height: 320px; }
 .footer-base { display: grid; gap: 6px; padding-block: 16px 32px; border-top: 1px solid var(--rule); font-size: 0.8125rem; color: var(--ink-3); }
 @media (min-width: 900px) { .footer-base { grid-template-columns: auto 1fr; gap: 32px; } .footer-base p:last-child { text-align: right; } }
 
+/* ---------- Standings simulator ---------- */
+.field[hidden], .team-names[hidden] { display: none; }
+.tag--win { color: var(--win); }
+.tag--loss { color: var(--loss); }
+.tool-stack { display: grid; gap: 18px; min-width: 0; align-content: start; }
+.tool-stack .field-row { align-items: end; }
+.tool-stack .field-row .field { flex: 0 1 220px; }
+.tool-stack .help, .team-names .help { font-size: 0.8125rem; color: var(--ink-3); }
+.team-names-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.standings-table td { vertical-align: middle; }
+.standings-table .team-cell { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.standings-table .team-cell img { width: 24px; height: 24px; border-radius: 50%; background: var(--paper-3); object-fit: cover; flex: none; }
+.standings-table .tb { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 400; color: var(--ink-3); }
+/* The playoff line: a heavy rule under the last team that goes through. */
+.standings-table tr.cut td { border-bottom: 2.5px solid var(--ink); }
+.standings-table tr.is-out td { color: var(--ink-3); }
+.match-list { display: grid; gap: 0; border-top: 1.5px solid var(--ink); }
+.match-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 124px minmax(0, 1fr);
+	align-items: center;
+	gap: 10px 14px;
+	padding: 8px 0 8px 10px;
+	border-bottom: 1px solid var(--rule);
+}
+.match-row .side { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+.match-row .side:last-child { justify-content: flex-end; text-align: right; }
+.match-row .side span { overflow-wrap: anywhere; }
+.match-row .side img { width: 24px; height: 24px; border-radius: 50%; background: var(--paper-3); object-fit: cover; flex: none; }
+.match-row .select { min-height: 36px; padding-left: 8px; padding-right: 28px; text-overflow: clip; }
+/* A changed match carries the highlighter in its left margin. */
+.match-row.is-edited { box-shadow: inset 4px 0 0 var(--mark); background: var(--paper-2); }
+@media (max-width: 520px) {
+	.match-row { grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); gap: 8px; }
+	.match-row .side img { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after { transition: none !important; }
 }

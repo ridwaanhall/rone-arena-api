@@ -37,13 +37,19 @@
 		);
 	}
 
+	// Retries on the backup host when this one fails (see api.js); plain fetch if it did not load.
+	async function request(url, init) {
+		if (window.ArenaApi) return window.ArenaApi.request(url, init);
+		return { response: await fetch(url, init), host: "", fellBack: false };
+	}
+
 	async function hydrateUserInfoIfMissing() {
 		const session = auth()?.readAuth?.();
 		if (!session || hasCoreUserInfo(auth().readUserInfo?.(session))) {
 			return;
 		}
 		try {
-			const response = await fetch("/api/user/info", {
+			const { response } = await request("/api/user/info", {
 				headers: { accept: "application/json", Authorization: `Bearer ${session.jwt}` },
 			});
 			if (!response.ok) return;
@@ -544,7 +550,7 @@
 
 		try {
 			const snippets = buildLanguageSnippets(method, url.toString(), headers, requestBody);
-			const response = await fetch(url.toString(), {
+			const { response, host, fellBack } = await request(url.toString(), {
 				method,
 				headers,
 				body: method === "GET" ? undefined : requestBody,
@@ -569,7 +575,7 @@
 
 			setResponse(
 				form,
-				`HTTP ${response.status}, ${elapsed} ms`,
+				`HTTP ${response.status}, ${elapsed} ms${fellBack ? `, answered by the backup host ${host}` : ""}`,
 				parsed ? JSON.stringify(parsed, null, 2) : rawText || "(empty response)",
 				snippets,
 				parsed
