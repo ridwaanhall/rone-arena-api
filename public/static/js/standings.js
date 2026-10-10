@@ -45,6 +45,7 @@
 		teamNames: $("team-names"),
 		teamNamesGrid: $("team-names-grid"),
 		reset: $("reset-edits"),
+		model: $("model"),
 	};
 
 	const state = {
@@ -54,6 +55,7 @@
 		edits: { id: {}, ph: {}, custom: {} },
 		eliminated: { id: null, ph: null, custom: null },
 		custom: { count: 8, names: [] },
+		model: "form",
 		data: null,
 	};
 
@@ -71,6 +73,7 @@
 			}
 			const count = Number(saved.custom?.count);
 			if (count >= 2 && count <= 20) state.custom.count = count;
+			if (saved.model === "form" || saved.model === "even") state.model = saved.model;
 			if (Array.isArray(saved.custom?.names)) state.custom.names = saved.custom.names.map(String);
 		} catch {
 			/* storage unavailable or corrupted: start fresh */
@@ -81,7 +84,7 @@
 		try {
 			localStorage.setItem(
 				STORE_KEY,
-				JSON.stringify({ mode: state.mode, edits: state.edits, eliminated: state.eliminated, custom: state.custom })
+				JSON.stringify({ mode: state.mode, edits: state.edits, eliminated: state.eliminated, custom: state.custom, model: state.model })
 			);
 		} catch {
 			/* storage unavailable */
@@ -117,7 +120,7 @@
 			score1: edit.score1,
 			score2: edit.score2,
 		}));
-		const body = { results };
+		const body = { results, model: state.model };
 		const cut = state.eliminated[state.mode];
 		if (cut !== null) body.eliminated = cut;
 		if (state.mode === "custom") {
@@ -203,6 +206,7 @@
 			const status = el("td");
 			const [word, tone] = STATUS[row.status];
 			status.appendChild(el("span", `tag ${tone}`.trim(), word));
+			tr.appendChild(el("td", "num", `${row.playoff_probability.toFixed(2)}%`));
 			tr.appendChild(status);
 			return tr;
 		});
@@ -212,10 +216,14 @@
 		const parts = [`${LEAGUE_NAMES[state.mode]}: ${count(played, "match")} played, ${left} to play.`];
 		if (edited) parts.push(`${edited} changed by you.`);
 		els.summary.textContent = parts.join(" ");
-		els.legend.textContent =
+		const cut =
 			eliminated > 0
 				? `The heavy line is the playoff cut: the top ${spots} go through and the last ${eliminated} are out.`
 				: "Nobody is cut: every team goes through.";
+		const odds = state.data.probability_simulations
+			? ` Playoff chances come from ${state.data.probability_simulations.toLocaleString("en-US")} simulated seasons.`
+			: " Every team is already decided, so the chances are exact.";
+		els.legend.textContent = cut + odds;
 		if (document.activeElement !== els.eliminated) els.eliminated.value = String(eliminated);
 	}
 
@@ -376,6 +384,12 @@
 		refreshSoon();
 	});
 
+	els.model.addEventListener("change", () => {
+		state.model = els.model.value === "even" ? "even" : "form";
+		save();
+		void refresh();
+	});
+
 	els.reset.addEventListener("click", () => {
 		state.edits[state.mode] = {};
 		state.eliminated[state.mode] = null;
@@ -385,6 +399,7 @@
 	});
 
 	load();
+	els.model.value = state.model;
 	renderControls();
 	els.eliminated.value = state.eliminated[state.mode] === null ? "" : String(state.eliminated[state.mode]);
 	void refresh();

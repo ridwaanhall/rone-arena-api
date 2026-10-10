@@ -255,6 +255,11 @@ _RULES = (
     "Each team also gets a **status** from what it can still reach: `clinched` (certain to be in the playoffs), "
     "`eliminated` (certain to miss them) or `alive`. The status is exact once the season is over and "
     "conservative before that, so a decided team can still read `alive`, never the other way round.\n\n"
+    "Each team also has **playoff_probability**, its chance in percent (two decimals) of finishing in the playoff spots. "
+    "It comes from simulating the matches still to play: with **model** `form` (default) a team's chance in a match follows its record "
+    "so far, with `even` every match is a coin flip, and the winner takes the match 2-0 in 62% of cases (the real share). "
+    "**simulations** sets how many seasons are simulated; omit it to let the server choose. Clinched teams read 100 and eliminated teams 0. "
+    "The same request always returns the same numbers, and with the default sample they are accurate to about one percentage point.\n\n"
     "To edit results, send them in **results** as `week`, `team1`, `team2`, `score1`, `score2`; "
     "either team order works, and leaving both scores out clears a match. Matches you do not mention keep their real result."
 )
@@ -284,6 +289,8 @@ _SIMULATION_EXAMPLE = {
     "matches_played": 61,
     "matches_remaining": 11,
     "edited_matches": 1,
+    "probability_model": "form",
+    "probability_simulations": 10000,
     "weeks": [
         {
             "week": 8,
@@ -306,6 +313,7 @@ _SIMULATION_EXAMPLE = {
             "tiebreak": "net_game_win",
             "status": "alive",
             "in_playoffs_zone": True,
+            "playoff_probability": 97.34,
         }
     ],
 }

@@ -132,9 +132,18 @@ class MatchResult(BaseModel):
     score2: int | None = Field(default=None, ge=0, le=2, description="Games won by team2.")
 
 
+ProbabilityModel = Literal["form", "even"]
+_MODEL_HELP = (
+    "How the chance of the matches still to play is set: `form` (default) from each team's record so far, or `even` for a coin flip."
+)
+_SIMULATIONS_HELP = "How many seasons to simulate for the playoff probability (100 to 20000). Omit it to let the server choose from how many matches are left."
+
+
 class SimulateRequest(BaseModel):
     results: list[MatchResult] = Field(default_factory=list, max_length=400, description="Matches to set or clear. Everything else keeps the real result.")
     eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs (the bottom of the table). Default: 3 for Indonesia, 2 for the Philippines.")
+    model: ProbabilityModel = Field(default="form", description=_MODEL_HELP)
+    simulations: int | None = Field(default=None, ge=100, le=20000, description=_SIMULATIONS_HELP)
 
 
 class CalculateRequest(BaseModel):
@@ -144,6 +153,8 @@ class CalculateRequest(BaseModel):
     team_count: int = Field(default=8, ge=2, le=20, description="Number of teams when **teams** is omitted.")
     eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs. Default: 3, or fewer when the league is small.")
     results: list[MatchResult] = Field(default_factory=list, max_length=400)
+    model: ProbabilityModel = Field(default="form", description=_MODEL_HELP)
+    simulations: int | None = Field(default=None, ge=100, le=20000, description=_SIMULATIONS_HELP)
 
 
 class SimulatedMatch(BaseModel):
@@ -175,6 +186,8 @@ class SimulatedStanding(BaseModel):
     # clinched: certain to be in the playoffs · eliminated: certain to miss them · alive: undecided
     status: Literal["clinched", "alive", "eliminated"]
     in_playoffs_zone: bool
+    # Percent chance (two decimals) of finishing in the playoff spots; exactly 100 or 0 once decided.
+    playoff_probability: float
 
 
 class StandingsSimulationResponse(BaseModel):
@@ -185,5 +198,8 @@ class StandingsSimulationResponse(BaseModel):
     matches_played: int
     matches_remaining: int
     edited_matches: int
+    probability_model: ProbabilityModel
+    # Seasons simulated for the probabilities; 0 when every team is already decided and the chances are exact.
+    probability_simulations: int
     weeks: list[SimulatedWeek]
     standings: list[SimulatedStanding]

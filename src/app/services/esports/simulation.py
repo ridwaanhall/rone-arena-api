@@ -16,7 +16,7 @@ from app.schemas.esports import (
     StandingsSimulationResponse,
     Team,
 )
-from app.services.esports import indonesia, philippines, standings
+from app.services.esports import indonesia, philippines, probability, standings
 
 # Teams that miss the playoffs by default.
 DEFAULT_ELIMINATED = {LeagueEnum.INDONESIA: 3, LeagueEnum.PHILIPPINES: 2}
@@ -31,9 +31,12 @@ def _build(
     teams: dict[str, Team],
     matches: list[standings.Match],
     eliminated: int,
+    model: str,
+    simulations: int | None,
 ) -> StandingsSimulationResponse:
     rows = standings.compute_standings(list(teams), matches, eliminated)
     spots = len(teams) - eliminated
+    chances, simulated = probability.playoff_probabilities(list(teams), matches, rows, spots, model, simulations)
     weeks: dict[int, list[SimulatedMatch]] = {}
     for match in matches:
         weeks.setdefault(match.week, []).append(
@@ -54,6 +57,8 @@ def _build(
         matches_played=played,
         matches_remaining=len(matches) - played,
         edited_matches=sum(1 for match in matches if match.state == "edited"),
+        probability_model=model,
+        probability_simulations=simulated,
         weeks=[SimulatedWeek(week=week, matches=items) for week, items in sorted(weeks.items())],
         standings=[
             SimulatedStanding(
@@ -69,6 +74,7 @@ def _build(
                 tiebreak=row.tiebreak,
                 status=row.status,
                 in_playoffs_zone=row.rank <= spots,
+                playoff_probability=chances[row.team],
             )
             for row in rows
         ],
@@ -108,7 +114,7 @@ def simulate_league(league: LeagueEnum, request: SimulateRequest) -> StandingsSi
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="The league schedule is not available right now.")
     standings.apply_results(matches, _results(request.results))
     eliminated = DEFAULT_ELIMINATED[league] if request.eliminated is None else request.eliminated
-    return _build(teams, matches, eliminated)
+    return _build(teams, matches, eliminated, request.model, request.simulations)
 
 
 def calculate(request: CalculateRequest) -> StandingsSimulationResponse:
@@ -120,4 +126,4 @@ def calculate(request: CalculateRequest) -> StandingsSimulationResponse:
     matches = standings.round_robin(cleaned)
     standings.apply_results(matches, _results(request.results))
     eliminated = min(CUSTOM_ELIMINATED, len(cleaned) - 1) if request.eliminated is None else request.eliminated
-    return _build({name: Team(name=name) for name in cleaned}, matches, eliminated)
+    return _build({name: Team(name=name) for name in cleaned}, matches, eliminated, request.model, request.simulations)

@@ -31,6 +31,13 @@
 					<label class="field-label" for="eliminated">Teams that miss the playoffs</label>
 					<input class="input" id="eliminated" type="number" min="0" max="19" inputmode="numeric" />
 				</div>
+				<div class="field">
+					<label class="field-label" for="model">Odds for matches to come</label>
+					<select class="select" id="model">
+						<option value="form">Based on each team's record</option>
+						<option value="even">Even: a coin flip</option>
+					</select>
+				</div>
 				<button type="button" class="button button--small" id="reset-edits">Reset my changes</button>
 			</div>
 
@@ -60,6 +67,7 @@
 						<th scope="col" class="num" title="Games won minus games lost">Net</th>
 						<th scope="col" class="num" title="Games won and lost">Games</th>
 						<th scope="col" class="num" title="Matches still to play">Left</th>
+						<th scope="col" class="num" title="Chance of finishing in the playoff spots, from simulating the matches still to play">Playoffs</th>
 						<th scope="col">Status</th>
 					</tr>
 				</thead>
@@ -105,6 +113,12 @@
 			The status column shows what a team can still reach. <strong>Clinched</strong> means it is certain to make the playoffs,
 			<strong>Eliminated</strong> means it cannot. <strong>Alive</strong> means it is not decided yet. Before the season ends the check is
 			careful, so a team can read Alive when it is in fact already decided, but never the other way round.
+		</p>
+		<p>
+			<strong>Playoffs</strong> is the chance, in percent, that a team finishes inside the playoff spots. It comes from playing out the
+			matches that are still to come thousands of times. A team's chance in a match follows its record so far (or a coin flip if you pick
+			Even), and the winner takes the match 2-0 about 6 times in 10, as in the real seasons. It is an estimate, accurate to about one
+			percentage point, and it changes as soon as you change a result. Clinched teams show 100.00% and eliminated teams 0.00%.
 		</p>
 		<p>
 			The same calculator is available as an API: <a href="/web/esports/{league}/standings/simulate">simulate a league</a> and

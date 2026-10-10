@@ -375,3 +375,110 @@ def test_standings_markdown_documents_the_rules_and_both_endpoints() -> None:
     assert "/web/esports/standings/calculate.md" in text
     assert client.get("/web/esports/standings/calculate.md").status_code == 200
     assert "\"eliminated\": 3" in client.get("/web/esports/standings/calculate.md").text
+
+
+# ---- playoff probability
+
+from app.services.esports import probability  # noqa: E402
+
+
+def _rows(teams: list[str], matches: list[Match], eliminated: int):
+    return compute_standings(teams, matches, eliminated)
+
+
+def _chances(teams: list[str], matches: list[Match], eliminated: int, **kwargs) -> tuple[dict[str, float], int]:
+    return probability.playoff_probabilities(teams, matches, _rows(teams, matches, eliminated), len(teams) - eliminated, **kwargs)
+
+
+def test_the_expected_number_of_playoff_teams_equals_the_spots() -> None:
+    teams = team_names(8)
+    chances, simulated = _chances(teams, round_robin(teams), 3)
+
+    assert simulated > 0
+    assert sum(chances.values()) == pytest.approx(5 * 100, abs=0.05 * 8)
+
+
+def test_a_fresh_league_gives_every_team_the_same_chance() -> None:
+    teams = team_names(8)
+    chances, _ = _chances(teams, round_robin(teams), 3, model="even", simulations=10000)
+
+    # 5 of 8 teams go through, so about 62.5% each; the spread is sampling noise.
+    assert all(abs(value - 62.5) < 3 for value in chances.values())
+
+
+def test_decided_teams_read_exactly_100_and_0() -> None:
+    teams = ["A", "B", "C", "D"]
+    wins = {"A": 6, "B": 4, "C": 2, "D": 0}
+    matches = [_match(m.week, m.team1, m.team2, *((2, 0) if wins[m.team1] >= wins[m.team2] else (0, 2))) for m in round_robin(teams)]
+    chances, simulated = _chances(teams, matches, 1)
+
+    assert simulated == 0
+    assert chances == {"A": 100.0, "B": 100.0, "C": 100.0, "D": 0.0}
+
+
+def test_a_team_that_cannot_catch_up_is_close_to_zero_and_the_leader_is_close_to_100() -> None:
+    teams = team_names(6)
+    matches = round_robin(teams)
+    # Team A wins every match it plays so far, F loses everything; half the season is still to come.
+    for match in matches[: len(matches) // 2]:
+        a_side = match.team1 if match.team1 < match.team2 else match.team2
+        match.score1, match.score2 = (2, 0) if match.team1 == a_side else (0, 2)
+    chances, _ = _chances(teams, matches, 2)
+
+    assert chances["Team A"] > chances["Team F"]
+    assert chances["Team A"] > 80 and chances["Team F"] < 20
+
+
+def test_form_makes_a_winning_team_more_likely_than_even_odds_do() -> None:
+    teams = team_names(4)
+    matches = round_robin(teams)
+    first = matches[0]
+    first.score1, first.score2 = 2, 0
+    winner = first.team1
+    form, _ = _chances(teams, matches, 2, model="form", simulations=10000)
+    even, _ = _chances(teams, matches, 2, model="even", simulations=10000)
+
+    assert form[winner] > even[winner]
+
+
+def test_probabilities_do_not_depend_on_how_teams_are_listed() -> None:
+    teams = team_names(6)
+    matches = round_robin(teams)
+
+    assert _chances(teams, matches, 2)[0] == _chances(list(reversed(teams)), matches, 2)[0]
+
+
+def test_simulation_count_scales_with_the_work_left() -> None:
+    assert probability.simulation_count(None, 0) == 0
+    assert probability.simulation_count(None, 11) == 10_000
+    assert probability.simulation_count(None, 380) == 315
+    assert probability.simulation_count(50_000, 11) == 20_000
+    assert probability.simulation_count(100, 380) == 100
+    assert probability.simulation_count(20_000, 380) == 1_052
+
+
+def test_endpoint_returns_probabilities_that_follow_the_status() -> None:
+    data = client.post("/api/esports/standings/calculate", json={"team_count": 6, "eliminated": 2}).json()
+
+    assert data["probability_model"] == "form"
+    assert data["probability_simulations"] > 0
+    for row in data["standings"]:
+        assert 0 <= row["playoff_probability"] <= 100
+        assert round(row["playoff_probability"], 2) == row["playoff_probability"]
+    assert sum(row["playoff_probability"] for row in data["standings"]) == pytest.approx(400, abs=1)
+
+
+def test_endpoint_accepts_the_model_and_simulation_count() -> None:
+    body = {"team_count": 4, "eliminated": 2, "model": "even", "simulations": 2000}
+    data = client.post("/api/esports/standings/calculate", json=body).json()
+
+    assert data["probability_model"] == "even"
+    assert data["probability_simulations"] == 2000
+    assert client.post("/api/esports/standings/calculate", json={"model": "wild"}).status_code == 422
+    assert client.post("/api/esports/standings/calculate", json={"simulations": 5}).status_code == 422
+    assert client.post("/api/esports/standings/calculate", json={"simulations": 99999}).status_code == 422
+
+
+def test_the_page_and_markdown_explain_the_probability() -> None:
+    assert "Playoffs</th>" in client.get("/tools/standings").text
+    assert "playoff_probability" in client.get("/tools/standings.md").text
