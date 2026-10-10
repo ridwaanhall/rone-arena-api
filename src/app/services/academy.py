@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.config import RONE_DEV_ACCESS_KEY_V2
+from app.core import config
 from app.core.http import UpstreamHeaderBuilder, request_json
 from app.core.security import BasePathProvider
 from app.services.source import post_source
@@ -37,6 +37,6 @@ def fetch_ratings(lang: str, subject: str | None = None) -> Any:
     """All hero ratings, or one rating subject when ``subject`` is given."""
     base_path = BasePathProvider.get_base_path_ratings()
     suffix = f"/{subject}" if subject is not None else "?offset=0"
-    url = f"{RONE_DEV_ACCESS_KEY_V2}{base_path}{suffix}"
+    url = f"{config.require_access_key(config.RONE_DEV_ACCESS_KEY_V2, 'RONE_DEV_ACCESS_KEY_V2')}{base_path}{suffix}"
     headers = UpstreamHeaderBuilder.get_academy_header(lang, client_ip=get_bound_client_ip())
     return request_json(method="GET", url=url, headers=headers)

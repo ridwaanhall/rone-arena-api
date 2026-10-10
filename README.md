@@ -163,9 +163,8 @@ pytest
 
 ### Environment Variables
 
-- `SECRET_KEY`
-- `RONE_DEV_ACCESS_KEY`
-- `RONE_DEV_ACCESS_KEY_V2`
+- `SECRET_KEY` (required)
+- `RONE_DEV_ACCESS_KEY` and `RONE_DEV_ACCESS_KEY_V2` (optional: without them the hero, academy and user endpoints answer 503 `NOT_CONFIGURED`)
 
 See `.env.example` for full configuration.
 
