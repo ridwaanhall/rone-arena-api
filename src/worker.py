@@ -5,8 +5,10 @@ work done here (building the OpenAPI catalog, compiling templates) is paid once
 per deploy instead of on the first request of every isolate.
 """
 
-from workers import WorkerEntrypoint, asgi
+from workers import Response, WorkerEntrypoint, asgi
 
+from app.core.config import ALTERNATIVE_ENDPOINT_URL
+from app.core.fallback import FALLBACK_STATUSES, backup_url, redirect_headers
 from app.main import app
 from app.utils.client_ip import reset_edge_geo, set_edge_geo
 from app.web.warm import warm
@@ -34,6 +36,22 @@ class Default(WorkerEntrypoint):
         # to the app through a ContextVar (the app task copies this context).
         token = set_edge_geo(_edge_geo(request))
         try:
-            return await asgi.fetch(app, request, self.env, self.ctx)
+            response = await asgi.fetch(app, request, self.env, self.ctx)
+        except Exception:
+            # The app crashed: send the caller to the same path on the backup host.
+            fallback = _to_backup(request, "exception")
+            if fallback is None:
+                raise
+            return fallback
         finally:
             reset_edge_geo(token)
+        if response.status in FALLBACK_STATUSES:
+            return _to_backup(request, f"status-{response.status}") or response
+        return response
+
+
+def _to_backup(request, reason: str) -> Response | None:
+    location = backup_url(str(request.url), ALTERNATIVE_ENDPOINT_URL)
+    if location is None:
+        return None
+    return Response("", status=307, headers=redirect_headers(location, reason))
