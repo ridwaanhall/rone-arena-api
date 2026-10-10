@@ -118,6 +118,35 @@ def test_id_schedule_reads_weeks_days_and_matches() -> None:
     assert upcoming["score1"] is None and upcoming["score2"] is None
 
 
+def _dump(season) -> list:
+    weeks, standings = season
+    return [[item.model_dump() for item in weeks], [item.model_dump() for item in standings]]
+
+
+def test_id_season_is_read_from_cut_out_panes_with_the_same_result(monkeypatch) -> None:
+    # The real page is 2.4 MB and parsing it whole exceeded the Worker's CPU limit (Cloudflare error 1102),
+    # so only the week panes and the standings table are cut out and parsed.
+    html = fixture("id_schedule_en.html")
+    padded = html + '<div id="modal-1"><div>' + "<p>pop-up</p>" * 2000 + "</div></div>"
+    panes = indonesia._season_panes(padded)
+
+    assert len(panes) < len(padded) // 2  # the pop-up filler is dropped
+    assert "pop-up" not in panes
+    assert 'id="t-week-1"' in panes and 'id="standing-regular-season"' in panes
+
+    sliced = _dump(indonesia.get_season("en"))
+    indonesia.get_season.cache_clear()
+    monkeypatch.setattr(indonesia, "_season_panes", lambda page: page)
+    assert _dump(indonesia.get_season("en")) == sliced
+
+
+def test_id_season_falls_back_to_the_whole_page_when_a_pane_does_not_close() -> None:
+    broken = '<div id="t-week-1"><div class="match date"></div>'
+
+    assert indonesia._season_panes(broken) == broken
+    assert indonesia._season_panes("<p>no panes</p>") == "<p>no panes</p>"
+
+
 def test_id_schedule_language_defaults_to_english_and_can_be_indonesian(upstream) -> None:
     def label(**params) -> str:
         return client.get("/api/esports/id/schedule", params=params).json()["weeks"][0]["days"][0]["label"]

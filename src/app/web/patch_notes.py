@@ -28,6 +28,9 @@ PATCH_NOTES: list[dict[str, object]] = [
         "improved": [
             "If the main server has a problem, the website switches to the backup server by itself.",
         ],
+        "fixed": [
+            "The Indonesian league schedule and standings load again instead of failing with an error.",
+        ],
     },
     {
         "version": "1.2.0",
