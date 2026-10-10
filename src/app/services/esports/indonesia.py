@@ -93,9 +93,9 @@ def _standing(row: Tag) -> Standing:
 
 
 @ttl_cache(CACHE_SECONDS)
-def get_season() -> tuple[list[ScheduleWeek], list[Standing]]:
-    """Schedule weeks and standings, both read from one fetch of the schedule page."""
-    soup = parse_html(fetch_page(EsportsSourceProvider.get_id_base_url(), "/schedule").text, _SEASON_PARTS)
+def get_season(lang: str) -> tuple[list[ScheduleWeek], list[Standing]]:
+    """Schedule weeks and standings, both read from one fetch of the schedule page in ``lang``."""
+    soup = parse_html(fetch_page(EsportsSourceProvider.get_id_base_url(), f"/{lang}/schedule").text, _SEASON_PARTS)
     weeks = [
         ScheduleWeek(
             week=int(pane["id"].rsplit("-", 1)[1]),

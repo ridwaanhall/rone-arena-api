@@ -239,6 +239,8 @@ def test_esports_id_schedule_standings_and_match() -> None:
     schedule = client.get("/api/esports/id/schedule").json()
     assert schedule["weeks"][0]["week"] == 1 and len(schedule["weeks"]) >= 8
     assert client.get("/api/esports/id/schedule", params={"week": 1}).json()["weeks"][0]["days"]
+    in_indonesian = client.get("/api/esports/id/schedule", params={"week": 1, "lang": "id"}).json()
+    assert in_indonesian["weeks"][0]["days"][0]["label"] != schedule["weeks"][0]["days"][0]["label"]
 
     standings = client.get("/api/esports/id/standings").json()["standings"]
     assert standings[0]["rank"] == 1 and standings[0]["team"]["logo"]

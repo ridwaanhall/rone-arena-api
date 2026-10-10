@@ -5,6 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query
 
 from app.api.dependencies import require_api_available
+from app.api.params import LeagueLang
+from app.core.enums import LeagueLanguageEnum
 from app.schemas.esports import MatchDetailResponse, ScheduleResponse, StandingsResponse
 from app.services.esports import indonesia, philippines
 from app.services.esports.common import select_weeks
@@ -121,10 +123,11 @@ def _example(payload: dict) -> dict:
     return {200: {"description": "Successful Response", "content": {"application/json": {"example": payload}}}}
 
 
+_LANG_PARAM = "- **lang**: Language of the site's text, such as day names: `en` (default) or `id`.\n"
 _SCHEDULE_DESCRIPTION = (
     "Regular-season schedule of {league}, grouped by week and day.\n\n"
     "Query parameters:\n"
-    "- **week**: Optional week number. Omit it to get every week; an unknown week returns 404.\n\n"
+    "- **week**: Optional week number. Omit it to get every week; an unknown week returns 404.\n{lang_param}\n"
     "Each match has:\n"
     "- **match_id**: Value for the matches endpoint; null while no details page exists.\n"
     "- **start_at**: Start time in UTC (ISO 8601). **local_time** is the time as shown on the site.\n"
@@ -133,7 +136,7 @@ _SCHEDULE_DESCRIPTION = (
 )
 _STANDINGS_DESCRIPTION = (
     "Regular-season standings of {league}: rank, team, match point, match win-lose, "
-    "net game win and game win-lose.\n\nData is read from the league's public site and cached for 5 minutes."
+    "net game win and game win-lose.\n{lang_param}\nData is read from the league's public site and cached for 5 minutes."
 )
 _MATCH_DESCRIPTION = (
     "Full match history of one match of {league}: every game with both teams and all players "
@@ -147,11 +150,11 @@ _MATCH_DESCRIPTION = (
     name="api.esports.id_schedule",
     response_model=ScheduleResponse,
     summary="Indonesia Regular Season Schedule",
-    description=_SCHEDULE_DESCRIPTION.format(league="the Indonesian professional league"),
+    description=_SCHEDULE_DESCRIPTION.format(league="the Indonesian professional league", lang_param=_LANG_PARAM),
     responses=_example(_SCHEDULE_EXAMPLE),
 )
-def id_schedule(week: Week = None) -> ScheduleResponse:
-    return select_weeks(indonesia.get_season()[0], week)
+def id_schedule(week: Week = None, lang: LeagueLang = LeagueLanguageEnum.ENGLISH) -> ScheduleResponse:
+    return select_weeks(indonesia.get_season(lang.value)[0], week)
 
 
 @router.get(
@@ -159,11 +162,11 @@ def id_schedule(week: Week = None) -> ScheduleResponse:
     name="api.esports.id_standings",
     response_model=StandingsResponse,
     summary="Indonesia Regular Season Standings",
-    description=_STANDINGS_DESCRIPTION.format(league="the Indonesian professional league"),
+    description=_STANDINGS_DESCRIPTION.format(league="the Indonesian professional league", lang_param=_LANG_PARAM),
     responses=_example(_STANDINGS_EXAMPLE),
 )
-def id_standings() -> StandingsResponse:
-    return StandingsResponse(standings=indonesia.get_season()[1])
+def id_standings(lang: LeagueLang = LeagueLanguageEnum.ENGLISH) -> StandingsResponse:
+    return StandingsResponse(standings=indonesia.get_season(lang.value)[1])
 
 
 @router.get(
@@ -188,7 +191,7 @@ def id_match(
     name="api.esports.ph_schedule",
     response_model=ScheduleResponse,
     summary="Philippines Regular Season Schedule",
-    description=_SCHEDULE_DESCRIPTION.format(league="the Philippine professional league"),
+    description=_SCHEDULE_DESCRIPTION.format(league="the Philippine professional league", lang_param=""),
     responses=_example(_SCHEDULE_EXAMPLE),
 )
 def ph_schedule(week: Week = None) -> ScheduleResponse:
@@ -200,7 +203,7 @@ def ph_schedule(week: Week = None) -> ScheduleResponse:
     name="api.esports.ph_standings",
     response_model=StandingsResponse,
     summary="Philippines Regular Season Standings",
-    description=_STANDINGS_DESCRIPTION.format(league="the Philippine professional league"),
+    description=_STANDINGS_DESCRIPTION.format(league="the Philippine professional league", lang_param=""),
     responses=_example(_STANDINGS_EXAMPLE),
 )
 def ph_standings() -> StandingsResponse:

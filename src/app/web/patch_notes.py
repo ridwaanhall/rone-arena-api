@@ -23,6 +23,7 @@ PATCH_NOTES: list[dict[str, object]] = [
             "Pro league data for Indonesia and the Philippines: the season schedule, the standings and full match results.",
             "Every match shows each player's hero, kills, deaths, assists, items and damage.",
             "Philippine matches also show the order in which items were bought.",
+            "Indonesian league schedules can be shown in English or in Indonesian.",
             "A new Esports section in the playground lets you try it all in your browser.",
         ],
         "improved": [

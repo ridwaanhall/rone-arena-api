@@ -34,7 +34,8 @@ def upstream(monkeypatch):
     """Serve the saved pages instead of the real sites and record every call."""
     calls: list[SimpleNamespace] = []
     pages = {
-        f"{ID_BASE}/schedule": "id_schedule.html",
+        f"{ID_BASE}/en/schedule": "id_schedule_en.html",
+        f"{ID_BASE}/id/schedule": "id_schedule.html",
         f"{ID_BASE}/match-detail/1036": "id_match.html",
         f"{PH_BASE}/": "ph_home.html",
         f"{PH_BASE}/schedule": "ph_schedule.html",
@@ -86,7 +87,7 @@ def test_ttl_cache_reuses_results_until_cleared() -> None:
 
 
 def test_select_weeks_reports_available_weeks_for_unknown_week() -> None:
-    weeks = indonesia.get_season()[0]
+    weeks = indonesia.get_season("en")[0]
 
     assert [w.week for w in select_weeks(weeks, None).weeks] == [1, 8]
     assert [w.week for w in select_weeks(weeks, 8).weeks] == [8]
@@ -115,6 +116,23 @@ def test_id_schedule_reads_weeks_days_and_matches() -> None:
     upcoming = body["weeks"][1]["days"][0]["matches"][0]
     assert upcoming["match_id"] is None
     assert upcoming["score1"] is None and upcoming["score2"] is None
+
+
+def test_id_schedule_language_defaults_to_english_and_can_be_indonesian(upstream) -> None:
+    def label(**params) -> str:
+        return client.get("/api/esports/id/schedule", params=params).json()["weeks"][0]["days"][0]["label"]
+
+    assert label() == "Friday, 14 August 2026"
+    assert label(lang="en") == "Friday, 14 August 2026"
+    assert label(lang="id") == "Jumat, 14 Agustus 2026"
+    assert [call.url for call in upstream] == [f"{ID_BASE}/en/schedule", f"{ID_BASE}/id/schedule"]
+    assert client.get("/api/esports/id/schedule", params={"lang": "fr"}).status_code == 422
+
+
+def test_id_standings_follow_the_language() -> None:
+    for lang in ("en", "id"):
+        first = client.get("/api/esports/id/standings", params={"lang": lang}).json()["standings"][0]
+        assert (first["team"]["name"], first["match_point"]) == ("NAVI", 11)
 
 
 def test_id_schedule_week_filter() -> None:

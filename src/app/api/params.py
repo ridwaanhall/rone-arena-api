@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from fastapi import Path, Query
 
-from app.core.enums import LanguageEnum, RankEnum
+from app.core.enums import LanguageEnum, LeagueLanguageEnum, RankEnum
 
 HeroIdentifier = Annotated[
     str,
@@ -28,6 +28,11 @@ PageSize = Annotated[int, Query(title="Page Size", description="Number of items 
 PageIndex = Annotated[int, Query(title="Page Index", description="Page index for pagination.", ge=1)]
 
 Lang = Annotated[LanguageEnum, Query(title="Language", description="Language code for localized content.")]
+
+LeagueLang = Annotated[
+    LeagueLanguageEnum,
+    Query(title="Language", description="Language of the league site's text, such as day names. Available: `en`, `id`."),
+]
 
 Rank = Annotated[RankEnum, Query(title="Rank", description="Rank filter for hero statistics.")]
 

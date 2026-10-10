@@ -20,6 +20,12 @@ class LanguageEnum(str, Enum):
     CHINESE_TRADITIONAL = "zh-TW"
     KAMBODIAN = "km"
     
+class LeagueLanguageEnum(str, Enum):
+    '''Languages the Indonesian league site is published in.'''
+    ENGLISH = "en"
+    INDONESIAN = "id"
+
+
 class RankEnum(str, Enum):
     '''Rank filter for hero statistics.'''
     ALL = "all"
