@@ -76,11 +76,12 @@ def playoff_probabilities(
     remaining: list[tuple[int, int]] = []
     for match in matches:
         first, second = index[match.team1], index[match.team2]
-        if not match.done:
+        result = match.result
+        if result is None:
             remaining.append((first, second))
             continue
-        margin = abs(match.score1 - match.score2)
-        winner, loser = (first, second) if match.score1 > match.score2 else (second, first)
+        margin = abs(result[0] - result[1])
+        winner, loser = (first, second) if result[0] > result[1] else (second, first)
         base_points[winner] += 1
         base_net[winner] += margin
         base_net[loser] -= margin

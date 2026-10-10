@@ -43,13 +43,14 @@ def get_available_endpoints(app, include_methods: set[str] | None = None) -> lis
     for route in app.routes:
         if not isinstance(route, APIRoute):
             continue
-        if include_methods and not (set(route.methods) & include_methods):
+        methods = set(route.methods or ())
+        if include_methods and not (methods & include_methods):
             continue
         if route.path in internal_paths:
             continue
         endpoints.append({
             "path": route.path,
-            "methods": list(route.methods),
+            "methods": list(methods),
             "name": route.name,
             "summary": getattr(route, "summary", None),
             "include_in_schema": getattr(route, "include_in_schema", True),

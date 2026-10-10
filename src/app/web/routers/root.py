@@ -4,6 +4,7 @@ import hashlib
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
@@ -107,7 +108,7 @@ def _fallback_api_url(request: Request) -> str:
     return f"{backup}/api"
 
 
-def _shared_context(request: Request, current_group: str | None = None) -> dict[str, object]:
+def _shared_context(request: Request, current_group: str | None = None) -> dict[str, Any]:
     return {
         "request": request,
         "group_meta": GROUP_META,

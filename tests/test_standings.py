@@ -199,10 +199,11 @@ def test_a_one_one_result_explains_the_deciding_game() -> None:
 
 def test_results_must_point_at_real_matches() -> None:
     matches = round_robin(team_names(4))
-    for results, code in (
+    cases: list[tuple[list[tuple[int, str, str, int | None, int | None]], str]] = [
         ([(1, "Team A", "Nobody", 2, 0)], "UNKNOWN_TEAM"),
         ([(9, "Team A", "Team B", 2, 0)], "MATCH_NOT_FOUND"),
-    ):
+    ]
+    for results, code in cases:
         with pytest.raises(AppError) as error:
             apply_results(matches, results)
         assert error.value.code == code

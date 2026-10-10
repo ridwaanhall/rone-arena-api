@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi.openapi.models import Example
 
 from app.api.dependencies import require_api_available
 from app.api.params import LeagueLang
@@ -317,7 +318,7 @@ _SIMULATION_EXAMPLE = {
         }
     ],
 }
-_SIMULATE_BODIES = {
+_SIMULATE_BODIES: dict[str, Example] = {
     "indonesia": {
         "summary": "Indonesia: flip one result",
         "value": {"results": [{"week": 8, "team1": "NAVI", "team2": "TLID", "score1": 0, "score2": 2}], "eliminated": 3},
@@ -328,7 +329,7 @@ _SIMULATE_BODIES = {
     },
     "current": {"summary": "Current table, no changes", "value": {"results": []}},
 }
-_CALCULATE_BODIES = {
+_CALCULATE_BODIES: dict[str, Example] = {
     "default": {
         "summary": "8 teams with one result",
         "value": {

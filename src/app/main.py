@@ -253,8 +253,9 @@ def custom_openapi() -> dict[str, object]:
     _inline_enum_defaults_in_parameters(openapi_schema)
     _normalize_component_schema_examples(openapi_schema)
     # Examples hold literal upstream image URLs; show them as the API now returns them.
-    app.openapi_schema = wsrv_json(openapi_schema)
-    return app.openapi_schema
+    schema = wsrv_json(openapi_schema)
+    app.openapi_schema = schema
+    return schema
 
 
 app.openapi = custom_openapi

@@ -31,7 +31,7 @@ def _build(
     teams: dict[str, Team],
     matches: list[standings.Match],
     eliminated: int,
-    model: str,
+    model: probability.Model,
     simulations: int | None,
 ) -> StandingsSimulationResponse:
     rows = standings.compute_standings(list(teams), matches, eliminated)

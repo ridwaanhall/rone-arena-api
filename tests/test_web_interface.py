@@ -16,6 +16,12 @@ from app.web.openapi_catalog import get_group_operations
 client = TestClient(app)
 
 
+def _found(match: re.Match[str] | None) -> str:
+    """The first group of a search that must match."""
+    assert match is not None
+    return match[1]
+
+
 def wsrv(url: str) -> str:
     return f"https://wsrv.nl/?url={quote(url, safe='')}"
 
@@ -557,7 +563,7 @@ def test_sitemap_lists_pages_posts_and_every_endpoint() -> None:
         "https://arena.rone.dev/web/heroes/heroes/wallpapers",
     } <= set(locs)
     assert len(locs) == len(set(locs))
-    assert all(loc.startswith("https://arena.rone.dev/") for loc in locs)
+    assert all((loc or "").startswith("https://arena.rone.dev/") for loc in locs)
 
 
 def test_robots_txt_points_at_the_sitemap() -> None:
@@ -613,8 +619,8 @@ def test_page_titles_and_descriptions_stay_within_search_result_limits() -> None
     descriptions: dict[str, str] = {}
     for path in paths:
         page = client.get(path).text
-        title = re.search(r"<title>(.*?)</title>", page, re.S)[1]
-        description = re.search(r'name="description" content="(.*?)"', page, re.S)[1]
+        title = _found(re.search(r"<title>(.*?)</title>", page, re.S))
+        description = _found(re.search(r'name="description" content="(.*?)"', page, re.S))
         assert len(title) <= 70, (path, title)
         assert len(description) <= 160, (path, description)
         if path.startswith("/web/") and path.count("/") > 2:

@@ -24,8 +24,12 @@ from app.schemas.esports import (
 )
 from app.services.esports.common import (
     CACHE_SECONDS,
+    attr,
     fetch_page,
     kda_ratio,
+    need,
+    need_attr,
+    need_tag,
     parse_html,
     parse_record,
     text_of,
@@ -46,7 +50,8 @@ _TIER = re.compile(r"tier-(\d+)")
 
 def _asset(image: Tag) -> Asset:
     # Image files are named after the item, emblem or talent id.
-    return Asset(id=image["src"].rsplit("/", 1)[1].split(".")[0], image=image["src"])
+    source = need_attr(image, "src")
+    return Asset(id=source.rsplit("/", 1)[1].split(".")[0], image=source)
 
 
 def _start_at(label: str, local_time: str) -> str | None:
@@ -59,7 +64,7 @@ def _start_at(label: str, local_time: str) -> str | None:
 
 def _standing(row: Tag) -> Standing:
     rank, team, match_point, match_wl, net_game_win, game_wl = (text_of(cell) for cell in row.find_all("td", recursive=False))
-    logo = _BACKGROUND_URL.search(row.select_one(".team-logo")["style"])
+    logo = _BACKGROUND_URL.search(attr(row.select_one(".team-logo"), "style") or "")
     return Standing(
         rank=to_int(rank),
         team=Team(name=team, logo=logo.group(1) if logo else None),
@@ -79,11 +84,11 @@ def get_standings() -> list[Standing]:
 def _schedule_match(item: Tag, label: str) -> ScheduleMatch:
     local_time = text_of(item.find("div"))
     names = [text_of(name) for name in item.select(".team-name")]
-    logos = [image["src"] for image in item.select("img")]
+    logos = [need_attr(image, "src") for image in item.select("img")]
     score = _SCORE.search(text_of(item.select_one(".mt-n2")))
-    link = item.select_one("a[href*='/data/match/']")
+    href = attr(item.select_one("a[href*='/data/match/']"), "href")
     return ScheduleMatch(
-        match_id=link["href"].rsplit("/", 1)[1] if link else None,
+        match_id=href.rsplit("/", 1)[1] if href else None,
         start_at=_start_at(label, local_time),
         local_time=local_time,
         team1=Team(name=names[0], logo=logos[0]),
@@ -96,7 +101,7 @@ def _schedule_match(item: Tag, label: str) -> ScheduleMatch:
 def _schedule_day(header: Tag) -> ScheduleDay:
     label = text_of(header.select_one(".match-category-day"))
     day = re.search(r"\d+", text_of(header.select_one(".match-category-day-no")))
-    block = header.find_parent(class_="col-lg-4")
+    block = need_tag(header.find_parent(class_="col-lg-4"), "a schedule day")
     return ScheduleDay(
         day=int(day[0]) if day else None,
         label=label,
@@ -107,13 +112,14 @@ def _schedule_day(header: Tag) -> ScheduleDay:
 @ttl_cache(CACHE_SECONDS)
 def get_schedule() -> list[ScheduleWeek]:
     soup = parse_html(fetch_page(EsportsSourceProvider.get_ph_base_url(), "/schedule").text)
+    panes = [(need_attr(pane, "id"), pane) for pane in soup.select("#regular-season .tab-pane")]
     return [
         ScheduleWeek(
-            week=int(pane["id"].rsplit("-", 1)[1]),
+            week=int(pane_id.rsplit("-", 1)[1]),
             days=[_schedule_day(header) for header in pane.select(".match-category-flex")],
         )
-        for pane in soup.select("#regular-season .tab-pane")
-        if _WEEK_ID.match(pane["id"])
+        for pane_id, pane in panes
+        if _WEEK_ID.match(pane_id)
     ]
 
 
@@ -122,7 +128,7 @@ def _summary(pane: Tag) -> list[dict[str, int]]:
     totals: tuple[dict[str, int], dict[str, int]] = ({}, {})
     for divider in pane.select("#summary .stats-divider"):
         label = re.sub(r"\W+", "_", text_of(divider).lower().replace("/", " per ")).strip("_")
-        for team_totals, value in zip(totals, divider.parent.select(".stats-num")):
+        for team_totals, value in zip(totals, need(divider.parent, "a summary row").select(".stats-num")):
             team_totals[label] = to_int(text_of(value))
     return list(totals)
 
@@ -137,7 +143,7 @@ def _player(row: Tag, columns: dict[str, int]) -> Player:
     kills, deaths, assists = (to_int(text_of(cell(column))) for column in ("Kill", "Death", "Assist"))
     return Player(
         name=text_of(cell("Player")),
-        hero=Hero(name=text_of(hero), image=hero.find("img")["src"]),
+        hero=Hero(name=text_of(hero), image=need_attr(hero.find("img"), "src")),
         kills=kills,
         deaths=deaths,
         assists=assists,
@@ -157,8 +163,8 @@ def _scoreboard(pane: Tag, short_names: list[str]) -> list[tuple[Team, list[Play
     sides = []
     for short_name, table in zip(short_names, pane.select("#scoreboard table")):
         columns = {text_of(header): index for index, header in enumerate(table.select("thead th"))}
-        card = table.find_parent(class_="container")
-        team = Team(name=short_name, full_name=text_of(card.select_one("h3")), logo=card.select_one("img")["src"])
+        card = need_tag(table.find_parent(class_="container"), "a team card")
+        team = Team(name=short_name, full_name=text_of(card.select_one("h3")), logo=need_attr(card.select_one("img"), "src"))
         sides.append((team, [_player(row, columns) for row in table.select("tbody tr")]))
     return sides
 
@@ -170,9 +176,9 @@ def _item_sequences(html: str) -> tuple[list[int], list[list[SequenceItem]]]:
     sequences = [
         [
             SequenceItem(
-                **_asset(dot.find("img")).model_dump(),
-                tier=int(tier[1]) if (tier := _TIER.search(" ".join(dot.select_one(".equip-item-img")["class"]))) else None,
-                timeline_percent=float(_LEFT_PERCENT.search(dot["style"])[1]),
+                **_asset(need_tag(dot.find("img"), "an item image")).model_dump(),
+                tier=int(tier[1]) if (tier := _TIER.search(attr(dot.select_one(".equip-item-img"), "class") or "")) else None,
+                timeline_percent=float(need(_LEFT_PERCENT.search(need_attr(dot, "style")), "an item position").group(1)),
             )
             for dot in row.select(".item-dots")
         ]
@@ -186,7 +192,7 @@ def get_match(slug: str) -> MatchDetailResponse:
     base_url = EsportsSourceProvider.get_ph_base_url()
     page = fetch_page(base_url, f"/data/match/{slug}")
     soup = parse_html(page.text)
-    token = _CSRF_TOKEN.search(page.text)[1]
+    token = need(_CSRF_TOKEN.search(page.text), "the CSRF token").group(1)
     battle_ids = dict(_BATTLE_IDS.findall(page.text))
     # The item sequences are a CSRF-protected POST tied to this page's session.
     headers = {
@@ -197,7 +203,7 @@ def get_match(slug: str) -> MatchDetailResponse:
 
     games = []
     for pane in soup.find_all(id=_GAME_ID):
-        number = int(pane["id"].removeprefix("game"))
+        number = int(need_attr(pane, "id").removeprefix("game"))
         short_names = [text_of(name) for name in pane.select("#summary .team-name h3")]
         totals = _summary(pane)
         sides = _scoreboard(pane, short_names)

@@ -6,6 +6,8 @@ A section with no points is left out. The newest entry must match `PROJECT_VERSI
 """
 from __future__ import annotations
 
+from typing import Any
+
 # (key in an entry, heading shown on the page)
 SECTIONS: tuple[tuple[str, str], ...] = (
     ("new", "New"),
@@ -14,7 +16,7 @@ SECTIONS: tuple[tuple[str, str], ...] = (
     ("removed", "Removed"),
 )
 
-PATCH_NOTES: list[dict[str, object]] = [
+PATCH_NOTES: list[dict[str, Any]] = [
     {
         "version": "1.2.1",
         "date": "2026-10-10",

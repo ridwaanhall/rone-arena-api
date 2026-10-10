@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Literal
 
 from app.core.exceptions import AppError
 
@@ -29,6 +30,11 @@ GAME_TARGET = 2
 MIN_TEAMS = 2
 MAX_TEAMS = 20
 VALID_SCORES = {(GAME_TARGET, 0), (GAME_TARGET, 1), (1, GAME_TARGET), (0, GAME_TARGET)}
+
+# played: the result came with the schedule · edited: set by the caller · scheduled: no result yet
+MatchState = Literal["played", "edited", "scheduled"]
+Status = Literal["clinched", "alive", "eliminated"]
+TieBreak = Literal["net_game_win", "head_to_head", "unresolved"]
 
 
 @dataclass
@@ -38,12 +44,18 @@ class Match:
     team2: str
     score1: int | None = None
     score2: int | None = None
-    # played: result came with the schedule · edited: set by the caller · scheduled: no result
-    state: str = "scheduled"
+    state: MatchState = "scheduled"
+
+    @property
+    def result(self) -> tuple[int, int] | None:
+        """The two scores, or None while the match has no result."""
+        if self.score1 is None or self.score2 is None:
+            return None
+        return self.score1, self.score2
 
     @property
     def done(self) -> bool:
-        return self.score1 is not None and self.score2 is not None
+        return self.result is not None
 
 
 @dataclass
@@ -55,8 +67,8 @@ class Row:
     games_lost: int = 0
     remaining: int = 0
     rank: int = 0
-    tiebreak: str | None = None
-    status: str = "alive"
+    tiebreak: TieBreak | None = None
+    status: Status = "alive"
 
     @property
     def played(self) -> int:
@@ -159,11 +171,12 @@ def _order(rows: list[Row], matches: list[Match]) -> None:
             members = {row.team for row in tied}
             table: dict[str, list[int]] = {name: [0, 0] for name in members}
             for match in matches:
-                if match.done and match.team1 in members and match.team2 in members:
-                    winner, loser = (match.team1, match.team2) if match.score1 > match.score2 else (match.team2, match.team1)
+                result = match.result
+                if result is not None and match.team1 in members and match.team2 in members:
+                    winner, loser = (match.team1, match.team2) if result[0] > result[1] else (match.team2, match.team1)
                     table[winner][0] += 1
-                    table[winner][1] += abs(match.score1 - match.score2)
-                    table[loser][1] -= abs(match.score1 - match.score2)
+                    table[winner][1] += abs(result[0] - result[1])
+                    table[loser][1] -= abs(result[0] - result[1])
             tied.sort(key=lambda row: (-table[row.team][0], -table[row.team][1], row.team))
             for row in tied:
                 twin = any(table[other.team] == table[row.team] for other in tied if other is not row)
@@ -188,15 +201,16 @@ def compute_standings(teams: list[str], matches: list[Match], eliminated: int) -
     rows = {name: Row(team=name) for name in teams}
     for match in matches:
         first, second = rows[match.team1], rows[match.team2]
-        if not match.done:
+        result = match.result
+        if result is None:
             first.remaining += 1
             second.remaining += 1
             continue
-        first.games_won += match.score1
-        first.games_lost += match.score2
-        second.games_won += match.score2
-        second.games_lost += match.score1
-        winner, loser = (first, second) if match.score1 > match.score2 else (second, first)
+        first.games_won += result[0]
+        first.games_lost += result[1]
+        second.games_won += result[1]
+        second.games_lost += result[0]
+        winner, loser = (first, second) if result[0] > result[1] else (second, first)
         winner.won += 1
         loser.lost += 1
 

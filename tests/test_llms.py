@@ -18,7 +18,7 @@ ORIGIN = BASE_URL.rstrip("/")
 
 def _sitemap_paths() -> list[str]:
     root = ElementTree.fromstring(client.get("/sitemap.xml").text)
-    return [loc.text.removeprefix(ORIGIN) or "/" for loc in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
+    return [(loc.text or "").removeprefix(ORIGIN) or "/" for loc in root.iter("{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
 
 
 def _all_operations() -> list[dict[str, object]]:

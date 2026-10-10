@@ -4,8 +4,8 @@ from __future__ import annotations
 import re
 
 import httpx
-from bs4 import BeautifulSoup, SoupStrainer
-from bs4.element import Tag
+from bs4 import BeautifulSoup
+from bs4.element import PageElement, Tag
 
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
@@ -17,8 +17,46 @@ from app.schemas.esports import Record, ScheduleResponse, ScheduleWeek
 CACHE_SECONDS = 300
 
 
-def text_of(element: Tag | None) -> str:
+def text_of(element: PageElement | None) -> str:
     return element.get_text(" ", strip=True) if element else ""
+
+
+def attr(element: PageElement | None, name: str) -> str | None:
+    """An attribute as one string (``class`` lists are joined with spaces), or None when it is not there."""
+    if not isinstance(element, Tag):
+        return None
+    value = element.get(name)
+    if value is None:
+        return None
+    return value if isinstance(value, str) else " ".join(value)
+
+
+def _page_changed(what: str) -> AppError:
+    return AppError(
+        status_code=502,
+        code="UPSTREAM_PAGE_CHANGED",
+        message=f"The league site returned a page in an unexpected format ({what} not found).",
+    )
+
+
+def need[T](value: T | None, what: str = "an expected value") -> T:
+    """``value`` unless it is missing, which means the league site changed its page."""
+    if value is None:
+        raise _page_changed(what)
+    return value
+
+
+def need_tag(element: PageElement | None, what: str = "an expected element") -> Tag:
+    if not isinstance(element, Tag):
+        raise _page_changed(what)
+    return element
+
+
+def need_attr(element: PageElement | None, name: str) -> str:
+    value = attr(element, name)
+    if value is None:
+        raise _page_changed(f"the {name!r} attribute")
+    return value
 
 
 def to_int(value: str) -> int:
@@ -43,8 +81,8 @@ def fetch_page(base_url: str, path: str) -> httpx.Response:
     )
 
 
-def parse_html(html: str, parse_only: SoupStrainer | None = None) -> BeautifulSoup:
-    return BeautifulSoup(html, "html.parser", parse_only=parse_only)
+def parse_html(html: str) -> BeautifulSoup:
+    return BeautifulSoup(html, "html.parser")
 
 
 def select_weeks(weeks: list[ScheduleWeek], week: int | None) -> ScheduleResponse:

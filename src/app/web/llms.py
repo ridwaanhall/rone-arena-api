@@ -127,7 +127,7 @@ def _post_md_url(post: dict[str, Any]) -> str:
     return _md_url(_post_path(post))
 
 
-def _sorted_posts() -> list[dict[str, object]]:
+def _sorted_posts() -> list[dict[str, Any]]:
     return sorted(_BLOG_POSTS, key=lambda post: str(post.get("published_at") or ""), reverse=True)
 
 
