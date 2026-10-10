@@ -90,3 +90,5 @@ def test_workflow_runs_only_for_pushes_to_main() -> None:
     assert "workflow_dispatch" not in text
     assert "contents: write" in text
     assert "release_tag.py" in text and SCRIPT.exists()
+    # The tag is followed by a GitHub Release for it.
+    assert 'gh release create "$TAG" --verify-tag' in text and "--generate-notes" in text
