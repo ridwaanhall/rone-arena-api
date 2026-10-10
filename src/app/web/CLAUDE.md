@@ -21,6 +21,9 @@
   lists home, showcase, blog, every post and every playground page; `robots.txt` points at it
   and keeps crawlers off `/api/` (each hit costs an upstream call). Blog posts get an
   "On this page" contents list built from their section headings (`table_of_contents`).
+- **Markdown twins / llms.txt**: every page links its `.md` twin and `/llms.txt` from `<head>`
+  (`markdown_url` in `_shared_context`). A new HTML page needs a builder in `llms.py` and a route in
+  `routers/llms.py`; `test_every_sitemap_page_has_a_markdown_twin` enforces it (see the `llms-txt` skill).
 - **Screen tiers**: mobile < 640, tablet 640+, laptop 1024+, monitor 1440+ (1320px page),
   extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes.
 - **Avoid generic AI-template tells** (enforced in part by `test_ui_avoids_generic_ai_template_tells`):

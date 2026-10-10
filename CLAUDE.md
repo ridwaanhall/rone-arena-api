@@ -5,6 +5,8 @@
 Web UI conventions (design system, design language, JS layout) live in `src/app/web/CLAUDE.md`.
 Release notes for non-technical readers live in `src/app/web/patch_notes.py` (shown on `/patch-notes`); the
 `patch-notes` skill writes them and `bump-version` bumps the version.
+For AI agents, `/llms.txt`, `/llms-full.txt` and a `.md` twin of every web page (`/index.md`, `/web/heroes.md`, ...)
+are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current when pages or product facts change.
 
 ## Configuration
 

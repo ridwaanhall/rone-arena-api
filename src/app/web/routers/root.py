@@ -70,6 +70,11 @@ def absolute_url(path: str) -> str:
     return path if path.startswith(("http://", "https://")) else f"{SITE_ORIGIN}{path}"
 
 
+def markdown_path(path: str) -> str:
+    """The markdown twin of a web page (llmstxt.org convention): the URL plus `.md`."""
+    return "/index.md" if path in ("", "/") else f"{path.rstrip('/')}.md"
+
+
 def image_url(path: str) -> str:
     """Absolute, proxied URL of a site image (blog art, share previews)."""
     return wsrv_url(absolute_url(path))
@@ -115,6 +120,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
         "site_name": SITE_NAME,
         "canonical_url": absolute_url(request.url.path),
+        "markdown_url": markdown_path(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
         "share_image": image_url(DEFAULT_SHARE_IMAGE),

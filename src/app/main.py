@@ -21,6 +21,7 @@ from app.api.routers.academy import router as academy_router
 from app.api.routers.addon import router as addon_router
 from app.api.routers.esports import router as esports_router
 from app.api.routers.user import router as user_router
+from app.web.routers.llms import router as llms_router
 from app.web.routers.root import router as web_router
 from app.web.routers.blog import router as blog_router
 
@@ -266,7 +267,7 @@ class ServiceStatusGuard:
     request in a task group; this one only runs when the service is restricted.
     """
 
-    _ALLOWED_PREFIXES = ("/blog", "/images/blog", "/static", "/robots.txt", "/sitemap.xml")
+    _ALLOWED_PREFIXES = ("/blog", "/images/blog", "/static", "/robots.txt", "/sitemap.xml", "/llms.txt", "/llms-full.txt", "/index.md")
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -295,7 +296,8 @@ app.include_router(user_router)
 app.include_router(addon_router)
 app.include_router(esports_router)
 
-# web routes
+# web routes; the markdown twins (`/x.md`) go first so `/web/{group}/{path}` does not catch them
+app.include_router(llms_router)
 app.include_router(web_router)
 app.include_router(blog_router)
 
