@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import AfterValidator, BaseModel, Field
 
 from app.core.images import wsrv_url
 
@@ -117,3 +117,73 @@ class Game(BaseModel):
 class MatchDetailResponse(BaseModel):
     match_id: str
     games: list[Game]
+
+
+# ---- standings simulator
+
+
+class MatchResult(BaseModel):
+    """One edited match. Either team order is accepted; scores are games won in a first-to-2 match."""
+
+    week: int = Field(ge=1, description="Week of the match.")
+    team1: str = Field(min_length=1, max_length=40)
+    team2: str = Field(min_length=1, max_length=40)
+    score1: int | None = Field(default=None, ge=0, le=2, description="Games won by team1. Omit both scores to mark the match as not played.")
+    score2: int | None = Field(default=None, ge=0, le=2, description="Games won by team2.")
+
+
+class SimulateRequest(BaseModel):
+    results: list[MatchResult] = Field(default_factory=list, max_length=400, description="Matches to set or clear. Everything else keeps the real result.")
+    eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs (the bottom of the table). Default: 3 for Indonesia, 2 for the Philippines.")
+
+
+class CalculateRequest(BaseModel):
+    teams: list[Annotated[str, Field(min_length=1, max_length=40)]] | None = Field(
+        default=None, max_length=20, description="Team names, 2 to 20, all different. Omit to use Team A, Team B, ... with **team_count**."
+    )
+    team_count: int = Field(default=8, ge=2, le=20, description="Number of teams when **teams** is omitted.")
+    eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs. Default: 3, or fewer when the league is small.")
+    results: list[MatchResult] = Field(default_factory=list, max_length=400)
+
+
+class SimulatedMatch(BaseModel):
+    team1: Team
+    team2: Team
+    score1: int | None
+    score2: int | None
+    # played: the real result · edited: set by this request · scheduled: no result yet
+    state: Literal["played", "edited", "scheduled"]
+
+
+class SimulatedWeek(BaseModel):
+    week: int
+    matches: list[SimulatedMatch]
+
+
+class SimulatedStanding(BaseModel):
+    rank: int
+    team: Team
+    match_point: int
+    match_wl: Record
+    net_game_win: int
+    game_wl: Record
+    played: int
+    remaining: int
+    max_match_point: int
+    # How this team was separated from teams on the same match points.
+    tiebreak: Literal["net_game_win", "head_to_head", "unresolved"] | None
+    # clinched: certain to be in the playoffs · eliminated: certain to miss them · alive: undecided
+    status: Literal["clinched", "alive", "eliminated"]
+    in_playoffs_zone: bool
+
+
+class StandingsSimulationResponse(BaseModel):
+    teams: int
+    weeks_count: int
+    playoff_spots: int
+    eliminated: int
+    matches_played: int
+    matches_remaining: int
+    edited_matches: int
+    weeks: list[SimulatedWeek]
+    standings: list[SimulatedStanding]
