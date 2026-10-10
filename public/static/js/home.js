@@ -23,7 +23,8 @@
 		body.replaceChildren(row);
 	}
 
-	fetch(url, { headers: { accept: "application/json" } })
+	const get = window.ArenaApi ? async (address, init) => (await window.ArenaApi.request(address, init)).response : fetch;
+	get(url, { headers: { accept: "application/json" } })
 		.then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
 		.then((payload) => {
 			const records = payload?.data?.records;

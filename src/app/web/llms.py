@@ -18,11 +18,11 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from app.core.config import IS_AVAILABLE, PROJECT_VERSION
+from app.core.config import ALTERNATIVE_ENDPOINT_URL, IS_AVAILABLE, PROJECT_VERSION
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.patch_notes import PATCH_NOTES, SECTIONS
 from app.web.routers.blog import _BLOG_POSTS
-from app.web.routers.root import SITE_NAME, absolute_url, image_url, markdown_path
+from app.web.routers.root import SITE_NAME, SITE_ORIGIN, absolute_url, image_url, markdown_path
 from app.web.showcase import SHOWCASE, SUBMIT_URL
 
 SUMMARY = (
@@ -45,6 +45,7 @@ KEY_FACTS: list[str] = [
     "Image URLs in responses go through the wsrv.nl image proxy.",
     "A 503 response means maintenance or high traffic; read `alternative_endpoint` in the body for a fallback host.",
     "A 429 `UPSTREAM_RATE_LIMITED` means the game service is throttling; back off for a few minutes instead of retrying in parallel.",
+    "If `{host}` answers 5xx or times out, the same API is served by the backup host at `{backup}`.",
     "The full machine-readable schema is the OpenAPI document at `{openapi}`.",
 ]
 
@@ -102,7 +103,12 @@ def _operation_line(operation: dict[str, Any]) -> str:
 
 def _key_facts() -> list[str]:
     return [
-        "- " + fact.format(api=_url("/api"), openapi=_url("/api/openapi.json"))
+        "- " + fact.format(
+            api=_url("/api"),
+            openapi=_url("/api/openapi.json"),
+            host=SITE_ORIGIN.removeprefix("https://"),
+            backup=f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api",
+        )
         for fact in KEY_FACTS
     ]
 

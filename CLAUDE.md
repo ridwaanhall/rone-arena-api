@@ -46,7 +46,11 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
   run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate
   (`app/web/page_cache.py`) to stay inside the per-request CPU budget.
 - FastAPI Cloud (`fastapi deploy`) still works and hosts the high-traffic fallback
-  `arena-hv.fastapicloud.dev`; `.fastapicloudignore` keeps Worker build files out of it.
+  `arena.fastapicloud.dev` (`ALTERNATIVE_ENDPOINT_URL`); `.fastapicloudignore` keeps Worker build files out of it.
+- **Backup host in the browser**: `public/static/js/api.js` (`window.ArenaApi.request`) wraps every API call the
+  site's scripts make; on a network error, 5xx, 429 or non-JSON body it retries on the backup host and keeps
+  using it for 5 minutes. It has to be client-side: Cloudflare error 1102 or an outage leaves no server code to forward.
+  Disabled under `DEBUG` and on the backup host itself.
 
 ## Testing
 

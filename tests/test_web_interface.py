@@ -646,3 +646,28 @@ def test_sitemap_dates_home_and_patch_notes_by_the_latest_release() -> None:
     latest = PATCH_NOTES[0]["date"]
 
     assert f"/patch-notes</loc><lastmod>{latest}</lastmod>" in sitemap
+
+
+def test_pages_load_the_api_client_with_a_backup_host(monkeypatch) -> None:
+    from app.core.config import ALTERNATIVE_ENDPOINT_URL
+    from app.web.routers import root
+
+    monkeypatch.setattr(root, "DEBUG", False)
+    text = client.get("/showcase").text
+
+    backup = f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api"
+    assert ALTERNATIVE_ENDPOINT_URL == "https://arena.fastapicloud.dev"
+    assert f'data-fallback-base="{backup}"' in text
+    # The client loads before any script that makes API calls.
+    assert text.index("/static/js/api.js") < text.index("/static/js/arena.js")
+
+
+def test_backup_host_is_off_in_debug_and_on_the_backup_host_itself(monkeypatch) -> None:
+    from app.web.routers import root
+
+    monkeypatch.setattr(root, "DEBUG", True)
+    assert 'data-fallback-base=""' in client.get("/showcase").text
+
+    monkeypatch.setattr(root, "DEBUG", False)
+    on_backup = TestClient(app, base_url="https://arena.fastapicloud.dev")
+    assert 'data-fallback-base=""' in on_backup.get("/showcase").text
