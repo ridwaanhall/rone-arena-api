@@ -165,14 +165,34 @@ for (const row of data.records) {
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Rone Arena API",
-  "url": "{{ request.url }}",
-  "description": "Free REST API and interactive playground for Mobile Legends: Bang Bang game data.",
-  "publisher": {
-    "@type": "Organization",
-    "name": "RoneAI"
-  }
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": {{ (base_url ~ "#website") | tojson }},
+      "name": "Rone Arena API",
+      "url": {{ base_url | tojson }},
+      "description": "Free REST API and interactive playground for Mobile Legends: Bang Bang game data.",
+      "inLanguage": "en",
+      "publisher": {"@id": {{ (base_url ~ "#publisher") | tojson }}}
+    },
+    {
+      "@type": "Organization",
+      "@id": {{ (base_url ~ "#publisher") | tojson }},
+      "name": "RoneAI",
+      "url": "https://rone.dev/",
+      "logo": {{ share_image | tojson }},
+      "sameAs": ["https://github.com/ridwaanhall/rone-arena-api"]
+    },
+    {
+      "@type": "WebAPI",
+      "name": "Rone Arena API",
+      "description": "Unofficial community REST API for Mobile Legends: Bang Bang hero data, academy resources, professional league data and utility tools.",
+      "url": {{ base_url | tojson }},
+      "documentation": {{ (base_url ~ "api/docs") | tojson }},
+      "termsOfService": "https://github.com/ridwaanhall/rone-arena-api/blob/main/HOSTED_API_TERMS.md",
+      "provider": {"@id": {{ (base_url ~ "#publisher") | tojson }}}
+    }
+  ]
 }
 </script>
 {% endblock %}

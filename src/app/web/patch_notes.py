@@ -30,6 +30,7 @@ PATCH_NOTES: list[dict[str, object]] = [
             "Pictures now come through an image helper, so they load faster and more reliably on the website and in the API.",
             "Repeat requests for league data come back quickly, because results are kept for 5 minutes.",
             "The version number in the header now opens these patch notes.",
+            "Links to the site look better when shared, with a new preview image and clearer titles in search results.",
         ],
     },
     {

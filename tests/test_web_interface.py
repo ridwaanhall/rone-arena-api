@@ -441,7 +441,7 @@ def test_endpoint_page_title_uses_operation_summary() -> None:
     response = client.get("/web/heroes/heroes/{hero_identifier}/wallpapers")
 
     assert response.status_code == 200
-    assert "<title>Hero Wallpapers - Heroes API / Rone Arena API &amp; Web</title>" in response.text
+    assert "<title>Hero Wallpapers / Rone Arena API</title>" in response.text
     assert "Heroe Endpoint" not in response.text
 
 
@@ -593,3 +593,56 @@ def test_latest_patch_notes_match_the_project_version() -> None:
 def test_patch_notes_are_linked_from_the_site_and_sitemap() -> None:
     assert 'href="/patch-notes"' in client.get("/").text
     assert "/patch-notes</loc>" in client.get("/sitemap.xml").text
+
+
+def test_pages_share_a_sized_link_preview_card() -> None:
+    from urllib.parse import quote
+
+    home = client.get("/").text
+    card = quote("https://arena.rone.dev/images/og/rone-arena-api.png", safe="")
+
+    assert f'og:image" content="https://wsrv.nl/?url={card}"' in home
+    assert 'og:image:width" content="1200"' in home and 'og:image:height" content="630"' in home
+    assert 'twitter:card" content="summary_large_image"' in home
+    assert 'twitter:site" content="@ridwaanhall"' in home
+
+
+def test_page_titles_and_descriptions_stay_within_search_result_limits() -> None:
+    paths = ["/", "/showcase", "/patch-notes", "/blog", "/blog/rone-arena-1-1-0-release-notes", "/web/heroes"]
+    paths += [str(op["web_path"]) for group in WEB_GROUPS for op in get_group_operations(app, group)]
+    descriptions: dict[str, str] = {}
+    for path in paths:
+        page = client.get(path).text
+        title = re.search(r"<title>(.*?)</title>", page, re.S)[1]
+        description = re.search(r'name="description" content="(.*?)"', page, re.S)[1]
+        assert len(title) <= 70, (path, title)
+        assert len(description) <= 160, (path, description)
+        if path.startswith("/web/") and path.count("/") > 2:
+            descriptions.setdefault(description, path)
+            assert descriptions[description] == path, f"{path} repeats the description of {descriptions[description]}"
+
+
+def test_inner_pages_have_breadcrumbs_and_home_describes_the_api() -> None:
+    import json
+
+    def graph(path: str) -> list[dict]:
+        page = client.get(path).text
+        blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
+        return [item for block in blocks for item in (json.loads(block).get("@graph") or [json.loads(block)])]
+
+    types = {item["@type"] for item in graph("/")}
+    assert {"WebSite", "Organization", "WebAPI"} <= types
+
+    crumbs = next(item for item in graph("/web/esports/id/schedule") if item["@type"] == "BreadcrumbList")
+    assert [entry["name"] for entry in crumbs["itemListElement"]] == ["Home", "Esports Endpoints", "Indonesia Regular Season Schedule"]
+    assert [entry["position"] for entry in crumbs["itemListElement"]] == [1, 2, 3]
+    assert any(item["@type"] == "BreadcrumbList" for item in graph("/patch-notes"))
+
+
+def test_sitemap_dates_home_and_patch_notes_by_the_latest_release() -> None:
+    from app.web.patch_notes import PATCH_NOTES
+
+    sitemap = client.get("/sitemap.xml").text
+    latest = PATCH_NOTES[0]["date"]
+
+    assert f"/patch-notes</loc><lastmod>{latest}</lastmod>" in sitemap

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -22,6 +23,7 @@ from app.core.config import (
     PROJECT_VERSION,
     BASE_URL,
     API_URL,
+    TWITTER_HANDLE,
 )
 from app.core.images import wsrv_url
 from app.core.paths import PUBLIC_DIR
@@ -59,8 +61,9 @@ ASSET_VERSION = _asset_version()
 SITE_ORIGIN = BASE_URL.rstrip("/")
 CANONICAL_HOST = (urlsplit(BASE_URL).hostname or "").lower()
 SITE_NAME = "Rone Arena API"
-# A real screenshot of the home page, used when a page has no image of its own.
-DEFAULT_SHARE_IMAGE = "/images/blog/release-v1.1.0-home.webp"
+# A designed 1200x630 link-preview card, used when a page has no image of its own.
+DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-api.png"
+DEFAULT_SHARE_SIZE = (1200, 630)
 
 
 def absolute_url(path: str) -> str:
@@ -115,7 +118,11 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
         "share_image": image_url(DEFAULT_SHARE_IMAGE),
-        "share_image_alt": "The Rone Arena API home page with live hero rankings",
+        "share_image_alt": "Rone Arena API: free game data for Mobile Legends: Bang Bang as JSON",
+        "share_image_width": DEFAULT_SHARE_SIZE[0],
+        "share_image_height": DEFAULT_SHARE_SIZE[1],
+        "twitter_handle": TWITTER_HANDLE,
+        "crumbs": [],
     }
 
 
@@ -130,6 +137,12 @@ def _showcase_products(operations_by_group: dict[str, list[dict[str, object]]]) 
         for operation in operations
     }
     return with_playground_links(web_paths)
+
+
+def _first_sentence(text: str) -> str:
+    """The opening sentence of an endpoint description, as plain text for a meta description."""
+    sentence = re.split(r"(?<=\.)\s|\n", text.strip(), maxsplit=1)[0]
+    return re.sub(r"[*`]", "", sentence)
 
 
 def _normalize_path(value: str) -> str:
@@ -264,10 +277,13 @@ def web_endpoint_page(request: Request, group: str, endpoint_path: str) -> HTMLR
     group_title = str(GROUP_META[group]["title"]).strip()
     context.update(
         {
-            "title": f"{operation_summary} - {group_title} API / Rone Arena API & Web",
+            "title": f"{operation_summary} / Rone Arena API",
             "web_title": operation_summary,
             "subtitle": f"{group_title} endpoint. Fill in the form, execute it, and inspect the response.",
-            "seo_description": f"Execute and inspect a {GROUP_META[group]['title']} endpoint from the Rone Arena API web interface.",
+            # Each endpoint's own description is the only text that is unique to its page.
+            "seo_description": _first_sentence(str(matched_operations[0].get("description") or ""))
+            or f"Execute and inspect a {group_title} endpoint from the Rone Arena API web interface.",
+            "crumbs": [(f"{group_title} Endpoints", f"/web/{group}")],
             "seo_keywords": f"rone arena api endpoint, {group}, curl, readable response",
             "operations": matched_operations,
             "sidebar_operations": all_operations,

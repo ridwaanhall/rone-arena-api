@@ -180,6 +180,9 @@ ANALYTICS_HOST: str = env_str(
     default="" if DEBUG else (urlsplit(BASE_URL).hostname or ""),
 )
 
+# Shown as the Twitter/X account of link previews; leave empty to omit it.
+TWITTER_HANDLE: str = env_str("TWITTER_HANDLE", default="@ridwaanhall")
+
 LIVECHAT_LINK: str = env_str("LIVECHAT_LINK", default="https://ridwaanhall.com/guestbook/")
 CONTACT_FORM_LINK: str = env_str("CONTACT_FORM_LINK", default="https://ridwaanhall.com/contact/")
 

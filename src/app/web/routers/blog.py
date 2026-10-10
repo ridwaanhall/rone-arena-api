@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from app.web.openapi_catalog import WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
+from app.web.patch_notes import PATCH_NOTES
 from app.web.routers.root import _shared_context, absolute_url, image_url, templates
 
 router = APIRouter(tags=["web"])
@@ -645,7 +646,7 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
     context = _shared_context(request)
     context.update(
         {
-            "title": f"{post['title']} / Rone Arena API Blog",
+            "title": str(post["title"]),
             "web_title": str(post["title"]),
             "subtitle": str(post["excerpt"]),
             "seo_description": str(post["excerpt"]),
@@ -655,6 +656,9 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
             "og_type": "article",
             "share_image": image_url(str(post["cover_image"])),
             "share_image_alt": str(post["title"]),
+            # Blog covers are 1600x900 (the size the detail template declares for them).
+            "share_image_width": 1600,
+            "share_image_height": 900,
         }
     )
     return templates.TemplateResponse(request, "blog/detail_page.html", context)
@@ -663,7 +667,8 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
 @router.get(path="/sitemap.xml", include_in_schema=False, name="web.sitemap")
 def sitemap(request: Request) -> Response:
     """Every indexable page: home, showcase, patch notes, blog, its posts, and the playground."""
-    urls: list[tuple[str, str | None]] = [("/", None), ("/showcase", None), ("/patch-notes", None), ("/blog", None)]
+    latest_release = str(PATCH_NOTES[0]["date"])
+    urls: list[tuple[str, str | None]] = [("/", latest_release), ("/showcase", None), ("/patch-notes", latest_release), ("/blog", None)]
     urls += [(f"/blog/{post['slug']}", str(post.get("published_at") or "") or None) for post in _BLOG_POSTS]
     for group in WEB_GROUPS:
         urls.append((f"/web/{group}", None))
