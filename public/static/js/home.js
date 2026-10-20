@@ -61,3 +61,44 @@
 		})
 		.catch(() => showMessage("Could not reach the API just now. The request below still works in the playground."));
 })();
+
+/* Home page: the base URL switch. Both hosts serve the same API; the choice updates the
+   shown URL, the copy button and the request samples, and is remembered on this device. */
+(() => {
+	const box = document.querySelector("[data-base-url]");
+	if (!box) return;
+	const STORE_KEY = "arena_api_host";
+	const radios = [...box.querySelectorAll('input[name="api-host"]')];
+	const copy = box.querySelector("[data-base-url-copy]");
+
+	function show(radio) {
+		document.querySelectorAll("[data-base-url-text]").forEach((node) => {
+			node.textContent = radio.value;
+		});
+		if (copy) copy.setAttribute("data-copy-command", radio.value);
+	}
+
+	let saved = null;
+	try {
+		saved = localStorage.getItem(STORE_KEY);
+	} catch {
+		/* storage unavailable */
+	}
+	const initial = radios.find((radio) => radio.dataset.hostKey === saved);
+	if (initial) {
+		initial.checked = true;
+		show(initial);
+	}
+
+	radios.forEach((radio) => {
+		radio.addEventListener("change", () => {
+			if (!radio.checked) return;
+			show(radio);
+			try {
+				localStorage.setItem(STORE_KEY, radio.dataset.hostKey);
+			} catch {
+				/* storage unavailable */
+			}
+		});
+	});
+})();

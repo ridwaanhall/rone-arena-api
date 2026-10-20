@@ -175,6 +175,13 @@ DOCS_BASE_URL: str = env_str("DOCS_BASE_URL", default=f"{BASE_URL}docs")
 LOCAL_BASE_URL: str = "http://127.0.0.1:8000"
 API_URL: str = f"{LOCAL_BASE_URL if DEBUG else BASE_URL.rstrip('/')}/api/"
 
+# The two public deployments of this same app, offered as the base URL on the home page
+# (a switch, FastAPI Cloud first and selected by default): (key, provider, API base).
+PUBLIC_API_HOSTS: tuple[tuple[str, str, str], ...] = (
+    ("fastapi-cloud", "FastAPI Cloud", f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api"),
+    ("cloudflare", "Cloudflare", f"{BASE_URL.rstrip('/')}/api"),
+)
+
 # Analytics only fires on the canonical host, so preview deployments never
 # pollute the stats. Empty in DEBUG so local runs never emit analytics hits.
 ANALYTICS_HOST: str = env_str(

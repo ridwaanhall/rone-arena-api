@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.core.config import (
@@ -24,6 +24,7 @@ from app.core.config import (
     PROJECT_VERSION,
     BASE_URL,
     API_URL,
+    PUBLIC_API_HOSTS,
     TWITTER_HANDLE,
 )
 from app.core.images import wsrv_url
@@ -62,8 +63,11 @@ ASSET_VERSION = _asset_version()
 SITE_ORIGIN = BASE_URL.rstrip("/")
 CANONICAL_HOST = (urlsplit(BASE_URL).hostname or "").lower()
 SITE_NAME = "Rone Arena API"
-# A designed 1200x630 link-preview card, used when a page has no image of its own.
-DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-api.png"
+# A designed 1200x630 link-preview card, used when a page has no image of its own. Served
+# straight from this site, not through the image proxy: link-preview crawlers fetch it once
+# and cache it, and a plain same-site URL is the one every platform accepts. Rename the
+# file when the card changes, since those platforms cache by URL.
+DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-card.png"
 DEFAULT_SHARE_SIZE = (1200, 630)
 
 
@@ -129,6 +133,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "base_url": BASE_URL,
         "is_debug": DEBUG,
         "api_url": API_URL.rstrip("/"),
+        "public_api_hosts": PUBLIC_API_HOSTS,
         "fallback_api_url": _fallback_api_url(request),
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
         "site_name": SITE_NAME,
@@ -136,7 +141,8 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "markdown_url": markdown_path(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
-        "share_image": image_url(DEFAULT_SHARE_IMAGE),
+        "share_image": absolute_url(DEFAULT_SHARE_IMAGE),
+        "share_image_type": "image/png",
         "share_image_alt": "Rone Arena API: free game data for Mobile Legends: Bang Bang as JSON",
         "share_image_width": DEFAULT_SHARE_SIZE[0],
         "share_image_height": DEFAULT_SHARE_SIZE[1],
@@ -167,6 +173,15 @@ def _first_sentence(text: str) -> str:
 def _normalize_path(value: str) -> str:
     normalized = value.rstrip("/")
     return normalized or "/"
+
+
+@router.get(path="/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    """Browsers ask for /favicon.ico on their own. Cloudflare serves it from Static Assets;
+    this route covers the hosts that run the app alone (FastAPI Cloud, local)."""
+    if PUBLIC_DIR is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(PUBLIC_DIR / "favicon.ico", media_type="image/x-icon", headers={"Cache-Control": "public, max-age=604800"})
 
 
 @router.get(path="/", include_in_schema=False, response_class=HTMLResponse)

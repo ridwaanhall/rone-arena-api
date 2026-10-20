@@ -18,11 +18,11 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from app.core.config import ALTERNATIVE_ENDPOINT_URL, IS_AVAILABLE, PROJECT_VERSION
+from app.core.config import IS_AVAILABLE, PROJECT_VERSION, PUBLIC_API_HOSTS
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.patch_notes import PATCH_NOTES, SECTIONS
 from app.web.routers.blog import _BLOG_POSTS
-from app.web.routers.root import SITE_NAME, SITE_ORIGIN, absolute_url, image_url, markdown_path
+from app.web.routers.root import SITE_NAME, absolute_url, image_url, markdown_path
 from app.web.showcase import SHOWCASE, SUBMIT_URL
 
 SUMMARY = (
@@ -38,14 +38,17 @@ ABOUT = (
 )
 
 KEY_FACTS: list[str] = [
-    "Base URL: `{api}`. Every endpoint is a GET or POST under `/api/` and answers JSON.",
+    (
+        "Base URL: `{api}` (FastAPI Cloud, the default). The same app is also served at `{mirror}` (Cloudflare). "
+        "Every endpoint is a GET or POST under `/api/` and answers JSON."
+    ),
     "No API key. Public endpoints need no sign-in; `user` endpoints need `Authorization: Bearer <jwt>`, "
     "obtained by `POST /api/user/auth/send-vc` (a code sent to the player's in-game mail) then `POST /api/user/auth/login`.",
     "Heroes are addressed by numeric ID or by name (`hero_identifier`, for example `1` or `miya`).",
     "Image URLs in responses go through the wsrv.nl image proxy.",
     "A 503 response means maintenance or high traffic; read `alternative_endpoint` in the body for a fallback host.",
     "A 429 `UPSTREAM_RATE_LIMITED` means the game service is throttling; back off for a few minutes instead of retrying in parallel.",
-    "If `{host}` answers 5xx or times out, the same API is served by the backup host at `{backup}`.",
+    "If one host answers 5xx or times out, call the other: both run the same code and data.",
     "The full machine-readable schema is the OpenAPI document at `{openapi}`.",
 ]
 
@@ -104,10 +107,9 @@ def _operation_line(operation: dict[str, Any]) -> str:
 def _key_facts() -> list[str]:
     return [
         "- " + fact.format(
-            api=_url("/api"),
+            api=PUBLIC_API_HOSTS[0][2],
+            mirror=PUBLIC_API_HOSTS[1][2],
             openapi=_url("/api/openapi.json"),
-            host=SITE_ORIGIN.removeprefix("https://"),
-            backup=f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api",
         )
         for fact in KEY_FACTS
     ]

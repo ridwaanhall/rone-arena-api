@@ -21,6 +21,12 @@
   lists home, showcase, blog, every post and every playground page; `robots.txt` points at it
   and keeps crawlers off `/api/` (each hit costs an upstream call). Blog posts get an
   "On this page" contents list built from their section headings (`table_of_contents`).
+- **Icons & share card**: the "R" on a `--mark` tile. `public/favicon.ico` (16/32/48, also served by a
+  `/favicon.ico` route for hosts without Static Assets), `public/images/icons/` (SVG favicon, apple-touch,
+  192/512, maskable, `site.webmanifest`). The 1200x630 card is `public/images/og/rone-arena-card.png`; give a
+  redrawn card a new file name, since share platforms cache by URL.
+- **Base URL switch**: the home page offers `PUBLIC_API_HOSTS` (`core/config.py`), FastAPI Cloud first and
+  checked by default; `home.js` swaps the shown URL, copy button and samples, and remembers the choice.
 - **Markdown twins / llms.txt**: every page links its `.md` twin and `/llms.txt` from `<head>`
   (`markdown_url` in `_shared_context`). A new HTML page needs a builder in `llms.py` and a route in
   `routers/llms.py`; `test_every_sitemap_page_has_a_markdown_twin` enforces it (see the `llms-txt` skill).

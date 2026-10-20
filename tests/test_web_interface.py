@@ -39,7 +39,10 @@ def test_landing_page_has_docs_and_demo_options() -> None:
     assert "/web/user" in response.text
     assert "family=Archivo:wdth,wght" in response.text
     assert "IBM+Plex+Mono" in response.text
-    assert "rone.dev/static/img/favicon/favicon.ico" in response.text
+    assert '<link rel="icon" href="/favicon.ico" sizes="48x48" />' in response.text
+    assert 'href="/images/icons/favicon.svg" type="image/svg+xml"' in response.text
+    assert 'rel="apple-touch-icon" href="/images/icons/apple-touch-icon.png"' in response.text
+    assert 'rel="manifest" href="/images/icons/site.webmanifest"' in response.text
     assert "application/ld+json" in response.text
     assert "/static/css/arena.css?v=" in response.text
     assert "/static/js/arena.js?v=" in response.text
@@ -602,12 +605,12 @@ def test_patch_notes_are_linked_from_the_site_and_sitemap() -> None:
 
 
 def test_pages_share_a_sized_link_preview_card() -> None:
-    from urllib.parse import quote
-
     home = client.get("/").text
-    card = quote("https://arena.rone.dev/images/og/rone-arena-api.png", safe="")
 
-    assert f'og:image" content="https://wsrv.nl/?url={card}"' in home
+    # Served straight from the site so every link-preview crawler can fetch it.
+    assert 'og:image" content="https://arena.rone.dev/images/og/rone-arena-card.png"' in home
+    assert 'og:image:type" content="image/png"' in home
+    assert client.get("/images/og/rone-arena-card.png").headers["content-type"] == "image/png"
     assert 'og:image:width" content="1200"' in home and 'og:image:height" content="630"' in home
     assert 'twitter:card" content="summary_large_image"' in home
     assert 'twitter:site" content="@ridwaanhall"' in home
@@ -677,3 +680,25 @@ def test_backup_host_is_off_in_debug_and_on_the_backup_host_itself(monkeypatch) 
     monkeypatch.setattr(root, "DEBUG", False)
     on_backup = TestClient(app, base_url="https://arena.fastapicloud.dev")
     assert 'data-fallback-base=""' in on_backup.get("/showcase").text
+
+
+def test_favicon_and_app_icons_are_served() -> None:
+    import json
+
+    favicon = client.get("/favicon.ico")
+    assert favicon.status_code == 200
+    assert favicon.headers["content-type"] == "image/x-icon"
+    manifest = json.loads(client.get("/images/icons/site.webmanifest").content)
+    for icon in manifest["icons"]:
+        assert client.get(icon["src"]).status_code == 200
+    assert client.get("/images/icons/favicon.svg").status_code == 200
+    assert client.get("/images/icons/apple-touch-icon.png").status_code == 200
+
+
+def test_home_base_url_switch_defaults_to_fastapi_cloud() -> None:
+    home = client.get("/").text
+
+    assert 'id="api-host-fastapi-cloud" value="https://arena.fastapicloud.dev/api" data-host-key="fastapi-cloud" checked' in home
+    assert 'id="api-host-cloudflare" value="https://arena.rone.dev/api" data-host-key="cloudflare" />' in home
+    assert '<code data-base-url-text>https://arena.fastapicloud.dev/api</code>' in home
+    assert 'data-copy-command="https://arena.fastapicloud.dev/api" data-base-url-copy' in home

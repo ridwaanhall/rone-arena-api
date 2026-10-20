@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import re
 from typing import Any
 from xml.sax.saxutils import escape
@@ -657,6 +658,7 @@ def blog_detail_page(request: Request, slug: str) -> HTMLResponse:
             "og_type": "article",
             "share_image": image_url(str(post["cover_image"])),
             "share_image_alt": str(post["title"]),
+            "share_image_type": mimetypes.guess_type(str(post["cover_image"]))[0] or "image/webp",
             # Blog covers are 1600x900 (the size the detail template declares for them).
             "share_image_width": 1600,
             "share_image_height": 900,

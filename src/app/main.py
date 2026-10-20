@@ -268,7 +268,7 @@ class ServiceStatusGuard:
     request in a task group; this one only runs when the service is restricted.
     """
 
-    _ALLOWED_PREFIXES = ("/blog", "/images/blog", "/static", "/robots.txt", "/sitemap.xml", "/llms.txt", "/llms-full.txt", "/index.md")
+    _ALLOWED_PREFIXES = ("/blog", "/images", "/favicon.ico", "/static", "/robots.txt", "/sitemap.xml", "/llms.txt", "/llms-full.txt", "/index.md")
 
     def __init__(self, app: ASGIApp) -> None:
         self.app = app

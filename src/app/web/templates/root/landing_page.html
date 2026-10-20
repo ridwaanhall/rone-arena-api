@@ -39,12 +39,23 @@
 			<a href="/web/heroes" class="button button--mark">Open the playground</a>
 			<a href="/api/docs" class="link">Read the API docs</a>
 		</div>
-		<div class="base-url">
-			<span class="faint">Base URL</span>
-			<code>{{ api_url }}</code>
-			<button type="button" class="button button--bare button--small" data-copy-command="{{ api_url }}"><span data-label>Copy</span></button>
+		{% set default_api_base = public_api_hosts[0][2] %}
+		<div class="base-url" data-base-url>
+			<span class="faint" id="base-url-label">Base URL</span>
+			<div class="toggles" role="radiogroup" aria-labelledby="base-url-label">
+				{% for key, provider, base in public_api_hosts %}
+				<span class="toggle">
+					<input type="radio" name="api-host" id="api-host-{{ key }}" value="{{ base }}" data-host-key="{{ key }}"{% if loop.first %} checked{% endif %} />
+					<label for="api-host-{{ key }}">{{ provider }}</label>
+				</span>
+				{% endfor %}
+			</div>
+			<span class="base-url-value">
+				<code data-base-url-text>{{ default_api_base }}</code>
+				<button type="button" class="button button--bare button--small" data-copy-command="{{ default_api_base }}" data-base-url-copy><span data-label>Copy</span></button>
+			</span>
 		</div>
-		<p class="help" style="margin-top: 14px">API version {{ api_version }}. Public endpoints need no key and no sign-up.</p>
+		<p class="help" style="margin-top: 14px">Both hosts run the same code; if one is down, switch to the other. API version {{ api_version }}. Public endpoints need no key and no sign-up.</p>
 	</div>
 
 	<div class="table-scroll">
@@ -151,8 +162,8 @@
 		<p>Hero names work anywhere a hero ID does, so <code>miya</code>, <code>Miya</code>, and <code>1</code> return the same hero.</p>
 	</div>
 	<div>
-<pre class="code">curl "{{ api_url }}/heroes/miya/counters?days=7&amp;rank=mythic"</pre>
-<pre class="code" style="margin-top: 12px">const res = await fetch("{{ api_url }}/heroes/rank?days=7&amp;sort_field=ban_rate");
+<pre class="code">curl "<span data-base-url-text>{{ default_api_base }}</span>/heroes/miya/counters?days=7&amp;rank=mythic"</pre>
+<pre class="code" style="margin-top: 12px">const res = await fetch("<span data-base-url-text>{{ default_api_base }}</span>/heroes/rank?days=7&amp;sort_field=ban_rate");
 const { data } = await res.json();
 for (const row of data.records) {
     console.log(row.data.main_hero.data.name, row.data.main_hero_ban_rate);
