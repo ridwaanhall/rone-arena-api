@@ -22,7 +22,7 @@ PATCH_NOTES: list[dict[str, Any]] = [
         "date": "2026-10-20",
         "summary": "Pick which of our two servers the site uses, plus a new site icon and share picture.",
         "new": [
-            "A switch on the home page and playground picks FastAPI Cloud or Cloudflare. FastAPI Cloud is the default.",
+            "A switch on the home page and playground picks the primary or the mirror server. Primary is the default.",
             "The site remembers your server choice on this device.",
             "AI assistants can now ask any page for a plain text version.",
         ],

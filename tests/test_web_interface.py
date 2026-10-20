@@ -674,8 +674,8 @@ def test_pages_load_the_api_client_with_both_hosts(monkeypatch) -> None:
 
     hosts = json.loads(html.unescape(re.search(r"data-api-hosts='([^']*)'", text).group(1)))
     assert hosts == [
-        ["fastapi-cloud", "FastAPI Cloud", "https://arena.fastapicloud.dev/api"],
-        ["cloudflare", "Cloudflare", "https://arena.rone.dev/api"],
+        ["primary", "Primary", "https://arena.fastapicloud.dev/api"],
+        ["mirror", "Mirror", "https://arena.rone.dev/api"],
     ]
     # The client loads before any script that makes API calls.
     assert text.index("/static/js/api.js") < text.index("/static/js/arena.js")
@@ -695,7 +695,7 @@ def test_playground_offers_the_host_switch(monkeypatch) -> None:
     page = client.get("/web/heroes").text
 
     assert '<code id="api-base-active" data-base-url-text>https://arena.fastapicloud.dev/api</code>' in page
-    assert 'id="bench-api-host-fastapi-cloud" value="https://arena.fastapicloud.dev/api" data-host-key="fastapi-cloud" checked' in page
+    assert 'id="bench-api-host-primary" value="https://arena.fastapicloud.dev/api" data-host-key="primary" checked' in page
 
 
 def test_favicon_and_app_icons_are_served() -> None:
@@ -711,11 +711,11 @@ def test_favicon_and_app_icons_are_served() -> None:
     assert client.get("/images/icons/apple-touch-icon.png").status_code == 200
 
 
-def test_home_base_url_switch_defaults_to_fastapi_cloud() -> None:
+def test_home_base_url_switch_defaults_to_the_primary() -> None:
     home = client.get("/").text
 
-    assert 'id="api-host-fastapi-cloud" value="https://arena.fastapicloud.dev/api" data-host-key="fastapi-cloud" checked' in home
-    assert 'id="api-host-cloudflare" value="https://arena.rone.dev/api" data-host-key="cloudflare" />' in home
+    assert 'id="api-host-primary" value="https://arena.fastapicloud.dev/api" data-host-key="primary" checked' in home
+    assert 'id="api-host-mirror" value="https://arena.rone.dev/api" data-host-key="mirror" />' in home
     assert '<code data-base-url-text>https://arena.fastapicloud.dev/api</code>' in home
     assert 'data-copy-command="https://arena.fastapicloud.dev/api" data-base-url-copy' in home
 
@@ -759,3 +759,13 @@ def test_markdown_preference_parsing() -> None:
     assert not prefers_markdown("")
     assert is_page("/") and is_page("/web/heroes/heroes/rank") and is_page("/blog")
     assert not is_page("/index.md") and not is_page("/api/heroes") and not is_page("/llms.txt")
+
+
+def test_public_pages_never_name_the_hosting_providers() -> None:
+    import re
+
+    paths = ["/", "/web/heroes", "/patch-notes", "/llms.txt", "/llms-full.txt", "/index.md", "/static/js/api.js"]
+    for path in paths:
+        # Host names in URLs are unavoidable; provider names as words are not.
+        text = re.sub(r"https?://\S+", "", client.get(path).text)
+        assert not re.search(r"(?i)cloudflare|fastapi ?cloud|fastapi-cloud", text), path

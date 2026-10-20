@@ -404,7 +404,7 @@ _BLOG_POSTS: list[dict[str, Any]] = [
                 "body": "README improvements make project entry points and deployment flow easier to scan for new and returning contributors.",
                 "bullets": [
                     "Documentation links converted into a clearer Title / Link / Description table.",
-                    "Deployment guidance for FastAPI Cloud added in the run section.",
+                    "Deployment guidance added in the run section.",
                     "Website home link formatting and docs structure refined for readability.",
                 ],
             },

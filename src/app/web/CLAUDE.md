@@ -26,7 +26,8 @@
   192/512, maskable, `site.webmanifest`). The 1200x630 card is `public/images/og/rone-arena-card.png`; give a
   redrawn card a new file name, since share platforms cache by URL.
 - **Base URL switch**: `templates/partials/api_host_switch.html` (on the home page and the playground) offers
-  `PUBLIC_API_HOSTS` (`core/config.py`), FastAPI Cloud first and checked by default. `arena.js` keeps every switch,
+  `PUBLIC_API_HOSTS` (`core/config.py`): "Primary" (FastAPI Cloud, checked by default) and "Mirror" (Cloudflare).
+  Never name a hosting provider in visible text, labels, keys or served JS comments; a test checks it. `arena.js` keeps every switch,
   `[data-base-url-text]` and `[data-base-url-copy]` in step and calls `ArenaApi.setHost`, so the requests follow too.
 - **Markdown twins / llms.txt**: every page links its `.md` twin and `/llms.txt` from `<head>`
   (`markdown_url` in `_shared_context`). A new HTML page needs a builder in `llms.py` and a route in

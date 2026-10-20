@@ -72,7 +72,7 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
   of each paying the CPU of a cold parse. Hits carry `X-Rone-Edge-Cache: HIT`.
 - **Host choice and backup in the browser**: `public/static/js/api.js` (`window.ArenaApi.request`) wraps every API
   call the site's scripts make and sends it to the host picked on the base URL switch (`PUBLIC_API_HOSTS`, passed as
-  `data-api-hosts`; FastAPI Cloud by default, remembered in localStorage), whatever host the URL was built for. On a
+  `data-api-hosts`; "Primary" (FastAPI Cloud) by default, remembered in localStorage), whatever host the URL was built for. On a
   network error, 5xx, 429 or non-JSON body it retries on the other host and keeps using it for 5 minutes. It has to be
   client-side: Cloudflare error 1102 or an outage leaves no server code to forward. Under `DEBUG` there are no hosts and
   calls stay on the local server.

@@ -39,7 +39,7 @@ ABOUT = (
 
 KEY_FACTS: list[str] = [
     (
-        "Base URL: `{api}` (FastAPI Cloud, the default). The same app is also served at `{mirror}` (Cloudflare). "
+        "Base URL: `{api}` (primary, the default). The same app is also served at `{mirror}` (mirror). "
         "Every endpoint is a GET or POST under `/api/` and answers JSON."
     ),
     "No API key. Public endpoints need no sign-in; `user` endpoints need `Authorization: Bearer <jwt>`, "

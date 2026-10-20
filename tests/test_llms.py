@@ -138,7 +138,7 @@ def test_page_cache_keeps_the_markdown_content_type(monkeypatch) -> None:
     assert cached.headers["link"] == '<x>; rel="canonical"'
 
 
-def test_llms_txt_names_both_hosts_with_fastapi_cloud_first() -> None:
+def test_llms_txt_names_both_hosts_with_the_primary_first() -> None:
     text = client.get("/llms.txt").text
-    assert "Base URL: `https://arena.fastapicloud.dev/api` (FastAPI Cloud, the default)" in text
-    assert "also served at `https://arena.rone.dev/api` (Cloudflare)" in text
+    assert "Base URL: `https://arena.fastapicloud.dev/api` (primary, the default)" in text
+    assert "also served at `https://arena.rone.dev/api` (mirror)" in text

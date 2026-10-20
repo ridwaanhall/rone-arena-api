@@ -2,14 +2,14 @@
  * Every API call the site's scripts make goes through ArenaApi.request(url, init).
  *
  * The same app runs on two public hosts (data-api-hosts). The reader picks one with the base
- * URL switch (FastAPI Cloud by default, remembered in localStorage); every call is sent there,
+ * URL switch (the first host by default, remembered in localStorage); every call is sent there,
  * whichever host the script built its URL for. When that fails in a way another host could
  * fix (network error, timeout, 5xx, 429, or an HTML error page instead of JSON) it repeats the
  * same call on the other host, then keeps using it for a few minutes so a broken host is not
  * retried on every click. Other 4xx answers (bad input, no sign-in) are real answers and are
  * returned as they are. Without data-api-hosts (DEBUG) calls go to data-api-base only.
  *
- * This must run in the browser: when the Worker is down (Cloudflare error 1102, an outage)
+ * This must run in the browser: when a host is down (an outage, a CPU limit)
  * there is no server code left to forward the request.
  */
 (() => {
