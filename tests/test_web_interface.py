@@ -547,7 +547,10 @@ def test_blog_post_shares_as_an_article_with_its_cover() -> None:
     response = client.get("/blog/rone-arena-1-1-0-release-notes")
 
     assert '<meta property="og:type" content="article" />' in response.text
-    assert f'content="{wsrv("https://arena.rone.dev/images/blog/release-v1.1.0-home.webp")}"' in response.text
+    # The share image is the cover itself; the cover shown on the page goes through the proxy.
+    assert 'og:image" content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert 'twitter:image" content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert f'src="{wsrv("https://arena.rone.dev/images/blog/release-v1.1.0-home.webp")}"' in response.text
     assert '<meta property="article:published_time" content="2026-09-25" />' in response.text
 
 
@@ -702,3 +705,14 @@ def test_home_base_url_switch_defaults_to_fastapi_cloud() -> None:
     assert 'id="api-host-cloudflare" value="https://arena.rone.dev/api" data-host-key="cloudflare" />' in home
     assert '<code data-base-url-text>https://arena.fastapicloud.dev/api</code>' in home
     assert 'data-copy-command="https://arena.fastapicloud.dev/api" data-base-url-copy' in home
+
+
+def test_share_images_are_never_proxied() -> None:
+    import re
+
+    pages = ["/", "/showcase", "/patch-notes", "/blog", "/web/heroes", "/blog/rone-arena-1-1-0-release-notes"]
+    for path in pages:
+        html = client.get(path).text
+        shares = re.findall(r'(?:og:image|twitter:image)" content="([^"]+)"', html)
+        assert shares, path
+        assert all(url.startswith("https://arena.rone.dev/images/") and "wsrv.nl" not in url for url in shares), (path, shares)

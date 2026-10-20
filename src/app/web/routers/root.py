@@ -63,10 +63,9 @@ ASSET_VERSION = _asset_version()
 SITE_ORIGIN = BASE_URL.rstrip("/")
 CANONICAL_HOST = (urlsplit(BASE_URL).hostname or "").lower()
 SITE_NAME = "Rone Arena API"
-# A designed 1200x630 link-preview card, used when a page has no image of its own. Served
-# straight from this site, not through the image proxy: link-preview crawlers fetch it once
-# and cache it, and a plain same-site URL is the one every platform accepts. Rename the
-# file when the card changes, since those platforms cache by URL.
+# A designed 1200x630 link-preview card, used when a page has no image of its own (served
+# unproxied, see `share_image_url`). Rename the file when the card changes, since share
+# platforms cache by URL.
 DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-card.png"
 DEFAULT_SHARE_SIZE = (1200, 630)
 
@@ -81,8 +80,17 @@ def markdown_path(path: str) -> str:
 
 
 def image_url(path: str) -> str:
-    """Absolute, proxied URL of a site image (blog art, share previews)."""
+    """Absolute, proxied URL of a site image shown on a page (blog art)."""
     return wsrv_url(absolute_url(path))
+
+
+def share_image_url(path: str) -> str:
+    """Absolute URL of a link-preview image (og:image, twitter:image), never proxied.
+
+    Share crawlers fetch it once and cache it; a plain same-site URL avoids depending on the
+    proxy being up, fast and allowed by every platform at that moment.
+    """
+    return absolute_url(path)
 
 
 # `{{ path | image }}` in templates.
@@ -141,7 +149,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "markdown_url": markdown_path(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
-        "share_image": absolute_url(DEFAULT_SHARE_IMAGE),
+        "share_image": share_image_url(DEFAULT_SHARE_IMAGE),
         "share_image_type": "image/png",
         "share_image_alt": "Rone Arena API: free game data for Mobile Legends: Bang Bang as JSON",
         "share_image_width": DEFAULT_SHARE_SIZE[0],

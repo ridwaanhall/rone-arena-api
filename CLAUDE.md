@@ -19,8 +19,8 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - `USE_WSRV` (default `true`): every image URL, SVG included, goes through the wsrv.nl proxy. `core/images.py` rewrites
   upstream JSON (`core/http.py`), the OpenAPI examples, the esports schemas and web pages (`| image` template filter).
   `.ico` is never proxied (wsrv cannot serve it), and wsrv rasterises SVGs.
-  The default link-preview card (`DEFAULT_SHARE_IMAGE` in `web/routers/root.py`) is the exception: it is served straight
-  from the site so every share crawler can fetch it.
+  Link-preview images (`og:image`, `twitter:image`: the default card and blog covers) are the exception: they go through
+  `share_image_url` in `web/routers/root.py` and are served straight from the site; the same images shown on a page stay proxied.
 - **Version**: `PROJECT_VERSION` is hardcoded in `src/app/core/config.py` (not read from the
   environment). Bump it there and in `pyproject.toml` together for each release (the `bump-version` skill does this).
 - **API URL**: `API_URL` in `config.py` is derived, not read from the environment:
