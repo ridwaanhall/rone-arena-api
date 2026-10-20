@@ -13,12 +13,12 @@ requires-python = ">=3.12"
 # the Cloudflare Worker (Pyodide, sys_platform == "emscripten"). The server, CLI and
 # dotenv extras are for local runs and FastAPI Cloud only.
 dependencies = [
-    "fastapi>=0.135.2",
+    "fastapi>=0.151.0",
     "jinja2>=3.1.4",
     "httpx>=0.28.1",
     "cryptography>=45",
-    "fastapi[standard]>=0.135.2; sys_platform != 'emscripten'",
-    "fastapi-cloud-cli>=0.22.0; sys_platform != 'emscripten'",
+    "fastapi[standard]>=0.151.0; sys_platform != 'emscripten'",
+    "fastapi-cloud-cli>=0.26.0; sys_platform != 'emscripten'",
     "beautifulsoup4>=4.15.0",
 ]
 
@@ -52,7 +52,7 @@ dev = [
     # Cloudflare Workers tooling: `uv run pywrangler dev|deploy`. pywrangler shells out to
     # `uv` and needs >=0.12.3; installing it here puts a new enough uv first on PATH under
     # `uv run`, whatever version the build image ships.
-    "workers-py>=1.17.4",
-    "workers-runtime-sdk",
+    "workers-py>=1.17.8",
+    "workers-runtime-sdk>=1.9.5",
     "uv>=0.12.3",
 ]
