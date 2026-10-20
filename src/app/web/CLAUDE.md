@@ -21,10 +21,8 @@
   lists home, showcase, blog, every post and every playground page; `robots.txt` points at it
   and keeps crawlers off `/api/` (each hit costs an upstream call). Blog posts get an
   "On this page" contents list built from their section headings (`table_of_contents`).
-- **Icons & share card**: the "R" on a `--mark` tile. `public/favicon.ico` (16/32/48, also served by a
-  `/favicon.ico` route for hosts without Static Assets), `public/images/icons/` (SVG favicon, apple-touch,
-  192/512, maskable, `site.webmanifest`). The 1200x630 card is `public/images/og/rone-arena-card.png`; give a
-  redrawn card a new file name, since share platforms cache by URL.
+- **Icons & share card**: the "R" on a `--mark` tile in `public/favicon.ico` and `public/images/icons/`; the
+  1200x630 card is `public/images/og/rone-arena-card.png`. Rebuild or change them with the `brand-assets` skill.
 - **Base URL switch**: `templates/partials/api_host_switch.html` (on the home page and the playground) offers
   `PUBLIC_API_HOSTS` (`core/config.py`): "Primary" (FastAPI Cloud, checked by default) and "Mirror" (Cloudflare).
   Never name a hosting provider in visible text, labels, keys or served JS comments; a test checks it. `arena.js` keeps every switch,
@@ -35,7 +33,8 @@
   `web/negotiation.py` answers a page request preferring `Accept: text/markdown` with its twin at the same URL and
   adds a `Link` header (twin + `/llms.txt`) and `Vary: Accept` to every page. `robots.txt` allows `/api/openapi.json`.
 - **Screen tiers**: mobile < 640, tablet 640+, laptop 1024+, monitor 1440+ (1320px page),
-  extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes.
+  extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes
+  (the `check-web-ui` skill screenshots them).
 - **Avoid generic AI-template tells** (enforced in part by `test_ui_avoids_generic_ai_template_tells`):
   Inter/Geist/Space Grotesk, purple or neon-on-dark palettes, glows and radial halos, glass/blur,
   gradient text, badges or eyebrow labels above headlines, icon tiles over headings, identical card
@@ -43,10 +42,8 @@
   Prefer real data (the home page loads live rankings) over decoration.
 - **Showcase**: `src/app/web/showcase.py` maps pages of each community project to the endpoints they
   call, with `contributors` as `(name, link)` pairs; rendered on `/` and `/showcase`. A test fails if
-  a listed endpoint stops existing. Submissions come in through the issue form
-  `.github/ISSUE_TEMPLATE/showcase.yml` as one Python dict in the `SHOWCASE` format (the page's LLM
-  prompt writes it); to accept one, paste it into `SHOWCASE`. `format_entry` renders that format
-  and a test checks it round-trips.
+  a listed endpoint stops existing. Submissions arrive through `.github/ISSUE_TEMPLATE/showcase.yml`;
+  accept them with the `accept-showcase` skill.
 - **JavaScript**: Vanilla JS, no build tools. `public/static/js/arena.js` (theme, nav, session/JWT cache,
   modals; exposes `window.ArenaWebAuth`), `public/static/js/home.js` (live rankings table) and
   `public/static/js/playground.js` (endpoint forms, readable/raw/code response tabs). Asset URLs are

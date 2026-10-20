@@ -119,3 +119,6 @@ dmypy.json
 python_modules/
 node_modules/
 .dev.vars*
+
+# Font cache of the brand-assets skill
+.brand-build/

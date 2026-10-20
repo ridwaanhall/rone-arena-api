@@ -3,8 +3,9 @@
 **Rone Arena API & Web** is a REST API and web interface for **Mobile Legends: Bang Bang** game data. It is an unofficial, community-maintained project with no affiliation to or endorsement by Moonton; the game name is used descriptively only, and the brand must never incorporate the "MLBB" or "Mobile Legends" marks.
 
 Web UI conventions (design system, design language, JS layout) live in `src/app/web/CLAUDE.md`.
-Release notes for non-technical readers live in `src/app/web/patch_notes.py` (shown on `/patch-notes`); the
-`patch-notes` skill writes them and `bump-version` bumps the version.
+Release notes for non-technical readers live in `src/app/web/patch_notes.py` (shown on `/patch-notes`). Project
+skills in `.claude/skills/`: `release` (end to end), `bump-version`, `patch-notes`, `llms-txt`, `check-web-ui`
+(browser screenshots at every tier), `brand-assets` (favicon, icons, share card) and `accept-showcase`.
 For AI agents, `/llms.txt`, `/llms-full.txt` and a `.md` twin of every web page (`/index.md`, `/web/heroes.md`, ...)
 are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current when pages or product facts change.
 
@@ -36,18 +37,8 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - **Production is a Cloudflare Python Worker** (`rone-arena-api`, custom domain `arena.rone.dev`):
   `wrangler.jsonc` points at `src/worker.py`, which wraps the FastAPI app with
   `workers.asgi.entrypoint`. `public/` is served as Workers Static Assets before the app runs.
-- **Release flow** (tags and GitHub Releases are automatic; never create them by hand):
-  1. On a branch, bump the version with the `bump-version` skill (`pyproject.toml`, `config.py`, `uv.lock`) and add
-     the matching entry with the `patch-notes` skill (a test requires the newest entry to equal `PROJECT_VERSION`).
-  2. Open a PR and merge it to `main`. Workers Builds deploys it.
-  3. `.github/workflows/release-tag.yml` (pushes to `main` that change `pyproject.toml` only) runs
-     `.github/scripts/release_tag.py`: if the version went up compared with the commit before the push and no tag of
-     that name exists, it pushes an annotated tag `X.Y.Z` (no `v`) and publishes a GitHub Release with generated
-     notes (the merged PRs since the previous release), marked latest. Same or lower version, an existing tag, or
-     any other branch: nothing happens. The old `4.x` tags predate the rename and are never compared.
-  4. Optional: edit the release on GitHub to add hand-written highlights.
-  First automatic release: 1.2.3. A release missing for an older tag can be made with
-  `gh release create X.Y.Z --verify-tag --notes-file <notes>` (notes from the `generate-notes` API), `--latest=false`.
+- **Releases**: use the `release` skill. Tags and GitHub Releases are automatic: merging a version bump to `main`
+  makes `.github/workflows/release-tag.yml` tag `X.Y.Z` (no `v`) and publish the release; never create them by hand.
 - **Workers Builds** deploys on every push to `main` (`uv run pywrangler deploy`); other branches
   upload preview versions. pywrangler vendors `[project].dependencies` for Pyodide into
   `python_modules/`, so anything the app imports must be pure Python or Pyodide-built; keep
