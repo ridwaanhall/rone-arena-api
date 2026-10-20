@@ -109,17 +109,6 @@ def _asset_version_for(request: Request) -> str:
     return str(version_id)[:10] if version_id else ASSET_VERSION
 
 
-def _fallback_api_url(request: Request) -> str:
-    """Where the site's scripts retry an API call that failed on this host ("" for no retry).
-
-    Not under DEBUG (local failures should stay visible), and not on the backup host itself.
-    """
-    backup = ALTERNATIVE_ENDPOINT_URL.rstrip("/")
-    if DEBUG or not backup or (urlsplit(backup).hostname or "") == (request.url.hostname or "").lower():
-        return ""
-    return f"{backup}/api"
-
-
 def _shared_context(request: Request, current_group: str | None = None) -> dict[str, Any]:
     return {
         "request": request,
@@ -142,7 +131,8 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "is_debug": DEBUG,
         "api_url": API_URL.rstrip("/"),
         "public_api_hosts": PUBLIC_API_HOSTS,
-        "fallback_api_url": _fallback_api_url(request),
+        # Hosts the site's scripts may call (api.js); none under DEBUG, so local runs stay local.
+        "api_hosts": [] if DEBUG else PUBLIC_API_HOSTS,
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
         "site_name": SITE_NAME,
         "canonical_url": absolute_url(request.url.path),

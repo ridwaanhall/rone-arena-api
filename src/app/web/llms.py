@@ -50,6 +50,7 @@ KEY_FACTS: list[str] = [
     "A 429 `UPSTREAM_RATE_LIMITED` means the game service is throttling; back off for a few minutes instead of retrying in parallel.",
     "If one host answers 5xx or times out, call the other: both run the same code and data.",
     "The full machine-readable schema is the OpenAPI document at `{openapi}`.",
+    "Any page of the website also answers markdown at its own URL when asked with `Accept: text/markdown`.",
 ]
 
 # Response examples longer than this are cut in the per-endpoint pages so a page stays readable.

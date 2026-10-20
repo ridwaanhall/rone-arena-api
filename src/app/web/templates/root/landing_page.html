@@ -41,15 +41,8 @@
 		</div>
 		{% set default_api_base = public_api_hosts[0][2] %}
 		<div class="base-url" data-base-url>
-			<span class="faint" id="base-url-label">Base URL</span>
-			<div class="toggles" role="radiogroup" aria-labelledby="base-url-label">
-				{% for key, provider, base in public_api_hosts %}
-				<span class="toggle">
-					<input type="radio" name="api-host" id="api-host-{{ key }}" value="{{ base }}" data-host-key="{{ key }}"{% if loop.first %} checked{% endif %} />
-					<label for="api-host-{{ key }}">{{ provider }}</label>
-				</span>
-				{% endfor %}
-			</div>
+			<span class="faint">Base URL</span>
+			{% set switch_name = "api-host" %}{% include "partials/api_host_switch.html" %}
 			<span class="base-url-value">
 				<code data-base-url-text>{{ default_api_base }}</code>
 				<button type="button" class="button button--bare button--small" data-copy-command="{{ default_api_base }}" data-base-url-copy><span data-label>Copy</span></button>

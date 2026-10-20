@@ -25,11 +25,14 @@
   `/favicon.ico` route for hosts without Static Assets), `public/images/icons/` (SVG favicon, apple-touch,
   192/512, maskable, `site.webmanifest`). The 1200x630 card is `public/images/og/rone-arena-card.png`; give a
   redrawn card a new file name, since share platforms cache by URL.
-- **Base URL switch**: the home page offers `PUBLIC_API_HOSTS` (`core/config.py`), FastAPI Cloud first and
-  checked by default; `home.js` swaps the shown URL, copy button and samples, and remembers the choice.
+- **Base URL switch**: `templates/partials/api_host_switch.html` (on the home page and the playground) offers
+  `PUBLIC_API_HOSTS` (`core/config.py`), FastAPI Cloud first and checked by default. `arena.js` keeps every switch,
+  `[data-base-url-text]` and `[data-base-url-copy]` in step and calls `ArenaApi.setHost`, so the requests follow too.
 - **Markdown twins / llms.txt**: every page links its `.md` twin and `/llms.txt` from `<head>`
   (`markdown_url` in `_shared_context`). A new HTML page needs a builder in `llms.py` and a route in
   `routers/llms.py`; `test_every_sitemap_page_has_a_markdown_twin` enforces it (see the `llms-txt` skill).
+  `web/negotiation.py` answers a page request preferring `Accept: text/markdown` with its twin at the same URL and
+  adds a `Link` header (twin + `/llms.txt`) and `Vary: Accept` to every page. `robots.txt` allows `/api/openapi.json`.
 - **Screen tiers**: mobile < 640, tablet 640+, laptop 1024+, monitor 1440+ (1320px page),
   extra 1920+ (1480px page, root text 17px). Check all five, light and dark, after layout changes.
 - **Avoid generic AI-template tells** (enforced in part by `test_ui_avoids_generic_ai_template_tells`):

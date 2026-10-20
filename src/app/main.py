@@ -23,6 +23,7 @@ from app.api.routers.esports import router as esports_router
 from app.api.routers.user import router as user_router
 from app.web.routers.llms import router as llms_router
 from app.web.routers.root import router as web_router
+from app.web.negotiation import MarkdownNegotiation
 from app.web.routers.blog import router as blog_router
 
 from app.core.errors import AppError, app_error_handler, safe_error_payload, unhandled_error_handler
@@ -90,6 +91,8 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, OPTIONS, etc.)
     allow_headers=["*"],  # Allows all headers
 )
+# Web pages answer `Accept: text/markdown` with their markdown twin and link it in a header.
+app.add_middleware(MarkdownNegotiation)
 
 def _inline_enum_defaults_in_parameters(schema: dict[str, object]) -> None:
     components = schema.get("components", {})

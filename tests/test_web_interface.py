@@ -577,6 +577,8 @@ def test_robots_txt_points_at_the_sitemap() -> None:
 
     assert "Sitemap: https://arena.rone.dev/sitemap.xml" in body
     assert "Disallow: /api/" in body
+    # The schema /llms.txt points agents at stays crawlable.
+    assert "Allow: /api/openapi.json" in body
 
 
 def test_patch_notes_page_lists_every_release_newest_first() -> None:
@@ -660,29 +662,40 @@ def test_sitemap_dates_home_and_patch_notes_by_the_latest_release() -> None:
     assert f"/patch-notes</loc><lastmod>{latest}</lastmod>" in sitemap
 
 
-def test_pages_load_the_api_client_with_a_backup_host(monkeypatch) -> None:
-    from app.core.config import ALTERNATIVE_ENDPOINT_URL
+def test_pages_load_the_api_client_with_both_hosts(monkeypatch) -> None:
+    import html
+    import json
+    import re
+
     from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", False)
     text = client.get("/showcase").text
 
-    backup = f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api"
-    assert ALTERNATIVE_ENDPOINT_URL == "https://arena.fastapicloud.dev"
-    assert f'data-fallback-base="{backup}"' in text
+    hosts = json.loads(html.unescape(re.search(r"data-api-hosts='([^']*)'", text).group(1)))
+    assert hosts == [
+        ["fastapi-cloud", "FastAPI Cloud", "https://arena.fastapicloud.dev/api"],
+        ["cloudflare", "Cloudflare", "https://arena.rone.dev/api"],
+    ]
     # The client loads before any script that makes API calls.
     assert text.index("/static/js/api.js") < text.index("/static/js/arena.js")
 
 
-def test_backup_host_is_off_in_debug_and_on_the_backup_host_itself(monkeypatch) -> None:
+def test_api_client_stays_local_in_debug(monkeypatch) -> None:
     from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", True)
-    assert 'data-fallback-base=""' in client.get("/showcase").text
+    assert "data-api-hosts='[]'" in client.get("/showcase").text
+
+
+def test_playground_offers_the_host_switch(monkeypatch) -> None:
+    from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", False)
-    on_backup = TestClient(app, base_url="https://arena.fastapicloud.dev")
-    assert 'data-fallback-base=""' in on_backup.get("/showcase").text
+    page = client.get("/web/heroes").text
+
+    assert '<code id="api-base-active" data-base-url-text>https://arena.fastapicloud.dev/api</code>' in page
+    assert 'id="bench-api-host-fastapi-cloud" value="https://arena.fastapicloud.dev/api" data-host-key="fastapi-cloud" checked' in page
 
 
 def test_favicon_and_app_icons_are_served() -> None:
@@ -716,3 +729,33 @@ def test_share_images_are_never_proxied() -> None:
         shares = re.findall(r'(?:og:image|twitter:image)" content="([^"]+)"', html)
         assert shares, path
         assert all(url.startswith("https://arena.rone.dev/images/") and "wsrv.nl" not in url for url in shares), (path, shares)
+
+
+def test_pages_answer_markdown_when_asked_and_link_their_twin() -> None:
+    page = client.get("/web/heroes")
+    assert page.headers["content-type"].startswith("text/html")
+    assert '</web/heroes.md>; rel="alternate"; type="text/markdown"' in page.headers["link"]
+    assert '</llms.txt>; rel="describedby"' in page.headers["link"]
+    assert "Accept" in page.headers["vary"]
+
+    for path, twin in [("/", "/index.md"), ("/showcase", "/showcase.md"), ("/blog/rone-arena-1-1-0-release-notes", "/blog/rone-arena-1-1-0-release-notes.md")]:
+        answer = client.get(path, headers={"accept": "text/markdown, text/html;q=0.9"})
+        assert answer.headers["content-type"].startswith("text/markdown"), path
+        assert answer.text == client.get(twin).text
+
+    # A browser's Accept header keeps getting HTML, and the API is never touched.
+    browser = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    assert client.get("/", headers={"accept": browser}).headers["content-type"].startswith("text/html")
+    assert "link" not in client.get("/api/openapi.json", headers={"accept": "text/markdown"}).headers
+
+
+def test_markdown_preference_parsing() -> None:
+    from app.web.negotiation import is_page, prefers_markdown
+
+    assert prefers_markdown("text/markdown")
+    assert prefers_markdown("text/markdown, text/html")
+    assert not prefers_markdown("text/html, text/markdown;q=0.5")
+    assert not prefers_markdown("*/*")
+    assert not prefers_markdown("")
+    assert is_page("/") and is_page("/web/heroes/heroes/rank") and is_page("/blog")
+    assert not is_page("/index.md") and not is_page("/api/heroes") and not is_page("/llms.txt")

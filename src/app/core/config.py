@@ -92,8 +92,8 @@ SERVICE_STATUS_KEY: str = (
 )
 
 DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Sep 15, 2026")
-# The backup deployment (FastAPI Cloud). Named in 503 bodies, and the website's own scripts
-# retry on it when this host fails (see `fallback_api_url` in `web/routers/root.py`).
+# The FastAPI Cloud deployment of this same app, the site's default base URL. Named in 503 bodies
+# as the alternative host; the website's scripts reach it through `PUBLIC_API_HOSTS` below.
 ALTERNATIVE_ENDPOINT_URL: str = env_str(
     "ALTERNATIVE_ENDPOINT_URL",
     default="https://arena.fastapicloud.dev",

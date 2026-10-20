@@ -17,8 +17,14 @@
 				<p class="lede">{{ subtitle }}</p>
 			{% endif %}
 			<p class="bench-base" data-api-base-panel>
+				{% if api_hosts %}
+				Requests go to <code id="api-base-active" data-base-url-text>{{ api_hosts[0][2] }}</code>.
+				Forms are generated from the OpenAPI schema.
+				{% set switch_name = "bench-api-host" %}{% include "partials/api_host_switch.html" %}
+				{% else %}
 				Requests go to <code id="api-base-active">{{ api_url }}</code>{% if is_debug %} <span class="tag tag--caution">debug</span>{% endif %}.
 				Forms are generated from the OpenAPI schema.
+				{% endif %}
 			</p>
 		</header>
 
