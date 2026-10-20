@@ -1,0 +1,9 @@
+{# The base URL switch: same API on both public hosts. `switch_name` keeps radio groups apart. #}
+<span class="toggles" role="radiogroup" aria-label="API host" data-api-host-switch>
+	{% for key, provider, base in public_api_hosts %}
+	<span class="toggle">
+		<input type="radio" name="{{ switch_name }}" id="{{ switch_name }}-{{ key }}" value="{{ base }}" data-host-key="{{ key }}"{% if loop.first %} checked{% endif %} />
+		<label for="{{ switch_name }}-{{ key }}">{{ provider }}</label>
+	</span>
+	{% endfor %}
+</span>

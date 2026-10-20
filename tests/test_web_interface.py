@@ -39,7 +39,10 @@ def test_landing_page_has_docs_and_demo_options() -> None:
     assert "/web/user" in response.text
     assert "family=Archivo:wdth,wght" in response.text
     assert "IBM+Plex+Mono" in response.text
-    assert "rone.dev/static/img/favicon/favicon.ico" in response.text
+    assert '<link rel="icon" href="/favicon.ico" sizes="48x48" />' in response.text
+    assert 'href="/images/icons/favicon.svg" type="image/svg+xml"' in response.text
+    assert 'rel="apple-touch-icon" href="/images/icons/apple-touch-icon.png"' in response.text
+    assert 'rel="manifest" href="/images/icons/site.webmanifest"' in response.text
     assert "application/ld+json" in response.text
     assert "/static/css/arena.css?v=" in response.text
     assert "/static/js/arena.js?v=" in response.text
@@ -544,7 +547,10 @@ def test_blog_post_shares_as_an_article_with_its_cover() -> None:
     response = client.get("/blog/rone-arena-1-1-0-release-notes")
 
     assert '<meta property="og:type" content="article" />' in response.text
-    assert f'content="{wsrv("https://arena.rone.dev/images/blog/release-v1.1.0-home.webp")}"' in response.text
+    # The share image is the cover itself; the cover shown on the page goes through the proxy.
+    assert 'og:image" content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert 'twitter:image" content="https://arena.rone.dev/images/blog/release-v1.1.0-home.webp"' in response.text
+    assert f'src="{wsrv("https://arena.rone.dev/images/blog/release-v1.1.0-home.webp")}"' in response.text
     assert '<meta property="article:published_time" content="2026-09-25" />' in response.text
 
 
@@ -571,6 +577,8 @@ def test_robots_txt_points_at_the_sitemap() -> None:
 
     assert "Sitemap: https://arena.rone.dev/sitemap.xml" in body
     assert "Disallow: /api/" in body
+    # The schema /llms.txt points agents at stays crawlable.
+    assert "Allow: /api/openapi.json" in body
 
 
 def test_patch_notes_page_lists_every_release_newest_first() -> None:
@@ -602,12 +610,12 @@ def test_patch_notes_are_linked_from_the_site_and_sitemap() -> None:
 
 
 def test_pages_share_a_sized_link_preview_card() -> None:
-    from urllib.parse import quote
-
     home = client.get("/").text
-    card = quote("https://arena.rone.dev/images/og/rone-arena-api.png", safe="")
 
-    assert f'og:image" content="https://wsrv.nl/?url={card}"' in home
+    # Served straight from the site so every link-preview crawler can fetch it.
+    assert 'og:image" content="https://arena.rone.dev/images/og/rone-arena-card.png"' in home
+    assert 'og:image:type" content="image/png"' in home
+    assert client.get("/images/og/rone-arena-card.png").headers["content-type"] == "image/png"
     assert 'og:image:width" content="1200"' in home and 'og:image:height" content="630"' in home
     assert 'twitter:card" content="summary_large_image"' in home
     assert 'twitter:site" content="@ridwaanhall"' in home
@@ -654,26 +662,110 @@ def test_sitemap_dates_home_and_patch_notes_by_the_latest_release() -> None:
     assert f"/patch-notes</loc><lastmod>{latest}</lastmod>" in sitemap
 
 
-def test_pages_load_the_api_client_with_a_backup_host(monkeypatch) -> None:
-    from app.core.config import ALTERNATIVE_ENDPOINT_URL
+def test_pages_load_the_api_client_with_both_hosts(monkeypatch) -> None:
+    import html
+    import json
+    import re
+
     from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", False)
     text = client.get("/showcase").text
 
-    backup = f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api"
-    assert ALTERNATIVE_ENDPOINT_URL == "https://arena.fastapicloud.dev"
-    assert f'data-fallback-base="{backup}"' in text
+    hosts = json.loads(html.unescape(re.search(r"data-api-hosts='([^']*)'", text).group(1)))
+    assert hosts == [
+        ["primary", "Primary", "https://arena.fastapicloud.dev/api"],
+        ["mirror", "Mirror", "https://arena.rone.dev/api"],
+    ]
     # The client loads before any script that makes API calls.
     assert text.index("/static/js/api.js") < text.index("/static/js/arena.js")
 
 
-def test_backup_host_is_off_in_debug_and_on_the_backup_host_itself(monkeypatch) -> None:
+def test_api_client_stays_local_in_debug(monkeypatch) -> None:
     from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", True)
-    assert 'data-fallback-base=""' in client.get("/showcase").text
+    assert "data-api-hosts='[]'" in client.get("/showcase").text
+
+
+def test_playground_offers_the_host_switch(monkeypatch) -> None:
+    from app.web.routers import root
 
     monkeypatch.setattr(root, "DEBUG", False)
-    on_backup = TestClient(app, base_url="https://arena.fastapicloud.dev")
-    assert 'data-fallback-base=""' in on_backup.get("/showcase").text
+    page = client.get("/web/heroes").text
+
+    assert '<code id="api-base-active" data-base-url-text>https://arena.fastapicloud.dev/api</code>' in page
+    assert 'id="bench-api-host-primary" value="https://arena.fastapicloud.dev/api" data-host-key="primary" checked' in page
+
+
+def test_favicon_and_app_icons_are_served() -> None:
+    import json
+
+    favicon = client.get("/favicon.ico")
+    assert favicon.status_code == 200
+    assert favicon.headers["content-type"] == "image/x-icon"
+    manifest = json.loads(client.get("/images/icons/site.webmanifest").content)
+    for icon in manifest["icons"]:
+        assert client.get(icon["src"]).status_code == 200
+    assert client.get("/images/icons/favicon.svg").status_code == 200
+    assert client.get("/images/icons/apple-touch-icon.png").status_code == 200
+
+
+def test_home_base_url_switch_defaults_to_the_primary() -> None:
+    home = client.get("/").text
+
+    assert 'id="api-host-primary" value="https://arena.fastapicloud.dev/api" data-host-key="primary" checked' in home
+    assert 'id="api-host-mirror" value="https://arena.rone.dev/api" data-host-key="mirror" />' in home
+    assert '<code data-base-url-text>https://arena.fastapicloud.dev/api</code>' in home
+    assert 'data-copy-command="https://arena.fastapicloud.dev/api" data-base-url-copy' in home
+
+
+def test_share_images_are_never_proxied() -> None:
+    import re
+
+    pages = ["/", "/showcase", "/patch-notes", "/blog", "/web/heroes", "/blog/rone-arena-1-1-0-release-notes"]
+    for path in pages:
+        html = client.get(path).text
+        shares = re.findall(r'(?:og:image|twitter:image)" content="([^"]+)"', html)
+        assert shares, path
+        assert all(url.startswith("https://arena.rone.dev/images/") and "wsrv.nl" not in url for url in shares), (path, shares)
+
+
+def test_pages_answer_markdown_when_asked_and_link_their_twin() -> None:
+    page = client.get("/web/heroes")
+    assert page.headers["content-type"].startswith("text/html")
+    assert '</web/heroes.md>; rel="alternate"; type="text/markdown"' in page.headers["link"]
+    assert '</llms.txt>; rel="describedby"' in page.headers["link"]
+    assert "Accept" in page.headers["vary"]
+
+    for path, twin in [("/", "/index.md"), ("/showcase", "/showcase.md"), ("/blog/rone-arena-1-1-0-release-notes", "/blog/rone-arena-1-1-0-release-notes.md")]:
+        answer = client.get(path, headers={"accept": "text/markdown, text/html;q=0.9"})
+        assert answer.headers["content-type"].startswith("text/markdown"), path
+        assert answer.text == client.get(twin).text
+
+    # A browser's Accept header keeps getting HTML, and the API is never touched.
+    browser = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+    assert client.get("/", headers={"accept": browser}).headers["content-type"].startswith("text/html")
+    assert "link" not in client.get("/api/openapi.json", headers={"accept": "text/markdown"}).headers
+
+
+def test_markdown_preference_parsing() -> None:
+    from app.web.negotiation import is_page, prefers_markdown
+
+    assert prefers_markdown("text/markdown")
+    assert prefers_markdown("text/markdown, text/html")
+    assert not prefers_markdown("text/html, text/markdown;q=0.5")
+    assert not prefers_markdown("*/*")
+    assert not prefers_markdown("")
+    assert is_page("/") and is_page("/web/heroes/heroes/rank") and is_page("/blog")
+    assert not is_page("/index.md") and not is_page("/api/heroes") and not is_page("/llms.txt")
+
+
+def test_public_pages_never_name_the_hosting_providers() -> None:
+    import re
+
+    paths = ["/", "/web/heroes", "/patch-notes", "/llms.txt", "/llms-full.txt", "/index.md", "/static/js/api.js"]
+    for path in paths:
+        # Host names in URLs are unavoidable; provider names as words are not.
+        text = re.sub(r"https?://\S+", "", client.get(path).text)
+        assert not re.search(r"(?i)cloudflare|fastapi ?cloud|fastapi-cloud", text), path

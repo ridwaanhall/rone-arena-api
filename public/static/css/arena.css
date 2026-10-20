@@ -504,6 +504,7 @@ main { flex: 1 0 auto; }
 .opening .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
 .base-url { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 0.875rem; }
 .base-url code { font-size: 0.9375rem; overflow-wrap: anywhere; }
+.base-url-value { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
 
 /* ---------- Ruled tables ---------- */
 .ruled { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }

@@ -18,6 +18,23 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.3.0",
+        "date": "2026-10-20",
+        "summary": "Pick which of our two servers the site uses, plus a new site icon and share picture.",
+        "new": [
+            "A switch on the home page and playground picks the primary or the mirror server. Primary is the default.",
+            "The site remembers your server choice on this device.",
+            "AI assistants can now ask any page for a plain text version.",
+        ],
+        "improved": [
+            "Links shared on chat apps and social media show a new preview picture.",
+            "The site now has its own icon in browser tabs and on phone home screens.",
+        ],
+        "fixed": [
+            "The site icon no longer fails to load.",
+        ],
+    },
+    {
         "version": "1.2.3",
         "date": "2026-10-11",
         "summary": "Pro league data loads faster and the site keeps working when the main server struggles.",

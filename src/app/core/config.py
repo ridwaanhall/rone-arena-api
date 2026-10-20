@@ -72,7 +72,7 @@ DEBUG: bool = env_bool("DEBUG", default=False)
 # Release version, shown in the OpenAPI schema, /api metadata, and the web UI.
 # Hardcoded on purpose: a release is a code change, so the version lives with
 # the code instead of drifting per deployment. Keep pyproject.toml in sync.
-PROJECT_VERSION: str = "1.2.3"
+PROJECT_VERSION: str = "1.3.0"
 
 # Two independent reasons the service may be restricted.
 #   IS_MAINTENANCE  - the service is being worked on; no alternative host to
@@ -92,8 +92,8 @@ SERVICE_STATUS_KEY: str = (
 )
 
 DATE_AVAILABLE: str = env_str("DATE_AVAILABLE", default="Sep 15, 2026")
-# The backup deployment (FastAPI Cloud). Named in 503 bodies, and the website's own scripts
-# retry on it when this host fails (see `fallback_api_url` in `web/routers/root.py`).
+# The FastAPI Cloud deployment of this same app, the site's default base URL. Named in 503 bodies
+# as the alternative host; the website's scripts reach it through `PUBLIC_API_HOSTS` below.
 ALTERNATIVE_ENDPOINT_URL: str = env_str(
     "ALTERNATIVE_ENDPOINT_URL",
     default="https://arena.fastapicloud.dev",
@@ -174,6 +174,14 @@ DOCS_BASE_URL: str = env_str("DOCS_BASE_URL", default=f"{BASE_URL}docs")
 # targets the host the project is actually served from.
 LOCAL_BASE_URL: str = "http://127.0.0.1:8000"
 API_URL: str = f"{LOCAL_BASE_URL if DEBUG else BASE_URL.rstrip('/')}/api/"
+
+# The two public deployments of this same app, offered as the base URL switch (the first is
+# selected by default): (key, label, API base). Labels and keys are shown to visitors, so they
+# name a role, never the hosting provider.
+PUBLIC_API_HOSTS: tuple[tuple[str, str, str], ...] = (
+    ("primary", "Primary", f"{ALTERNATIVE_ENDPOINT_URL.rstrip('/')}/api"),
+    ("mirror", "Mirror", f"{BASE_URL.rstrip('/')}/api"),
+)
 
 # Analytics only fires on the canonical host, so preview deployments never
 # pollute the stats. Empty in DEBUG so local runs never emit analytics hits.

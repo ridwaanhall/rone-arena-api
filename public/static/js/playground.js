@@ -1,11 +1,12 @@
 /*
  * Rone Arena playground: turns every endpoint card into a working request form.
  *   - builds the URL from path/query fields and the JSON body
- *   - sends it to the API base (data-api-base on this script tag)
+ *   - sends it to the host picked on the base URL switch (api.js), else this host
  *   - renders the response as readable tables, raw JSON, and code snippets
  */
 (() => {
-	const API_BASE = document.currentScript?.dataset.apiBase || `${window.location.origin}/api`;
+	// Read on every request: the base URL switch can change it while the page is open.
+	const apiBase = () => window.ArenaApi?.primary || `${window.location.origin}/api`;
 	const formValidationTimers = new WeakMap();
 	const auth = () => window.ArenaWebAuth || null;
 
@@ -505,7 +506,7 @@
 			apiPath = apiPath.replace(`{${name}}`, encodeURIComponent(values[0]));
 		}
 
-		const url = new URL(apiPath, API_BASE);
+		const url = new URL(apiPath, apiBase());
 
 		for (const input of form.querySelectorAll('[data-param-in="query"]')) {
 			const name = input.dataset.paramName;

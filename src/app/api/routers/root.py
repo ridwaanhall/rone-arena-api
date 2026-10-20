@@ -165,8 +165,17 @@ async def api_index(request: Request) -> dict:
 )
 def robots_txt() -> PlainTextResponse:
     host_url = BASE_URL.rstrip("/")
-    # JSON endpoints cost an upstream call per hit and are not pages; the docs are.
+    # JSON endpoints cost an upstream call per hit and are not pages; the docs and the schema
+    # (which /llms.txt points agents at) are.
     content = "\n".join(
-        ["User-agent: *", "Allow: /", "Allow: /api/docs", "Disallow: /api/", "", f"Sitemap: {host_url}/sitemap.xml"]
+        [
+            "User-agent: *",
+            "Allow: /",
+            "Allow: /api/docs",
+            "Allow: /api/openapi.json",
+            "Disallow: /api/",
+            "",
+            f"Sitemap: {host_url}/sitemap.xml",
+        ]
     )
     return PlainTextResponse(content=content)

@@ -528,5 +528,37 @@
 		});
 	});
 
+	// ------------------------------------------------------------ base URL switch
+
+	// Every switch on the page, the URLs it shows and its copy buttons follow one choice. api.js
+	// sends the calls there; under DEBUG (no hosts in api.js) the switch only changes the text.
+	const hostRadios = [...document.querySelectorAll("[data-api-host-switch] input[type=radio]")];
+
+	function showHost(key) {
+		const radio = hostRadios.find((input) => input.dataset.hostKey === key) || hostRadios[0];
+		if (!radio) return;
+		hostRadios.forEach((input) => {
+			input.checked = input.dataset.hostKey === radio.dataset.hostKey;
+		});
+		document.querySelectorAll("[data-base-url-text]").forEach((node) => {
+			node.textContent = radio.value;
+		});
+		document.querySelectorAll("[data-base-url-copy]").forEach((button) => {
+			button.setAttribute("data-copy-command", radio.value);
+		});
+	}
+
+	if (hostRadios.length) {
+		showHost(window.ArenaApi?.hostKey || storage.get("arena_api_host"));
+		hostRadios.forEach((input) => {
+			input.addEventListener("change", () => {
+				if (!input.checked) return;
+				if (window.ArenaApi?.hosts.length) window.ArenaApi.setHost(input.dataset.hostKey);
+				else storage.set("arena_api_host", input.dataset.hostKey);
+				showHost(input.dataset.hostKey);
+			});
+		});
+	}
+
 	renderNavbarState();
 })();

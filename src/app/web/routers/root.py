@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.core.config import (
@@ -24,6 +24,7 @@ from app.core.config import (
     PROJECT_VERSION,
     BASE_URL,
     API_URL,
+    PUBLIC_API_HOSTS,
     TWITTER_HANDLE,
 )
 from app.core.images import wsrv_url
@@ -62,8 +63,10 @@ ASSET_VERSION = _asset_version()
 SITE_ORIGIN = BASE_URL.rstrip("/")
 CANONICAL_HOST = (urlsplit(BASE_URL).hostname or "").lower()
 SITE_NAME = "Rone Arena API"
-# A designed 1200x630 link-preview card, used when a page has no image of its own.
-DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-api.png"
+# A designed 1200x630 link-preview card, used when a page has no image of its own (served
+# unproxied, see `share_image_url`). Rename the file when the card changes, since share
+# platforms cache by URL.
+DEFAULT_SHARE_IMAGE = "/images/og/rone-arena-card.png"
 DEFAULT_SHARE_SIZE = (1200, 630)
 
 
@@ -77,8 +80,17 @@ def markdown_path(path: str) -> str:
 
 
 def image_url(path: str) -> str:
-    """Absolute, proxied URL of a site image (blog art, share previews)."""
+    """Absolute, proxied URL of a site image shown on a page (blog art)."""
     return wsrv_url(absolute_url(path))
+
+
+def share_image_url(path: str) -> str:
+    """Absolute URL of a link-preview image (og:image, twitter:image), never proxied.
+
+    Share crawlers fetch it once and cache it; a plain same-site URL avoids depending on the
+    proxy being up, fast and allowed by every platform at that moment.
+    """
+    return absolute_url(path)
 
 
 # `{{ path | image }}` in templates.
@@ -95,17 +107,6 @@ def _asset_version_for(request: Request) -> str:
     metadata = getattr(env, "CF_VERSION_METADATA", None) if env is not None else None
     version_id = getattr(metadata, "id", None) if metadata is not None else None
     return str(version_id)[:10] if version_id else ASSET_VERSION
-
-
-def _fallback_api_url(request: Request) -> str:
-    """Where the site's scripts retry an API call that failed on this host ("" for no retry).
-
-    Not under DEBUG (local failures should stay visible), and not on the backup host itself.
-    """
-    backup = ALTERNATIVE_ENDPOINT_URL.rstrip("/")
-    if DEBUG or not backup or (urlsplit(backup).hostname or "") == (request.url.hostname or "").lower():
-        return ""
-    return f"{backup}/api"
 
 
 def _shared_context(request: Request, current_group: str | None = None) -> dict[str, Any]:
@@ -129,14 +130,17 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "base_url": BASE_URL,
         "is_debug": DEBUG,
         "api_url": API_URL.rstrip("/"),
-        "fallback_api_url": _fallback_api_url(request),
+        "public_api_hosts": PUBLIC_API_HOSTS,
+        # Hosts the site's scripts may call (api.js); none under DEBUG, so local runs stay local.
+        "api_hosts": [] if DEBUG else PUBLIC_API_HOSTS,
         "is_analytics_host": bool(ANALYTICS_HOST) and (request.url.hostname or "").lower() == ANALYTICS_HOST.lower(),
         "site_name": SITE_NAME,
         "canonical_url": absolute_url(request.url.path),
         "markdown_url": markdown_path(request.url.path),
         "is_indexable": (request.url.hostname or "").lower() == CANONICAL_HOST,
         "og_type": "website",
-        "share_image": image_url(DEFAULT_SHARE_IMAGE),
+        "share_image": share_image_url(DEFAULT_SHARE_IMAGE),
+        "share_image_type": "image/png",
         "share_image_alt": "Rone Arena API: free game data for Mobile Legends: Bang Bang as JSON",
         "share_image_width": DEFAULT_SHARE_SIZE[0],
         "share_image_height": DEFAULT_SHARE_SIZE[1],
@@ -167,6 +171,15 @@ def _first_sentence(text: str) -> str:
 def _normalize_path(value: str) -> str:
     normalized = value.rstrip("/")
     return normalized or "/"
+
+
+@router.get(path="/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    """Browsers ask for /favicon.ico on their own. Cloudflare serves it from Static Assets;
+    this route covers the hosts that run the app alone (FastAPI Cloud, local)."""
+    if PUBLIC_DIR is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(PUBLIC_DIR / "favicon.ico", media_type="image/x-icon", headers={"Cache-Control": "public, max-age=604800"})
 
 
 @router.get(path="/", include_in_schema=False, response_class=HTMLResponse)
