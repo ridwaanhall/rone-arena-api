@@ -62,6 +62,10 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - **Shared edge cache**: `src/worker.py` keeps successful `GET /api/esports/...` answers in Cloudflare's Cache API
   for 300s (`EDGE_CACHE_*` in `app/core/fallback.py`), so Worker copies in one data center share one scrape instead
   of each paying the CPU of a cold parse. Hits carry `X-Rone-Edge-Cache: HIT`.
+- **Browser and shared caching**: `core/cache_headers.py` (`PublicCacheHeaders`) adds `Cache-Control: public, max-age=300,
+  stale-while-revalidate=60` to successful `GET` answers under `/api/heroes`, `/api/academy` and `/api/esports/`, so callers'
+  browsers and CDNs reuse them. Never on `/api/user` or `/api/addon` (the IP lookup is per visitor), on requests with an
+  `Authorization` or `Cookie` header, on errors, or when a route set its own `Cache-Control`.
 - **Host choice and backup in the browser**: `public/static/js/api.js` (`window.ArenaApi.request`) wraps every API
   call the site's scripts make and sends it to the host picked on the base URL switch (`PUBLIC_API_HOSTS`, passed as
   `data-api-hosts`; "Primary" (FastAPI Cloud) by default, remembered in localStorage), whatever host the URL was built for. On a
