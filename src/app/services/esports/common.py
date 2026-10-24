@@ -9,12 +9,25 @@ from bs4.element import PageElement, Tag
 
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
-from app.schemas.esports import Record, ScheduleResponse, ScheduleWeek
+from app.schemas.esports import Record, ScheduleDay, ScheduleResponse, ScheduleWeek
 
 # Upstream responses are parsed (and cached) for five minutes: long enough to absorb
 # bursts, short enough for live scores, and well under the six-hour life of the signed
 # item-image URLs the Indonesian site hands out.
 CACHE_SECONDS = 300
+
+# Series length: first to 2 in the regular season, first to 3 in the playoffs, first to 4 in the lower bracket
+# final and the grand final.
+REGULAR_SEASON_BEST_OF = 3
+PLAYOFFS_BEST_OF = 5
+FINALS_BEST_OF = 7
+
+# Teams at the bottom of the regular season that miss the playoffs.
+ID_ELIMINATED = 3
+PH_ELIMINATED = 2
+
+# Name the league sites give an undecided playoff side.
+TO_BE_DECIDED = "TBD"
 
 
 def text_of(element: PageElement | None) -> str:
@@ -69,6 +82,30 @@ def parse_record(value: str) -> Record:
     return Record(win=win, lose=lose)
 
 
+_DIV_TAG = re.compile(r"<(/?)div\b")
+
+
+def balanced_div(html: str, start: int) -> str:
+    """The ``<div>`` that opens at ``start``, up to its closing tag, found by counting nested divs.
+
+    The league pages are large (the Indonesian schedule is 2.4 MB, a Philippine match 0.8 MB) and building a
+    BeautifulSoup tree of one costs more CPU than a Cloudflare Worker request may use (error 1102), so the
+    scrapers slice the parts they need out of the text and parse those with regexes or a small tree.
+    """
+    depth = 0
+    for tag in _DIV_TAG.finditer(html, start):
+        depth += -1 if tag.group(1) else 1
+        if depth == 0:
+            return html[start : html.index(">", tag.start()) + 1]
+    raise _page_changed("the end of a block")
+
+
+def div_block(html: str, marker: str) -> str:
+    """The ``<div>`` whose opening tag carries ``marker`` (an id attribute), or "" when the page has none."""
+    start = html.find(marker)
+    return balanced_div(html, html.rfind("<div", 0, start)) if start >= 0 else ""
+
+
 def kda_ratio(kills: int, deaths: int, assists: int) -> float:
     return round((kills + assists) / max(deaths, 1), 2)
 
@@ -97,3 +134,20 @@ def select_weeks(weeks: list[ScheduleWeek], week: int | None) -> ScheduleRespons
             message=f"Week {week} is not in the regular season. Available weeks: {', '.join(str(item.week) for item in weeks) or 'none'}.",
         )
     return ScheduleResponse(weeks=chosen)
+
+
+def mark_finals(days: list[ScheduleDay]) -> None:
+    """The lower bracket final and the grand final are best of 7 (both leagues' brackets say so).
+
+    The Indonesian site names each round, so those two are found by name; the Philippine site names none, and
+    there they are the last two playoff matches.
+    """
+    matches = [match for day in days for match in day.matches]
+    named = [match for match in matches if _is_final(match.round)]
+    for match in named if named else matches[-2:]:
+        match.best_of = FINALS_BEST_OF
+
+
+def _is_final(label: str | None) -> bool:
+    name = (label or "").casefold()
+    return "grand final" in name or ("lower bracket final" in name and "semi" not in name)

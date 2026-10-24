@@ -17,9 +17,10 @@ from app.schemas.esports import (
     Team,
 )
 from app.services.esports import indonesia, philippines, probability, standings
+from app.services.esports.common import ID_ELIMINATED, PH_ELIMINATED
 
 # Teams that miss the playoffs by default.
-DEFAULT_ELIMINATED = {LeagueEnum.INDONESIA: 3, LeagueEnum.PHILIPPINES: 2}
+DEFAULT_ELIMINATED = {LeagueEnum.INDONESIA: ID_ELIMINATED, LeagueEnum.PHILIPPINES: PH_ELIMINATED}
 CUSTOM_ELIMINATED = 3
 
 
@@ -106,7 +107,8 @@ def _from_schedule(weeks: list[ScheduleWeek], known: list[Standing]) -> tuple[di
 
 def simulate_league(league: LeagueEnum, request: SimulateRequest) -> StandingsSimulationResponse:
     if league is LeagueEnum.INDONESIA:
-        weeks, known = indonesia.get_season(LeagueLanguageEnum.ENGLISH.value)
+        season = indonesia.get_season(LeagueLanguageEnum.ENGLISH.value)
+        weeks, known = season.weeks, season.standings
     else:
         weeks, known = philippines.get_schedule(), philippines.get_standings()
     teams, matches = _from_schedule(weeks, known)

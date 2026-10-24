@@ -12,6 +12,7 @@ from app.core.config import SECRET_KEY
 from app.core.exceptions import AppError
 from app.core.security import CryptoManager, EsportsSourceProvider
 from app.main import app
+from app.schemas.esports import ScheduleMatch, Team
 from app.services.esports import common, indonesia, philippines
 from app.services.esports.common import select_weeks, to_int
 from app.utils.ttl_cache import ttl_cache
@@ -57,7 +58,7 @@ def upstream(monkeypatch):
     monkeypatch.setattr(philippines, "request_page", fake_request_page)
     monkeypatch.setattr(EsportsSourceProvider, "get_id_base_url", classmethod(lambda cls: ID_BASE))
     monkeypatch.setattr(EsportsSourceProvider, "get_ph_base_url", classmethod(lambda cls: PH_BASE))
-    for cached in (indonesia.get_season, indonesia.get_match, philippines.get_standings, philippines.get_schedule, philippines.get_match):
+    for cached in (indonesia.get_season, indonesia.get_match, philippines.get_standings, philippines._schedule_page, philippines.get_match):
         cached.cache_clear()
     return calls
 
@@ -119,8 +120,7 @@ def test_id_schedule_reads_weeks_days_and_matches() -> None:
 
 
 def _dump(season) -> list:
-    weeks, standings = season
-    return [[item.model_dump() for item in weeks], [item.model_dump() for item in standings]]
+    return [[item.model_dump() for item in season.weeks], [item.model_dump() for item in season.standings], season.playoffs.model_dump()]
 
 
 def test_id_season_ignores_the_pop_ups_and_junk_after_the_last_week(monkeypatch) -> None:
@@ -166,6 +166,56 @@ def test_id_schedule_language_defaults_to_english_and_can_be_indonesian(upstream
     assert label(lang="id") == "Jumat, 14 Agustus 2026"
     assert [call.url for call in upstream] == [f"{ID_BASE}/en/schedule", f"{ID_BASE}/id/schedule"]
     assert client.get("/api/esports/id/schedule", params={"lang": "fr"}).status_code == 422
+
+
+def test_id_playoffs_read_rounds_seeds_bracket_and_undecided_sides() -> None:
+    body = client.get("/api/esports/id/playoffs").json()
+
+    assert body["bracket_image"].startswith("https://wsrv.nl/?url=")
+    assert [(seed["seed"], seed["team"]["name"], seed["match_wl"]) for seed in body["seeds"]] == [
+        (1, "TLID", {"win": 12, "lose": 4}),
+        (2, "NAVI", {"win": 12, "lose": 4}),
+        (3, "AE", {"win": 10, "lose": 6}),
+    ]
+    assert body["seeds"][0]["team"]["logo"].startswith("https://wsrv.nl/")
+    first, final = body["days"]
+    # The day heading carries a <br /> and a comment after the date.
+    assert first["label"] == "Wednesday, 4 November 2026"
+    played, upcoming = first["matches"]
+    assert played["round"] == "Round 1 Match 1"
+    assert (played["match_id"], played["start_at"]) == ("1108", "2026-11-04T06:00:00+00:00")
+    assert (played["score1"], played["score2"], played["best_of"]) == (3, 2, 5)
+    assert (played["status"], played["winner"]) == ("finished", "team1")
+    assert (upcoming["status"], upcoming["winner"], upcoming["best_of"]) == ("scheduled", None, 5)
+
+    # The lower bracket final and the grand final are best of 7, found by their round names.
+    assert [(m["round"], m["best_of"]) for m in final["matches"]] == [
+        ("Lower Bracket Semi Finals", 5),
+        ("Lower Bracket Finals", 7),
+        ("Grand Finals", 7),
+    ]
+    # Undecided sides carry the league's own logo, which must not leak.
+    assert final["matches"][2]["team1"] == {"name": "TBD", "full_name": None, "logo": None}
+
+
+def test_id_playoffs_follow_the_language_and_share_the_schedule_fetch(upstream) -> None:
+    assert client.get("/api/esports/id/playoffs", params={"lang": "id"}).json()["days"][0]["label"] == "Rabu, 4 November 2026"
+    client.get("/api/esports/id/schedule", params={"lang": "id"})
+    assert len(upstream) == 1
+
+
+def test_id_regular_season_matches_are_best_of_three_without_round() -> None:
+    played = client.get("/api/esports/id/schedule").json()["weeks"][0]["days"][0]["matches"][0]
+
+    assert (played["round"], played["best_of"], played["status"], played["winner"]) == (None, 3, "finished", "team1")
+
+
+def test_id_page_without_playoffs_returns_an_empty_bracket(monkeypatch) -> None:
+    html = fixture("id_schedule_en.html")
+    html = html[html.index('<div class="outer-tabs-schedule">') : html.index('<div class="tab-content clearfix" id="standing-playoffs">')]
+    monkeypatch.setattr(common, "request_page", lambda **kwargs: SimpleNamespace(text=html))
+
+    assert client.get("/api/esports/id/playoffs").json() == {"bracket_image": None, "seeds": [], "days": []}
 
 
 def test_id_standings_follow_the_language() -> None:
@@ -292,6 +342,87 @@ def test_ph_match_details_join_summary_scoreboard_and_item_sequence(upstream) ->
     assert post.payload == {"_token": "TESTTOKEN", "battleId": "3602903927299249588", "matchName": PH_SLUG}
     assert post.headers["Cookie"] == "XSRF-TOKEN=abc; session=def"
 
+
+def test_ph_playoffs_read_days_bracket_and_seeds(monkeypatch) -> None:
+    monkeypatch.setattr(philippines, "PH_ELIMINATED", 1)
+    body = client.get("/api/esports/ph/playoffs").json()
+
+    assert body["bracket_image"].startswith("https://wsrv.nl/?url=")
+    # Seeds are the top of the regular-season standings; the fixture has two teams.
+    assert [(seed["seed"], seed["team"]["name"]) for seed in body["seeds"]] == [(1, "FLCN")]
+    # The cards repeated further down the page are not playoff days.
+    assert [(day["day"], day["label"]) for day in body["days"]] == [
+        (1, "Wednesday, 21 October 2026"),
+        (4, "Saturday, 24 October 2026"),
+        (5, "Sunday, 25 October 2026"),
+    ]
+    played = body["days"][0]["matches"][0]
+    assert played["match_id"] == "onic-tnc-20261021"
+    assert played["start_at"] == "2026-10-21T07:00:00+00:00"
+    assert (played["score1"], played["score2"], played["best_of"], played["status"], played["winner"]) == (3, 2, 5, "finished", "team1")
+    assert played["round"] is None
+
+    # No round names here: the last two matches (lower bracket final, grand final) are best of 7.
+    lower_final = body["days"][1]["matches"][0]
+    assert (lower_final["score1"], lower_final["score2"], lower_final["best_of"]) == (1, 0, 7)
+    assert (lower_final["status"], lower_final["winner"]) == ("in_progress", None)
+    grand_final = body["days"][2]["matches"][0]
+    assert (grand_final["best_of"], grand_final["status"]) == (7, "scheduled")
+    assert grand_final["team2"] == {"name": "TBD", "full_name": None, "logo": None}
+
+
+def test_ph_playoffs_do_not_change_the_regular_season(upstream) -> None:
+    weeks = client.get("/api/esports/ph/schedule").json()["weeks"]
+    client.get("/api/esports/ph/playoffs")
+
+    assert [w["week"] for w in weeks] == [1, 8]
+    assert weeks[0]["days"][0]["matches"][0]["best_of"] == 3
+    assert [call.url for call in upstream] == [f"{PH_BASE}/schedule", f"{PH_BASE}/"]
+
+
+def test_ph_match_estimates_duration_and_reads_media() -> None:
+    game = client.get(f"/api/esports/ph/matches/{PH_SLUG}").json()["games"][0]
+    totals = [team["stats"] for team in game["teams"]]
+    minutes = sum(side["total_gold"] / side["gold_per_min"] for side in totals) / 2
+
+    assert game["duration"] is None
+    assert game["duration_estimate_seconds"] == round(minutes * 60)
+    assert game["duration_estimate"] == f"{round(minutes * 60) // 60}:{round(minutes * 60) % 60:02d}"
+    assert game["highlights"] == ["https://www.youtube.com/embed/abc123"]
+    assert game["screenshots"] == ["https://wsrv.nl/?url=https%3A%2F%2Fik.imagekit.io%2Fnloe8dhf7w%2Fmplph%2Fs18%2Fscreens%2Fgame1.jpg"]
+
+
+def test_match_status_follows_the_series_length() -> None:
+    def outcome(score1, score2, best_of=3):
+        match = ScheduleMatch(match_id=None, start_at=None, local_time="", team1=Team(name="A"), team2=Team(name="B"),
+                              score1=score1, score2=score2, best_of=best_of)
+        return match.status, match.winner
+
+    assert outcome(None, None) == ("scheduled", None)
+    assert outcome(1, 2) == ("finished", "team2")
+    assert outcome(1, 1) == ("in_progress", None)
+    assert outcome(2, 1, best_of=5) == ("in_progress", None)
+    assert outcome(3, 3, best_of=7) == ("in_progress", None)
+    assert outcome(4, 3, best_of=7) == ("finished", "team1")
+
+
+
+def test_ph_item_sequences_read_attributes_split_across_lines() -> None:
+    # The live site puts newlines and extra classes between the attributes; the fixture is tidy.
+    html = json.loads(fixture("ph_items.json"))["data"]
+    messy = html.replace('class="item-dots', 'class="item-dots ').replace('" style="left', '"\n        style="left')
+
+    assert philippines._item_sequences(messy) == philippines._item_sequences(html)
+    assert sum(len(row) for row in philippines._item_sequences(messy)[1]) == html.count("item-dots")
+
+
+def test_ph_match_page_is_read_without_a_dom_parser(monkeypatch) -> None:
+    # A Philippine match page is 0.8 MB; a BeautifulSoup tree of it went over the Worker's CPU budget (error 1102).
+    def no_tree(*args, **kwargs):
+        raise AssertionError("the match page must not be parsed into a tree")
+
+    monkeypatch.setattr(philippines, "parse_html", no_tree)
+    assert client.get(f"/api/esports/ph/matches/{PH_SLUG}").status_code == 200
 
 def test_ph_match_slug_is_validated() -> None:
     assert client.get("/api/esports/ph/matches/Not_A_Slug").status_code == 422
