@@ -35,7 +35,7 @@ from app.services.esports.common import (
     div_block,
     fetch_page,
     kda_ratio,
-    mark_grand_final,
+    mark_finals,
     need,
     need_attr,
     need_tag,
@@ -173,7 +173,7 @@ def _seed(row: Tag) -> PlayoffSeed:
 def _playoffs(html: str) -> PlayoffsResponse:
     pane = div_block(html, _PLAYOFFS_MARKER)
     days = _schedule_days(pane, PLAYOFFS_BEST_OF)
-    mark_grand_final(days)
+    mark_finals(days)
     standings = div_block(html, _PLAYOFFS_STANDINGS_MARKER)
     bracket = _IMAGE_SRC.search(standings)
     return PlayoffsResponse(

@@ -91,7 +91,7 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
    from the same schedule fetch as the regular season (ID: the `#playoffs` and `#standing-playoffs` blocks; PH: the first
    `#playoffs` block, since its cards are repeated lower on the page), so they cost no extra request. Undecided sides are
    `TBD` with the league's own logo, which is dropped (`logo: null`) so no league host leaks. Series length (`best_of`
-   3/5/7, the last playoff match being the grand final) drives `status`/`winner` on every match. PH games have no clock,
+   3/5/7; the lower bracket final and grand final are 7, found by round name in ID and as the last two matches in PH) drives `status`/`winner` on every match. PH games have no clock,
    so `duration_estimate` is total gold over gold per minute The Philippine item sequences are a CSRF-protected POST: the token comes from the match page and the request must carry that page's cookies explicitly (the pooled client's jar is shared across callers)
 
 8. **Standings formula (shared by both leagues)**: matches are first to 2 games; rank by match points, then net game wins,

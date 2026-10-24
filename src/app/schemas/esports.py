@@ -34,7 +34,7 @@ class ScheduleMatch(BaseModel):
     replay_url: str | None = None
     # Bracket round as the league names it ("Upper Bracket Finals"); playoffs of the Indonesian league only.
     round: str | None = None
-    # Games in the series: 3 in the regular season, 5 in the playoffs and 7 in the grand final.
+    # Games in the series: 3 in the regular season, 5 in the playoffs, 7 in the lower bracket final and grand final.
     best_of: int = 3
 
     @computed_field

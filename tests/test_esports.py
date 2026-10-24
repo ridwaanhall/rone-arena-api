@@ -188,10 +188,14 @@ def test_id_playoffs_read_rounds_seeds_bracket_and_undecided_sides() -> None:
     assert (played["status"], played["winner"]) == ("finished", "team1")
     assert (upcoming["status"], upcoming["winner"], upcoming["best_of"]) == ("scheduled", None, 5)
 
-    grand_final = final["matches"][0]
-    assert (grand_final["round"], grand_final["best_of"]) == ("Grand Finals", 7)
+    # The lower bracket final and the grand final are best of 7, found by their round names.
+    assert [(m["round"], m["best_of"]) for m in final["matches"]] == [
+        ("Lower Bracket Semi Finals", 5),
+        ("Lower Bracket Finals", 7),
+        ("Grand Finals", 7),
+    ]
     # Undecided sides carry the league's own logo, which must not leak.
-    assert grand_final["team1"] == {"name": "TBD", "full_name": None, "logo": None}
+    assert final["matches"][2]["team1"] == {"name": "TBD", "full_name": None, "logo": None}
 
 
 def test_id_playoffs_follow_the_language_and_share_the_schedule_fetch(upstream) -> None:
@@ -347,14 +351,22 @@ def test_ph_playoffs_read_days_bracket_and_seeds(monkeypatch) -> None:
     # Seeds are the top of the regular-season standings; the fixture has two teams.
     assert [(seed["seed"], seed["team"]["name"]) for seed in body["seeds"]] == [(1, "FLCN")]
     # The cards repeated further down the page are not playoff days.
-    assert [(day["day"], day["label"]) for day in body["days"]] == [(1, "Wednesday, 21 October 2026"), (5, "Sunday, 25 October 2026")]
+    assert [(day["day"], day["label"]) for day in body["days"]] == [
+        (1, "Wednesday, 21 October 2026"),
+        (4, "Saturday, 24 October 2026"),
+        (5, "Sunday, 25 October 2026"),
+    ]
     played = body["days"][0]["matches"][0]
     assert played["match_id"] == "onic-tnc-20261021"
     assert played["start_at"] == "2026-10-21T07:00:00+00:00"
     assert (played["score1"], played["score2"], played["best_of"], played["status"], played["winner"]) == (3, 2, 5, "finished", "team1")
     assert played["round"] is None
 
-    grand_final = body["days"][1]["matches"][0]
+    # No round names here: the last two matches (lower bracket final, grand final) are best of 7.
+    lower_final = body["days"][1]["matches"][0]
+    assert (lower_final["score1"], lower_final["score2"], lower_final["best_of"]) == (1, 0, 7)
+    assert (lower_final["status"], lower_final["winner"]) == ("in_progress", None)
+    grand_final = body["days"][2]["matches"][0]
     assert (grand_final["best_of"], grand_final["status"]) == (7, "scheduled")
     assert grand_final["team2"] == {"name": "TBD", "full_name": None, "logo": None}
 

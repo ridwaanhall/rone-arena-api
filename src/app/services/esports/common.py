@@ -16,10 +16,11 @@ from app.schemas.esports import Record, ScheduleDay, ScheduleResponse, ScheduleW
 # item-image URLs the Indonesian site hands out.
 CACHE_SECONDS = 300
 
-# Series length: first to 2 in the regular season, first to 3 in the playoffs, first to 4 in the grand final.
+# Series length: first to 2 in the regular season, first to 3 in the playoffs, first to 4 in the lower bracket
+# final and the grand final.
 REGULAR_SEASON_BEST_OF = 3
 PLAYOFFS_BEST_OF = 5
-GRAND_FINAL_BEST_OF = 7
+FINALS_BEST_OF = 7
 
 # Teams at the bottom of the regular season that miss the playoffs.
 ID_ELIMINATED = 3
@@ -135,8 +136,18 @@ def select_weeks(weeks: list[ScheduleWeek], week: int | None) -> ScheduleRespons
     return ScheduleResponse(weeks=chosen)
 
 
-def mark_grand_final(days: list[ScheduleDay]) -> None:
-    """The last match of the playoffs is the grand final, a best of 7."""
-    last = next((day.matches[-1] for day in reversed(days) if day.matches), None)
-    if last is not None:
-        last.best_of = GRAND_FINAL_BEST_OF
+def mark_finals(days: list[ScheduleDay]) -> None:
+    """The lower bracket final and the grand final are best of 7 (both leagues' brackets say so).
+
+    The Indonesian site names each round, so those two are found by name; the Philippine site names none, and
+    there they are the last two playoff matches.
+    """
+    matches = [match for day in days for match in day.matches]
+    named = [match for match in matches if _is_final(match.round)]
+    for match in named if named else matches[-2:]:
+        match.best_of = FINALS_BEST_OF
+
+
+def _is_final(label: str | None) -> bool:
+    name = (label or "").casefold()
+    return "grand final" in name or ("lower bracket final" in name and "semi" not in name)

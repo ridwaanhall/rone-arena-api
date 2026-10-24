@@ -184,8 +184,8 @@ _PLAYOFFS_DESCRIPTION = (
     "Playoffs of {league}: the bracket image, the playoff seeds and every playoff match, grouped by day.\n{lang_param}\n"
     "- **bracket_image**: The league's bracket picture, through the image proxy; null when none is published.\n"
     "- **seeds**: Regular-season rank and match win-lose of each playoff team, best first.{seeds_note}\n"
-    "- **days** / **matches**: Same fields as the schedule endpoint. **best_of** is 5, and 7 for the grand final "
-    "(the last match). A side that is not decided yet is named `TBD` with a null logo.{round_note}\n\n"
+    "- **days** / **matches**: Same fields as the schedule endpoint. **best_of** is 5, and 7 for the lower bracket final "
+    "and the grand final. A side that is not decided yet is named `TBD` with a null logo.{round_note}\n\n"
     "**match_id** works with the matches endpoint, as in the regular season. "
     "Data is read from the league's public site and cached for 5 minutes."
 )

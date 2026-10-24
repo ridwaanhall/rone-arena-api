@@ -36,7 +36,7 @@ from app.services.esports.common import (
     div_block,
     fetch_page,
     kda_ratio,
-    mark_grand_final,
+    mark_finals,
     need,
     need_attr,
     need_tag,
@@ -139,7 +139,7 @@ def _schedule_page() -> tuple[list[ScheduleWeek], list[ScheduleDay], str | None]
     # The playoff cards appear twice on the page; the first "playoffs" block is the schedule tab.
     playoffs = soup.find(id="playoffs")
     days = [_schedule_day(header, PLAYOFFS_BEST_OF) for header in playoffs.select(".match-category-flex")] if playoffs else []
-    mark_grand_final(days)
+    mark_finals(days)
     bracket = attr(playoffs.select_one(".playoffs-bracket img"), "src") if playoffs else None
     return weeks, days, bracket
 
