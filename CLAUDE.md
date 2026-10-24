@@ -53,8 +53,9 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
   randomness or network at import, e.g. the httpx client is created on first use); sync routes
   run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate
   (`app/web/page_cache.py`) to stay inside the per-request CPU budget.
-- FastAPI Cloud (`fastapi deploy`) still works and hosts the high-traffic fallback
-  `arena.fastapicloud.dev` (`ALTERNATIVE_ENDPOINT_URL`); `.fastapicloudignore` keeps Worker build files out of it.
+- FastAPI Cloud hosts `arena.fastapicloud.dev` (`ALTERNATIVE_ENDPOINT_URL`, the site's "Primary" host). It is
+  connected to the GitHub repo, so every push to `main` deploys it too, alongside the Worker; `fastapi deploy` is
+  only for a manual deploy. `.fastapicloudignore` keeps Worker build files out of it.
 - **Backup host on the server**: `src/worker.py` answers 307 to the same path and query on `ALTERNATIVE_ENDPOINT_URL`
   when the app raises or returns 500/502/504 (`app/core/fallback.py`; 503 is left alone). It cannot help when the
   Worker dies before Python runs (Cloudflare 1102 CPU/memory limits).
