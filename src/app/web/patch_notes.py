@@ -18,6 +18,24 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.4.0",
+        "date": "2026-10-24",
+        "summary": "Playoffs for the Indonesian and Philippine pro leagues, and match pages that load again.",
+        "new": [
+            "See each league's playoffs: the bracket picture, the seeds and every playoff match.",
+            "Indonesian playoff matches show their round, such as Upper Bracket Finals.",
+            "Every match now says how many games it is played over and who won it.",
+            "Philippine games show an estimated length, worked out from the gold earned.",
+            "Philippine games will show highlight videos and screenshots once the league adds them.",
+        ],
+        "improved": [
+            "Matches not decided yet show TBD without borrowing the league's logo.",
+        ],
+        "fixed": [
+            "Philippine match details load on our own server again instead of failing.",
+        ],
+    },
+    {
         "version": "1.3.0",
         "date": "2026-10-20",
         "summary": "Pick which of our two servers the site uses, plus a new site icon and share picture.",
