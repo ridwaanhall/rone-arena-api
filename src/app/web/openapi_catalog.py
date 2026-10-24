@@ -29,7 +29,7 @@ GROUP_META: dict[str, dict[str, str]] = {
     },
     "esports": {
         "title": "Esports",
-        "description": "Professional league schedules, standings, and match details.",
+        "description": "Professional league schedules, playoffs, standings, and match details.",
     },
 }
 

@@ -9,12 +9,24 @@ from bs4.element import PageElement, Tag
 
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
-from app.schemas.esports import Record, ScheduleResponse, ScheduleWeek
+from app.schemas.esports import Record, ScheduleDay, ScheduleResponse, ScheduleWeek
 
 # Upstream responses are parsed (and cached) for five minutes: long enough to absorb
 # bursts, short enough for live scores, and well under the six-hour life of the signed
 # item-image URLs the Indonesian site hands out.
 CACHE_SECONDS = 300
+
+# Series length: first to 2 in the regular season, first to 3 in the playoffs, first to 4 in the grand final.
+REGULAR_SEASON_BEST_OF = 3
+PLAYOFFS_BEST_OF = 5
+GRAND_FINAL_BEST_OF = 7
+
+# Teams at the bottom of the regular season that miss the playoffs.
+ID_ELIMINATED = 3
+PH_ELIMINATED = 2
+
+# Name the league sites give an undecided playoff side.
+TO_BE_DECIDED = "TBD"
 
 
 def text_of(element: PageElement | None) -> str:
@@ -97,3 +109,10 @@ def select_weeks(weeks: list[ScheduleWeek], week: int | None) -> ScheduleRespons
             message=f"Week {week} is not in the regular season. Available weeks: {', '.join(str(item.week) for item in weeks) or 'none'}.",
         )
     return ScheduleResponse(weeks=chosen)
+
+
+def mark_grand_final(days: list[ScheduleDay]) -> None:
+    """The last match of the playoffs is the grand final, a best of 7."""
+    last = next((day.matches[-1] for day in reversed(days) if day.matches), None)
+    if last is not None:
+        last.best_of = GRAND_FINAL_BEST_OF

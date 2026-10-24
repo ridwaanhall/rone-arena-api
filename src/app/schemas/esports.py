@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, computed_field
 
 from app.core.images import wsrv_url
 
@@ -32,6 +32,24 @@ class ScheduleMatch(BaseModel):
     score1: int | None
     score2: int | None
     replay_url: str | None = None
+    # Bracket round as the league names it ("Upper Bracket Finals"); playoffs of the Indonesian league only.
+    round: str | None = None
+    # Games in the series: 3 in the regular season, 5 in the playoffs and 7 in the grand final.
+    best_of: int = 3
+
+    @computed_field
+    @property
+    def status(self) -> Literal["scheduled", "in_progress", "finished"]:
+        if self.score1 is None or self.score2 is None:
+            return "scheduled"
+        return "finished" if max(self.score1, self.score2) > self.best_of // 2 else "in_progress"
+
+    @computed_field
+    @property
+    def winner(self) -> Literal["team1", "team2"] | None:
+        if self.status != "finished":
+            return None
+        return "team1" if (self.score1 or 0) > (self.score2 or 0) else "team2"
 
 
 class ScheduleDay(BaseModel):
@@ -47,6 +65,20 @@ class ScheduleWeek(BaseModel):
 
 class ScheduleResponse(BaseModel):
     weeks: list[ScheduleWeek]
+
+
+class PlayoffSeed(BaseModel):
+    seed: int
+    team: Team
+    # Regular-season match record.
+    match_wl: Record
+
+
+class PlayoffsResponse(BaseModel):
+    bracket_image: Image | None
+    # Regular-season rank of each playoff team, best first.
+    seeds: list[PlayoffSeed]
+    days: list[ScheduleDay]
 
 
 class Standing(BaseModel):
@@ -109,9 +141,16 @@ class GameTeam(BaseModel):
 class Game(BaseModel):
     number: int
     duration: str | None
+    # Philippine league only, which publishes no game clock: total gold divided by gold per minute,
+    # averaged over both teams. Close to the real length (the figures are rounded), never exact.
+    duration_estimate: str | None = None
+    duration_estimate_seconds: int | None = None
     # Minute labels of the item-sequence timeline axis (Philippine league only).
     timeline_minutes: list[int] = []
     teams: list[GameTeam]
+    # Video links and screenshots the Philippine league attaches to a game; often empty.
+    highlights: list[str] = []
+    screenshots: list[Image] = []
 
 
 class MatchDetailResponse(BaseModel):

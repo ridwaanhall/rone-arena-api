@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from html import unescape
+from typing import NamedTuple
 
 from bs4.element import Tag
 
@@ -15,6 +16,8 @@ from app.schemas.esports import (
     GameTeam,
     Hero,
     MatchDetailResponse,
+    PlayoffSeed,
+    PlayoffsResponse,
     Player,
     ScheduleDay,
     ScheduleMatch,
@@ -24,9 +27,13 @@ from app.schemas.esports import (
 )
 from app.services.esports.common import (
     CACHE_SECONDS,
+    PLAYOFFS_BEST_OF,
+    REGULAR_SEASON_BEST_OF,
+    TO_BE_DECIDED,
     attr,
     fetch_page,
     kda_ratio,
+    mark_grand_final,
     need,
     need_attr,
     need_tag,
@@ -60,6 +67,8 @@ def _standing(row: Tag) -> Standing:
 
 _WEEK_MARKER = '<div id="t-week-'
 _STANDINGS_MARKER = 'id="standing-regular-season"'
+_PLAYOFFS_MARKER = 'id="playoffs"'
+_PLAYOFFS_STANDINGS_MARKER = 'id="standing-playoffs"'
 _DIV_TAG = re.compile(r"<(/?)div\b")
 # Markers in a week pane, in page order: a day heading, or the start of a match card.
 _DAY_OR_CARD = re.compile(r'<div class="match (date|position-relative)[^"]*">')
@@ -67,6 +76,8 @@ _DAY_LABEL = re.compile(r"\s*(.*?)\s*</div>", re.S)
 _TEAM = re.compile(r'class="team team([12])[^"]*"[^>]*>\s*<div class="logo">\s*<img[^>]*?src="([^"]*)"[^>]*>.*?<div class="name">\s*(.*?)\s*</div>', re.S)
 _SCORE = re.compile(r'<div class="score[^"]*">\s*(.*?)\s*</div>', re.S)
 _PLAY_TIME = re.compile(r'<div class="pt-1"[^>]*>\s*(.*?)\s*</div>', re.S)
+_ROUND = re.compile(r'<div class="mb-1" style="[^"]*border-radius[^"]*">\s*(.*?)\s*</div>', re.S)
+_IMAGE_SRC = re.compile(r'<img[^>]*?src="([^"]*)"')
 _REPLAY_LINK = re.compile(r'<a [^>]*class="[^"]*\breplay\b[^"]*"[^>]*>')
 _HREF = re.compile(r'href="([^"]*)"')
 _MATCH_ID = re.compile(r"openMatchDetail\((\d+)\)")
@@ -103,10 +114,16 @@ def _week_panes(html: str) -> list[tuple[int, str]]:
 
 
 def _text(value: str) -> str:
-    return unescape(" ".join(value.split()))
+    return unescape(" ".join(re.sub(r"<!--.*?-->|<[^>]+>", " ", value, flags=re.S).split()))
 
 
-def _scheduled_match(card: str) -> ScheduleMatch:
+def _team(match: re.Match[str]) -> Team:
+    # Undecided playoff sides carry the league's own logo, which is left out.
+    name = _text(match[3])
+    return Team(name=name, logo=None if name == TO_BE_DECIDED else unescape(match[2]))
+
+
+def _scheduled_match(card: str, best_of: int) -> ScheduleMatch:
     teams = {m[1]: m for m in _TEAM.finditer(card)}
     scores = [_text(m[1]) for m in _SCORE.finditer(card)][:2]
     if "1" not in teams or "2" not in teams or len(scores) != 2:
@@ -120,19 +137,22 @@ def _scheduled_match(card: str) -> ScheduleMatch:
     time_box = _PLAY_TIME.search(card)
     replay = _REPLAY_LINK.search(card)
     replay_href = _HREF.search(replay[0]) if replay else None
+    round_label = _ROUND.search(card)
     return ScheduleMatch(
         match_id=match_id[1] if match_id else None,
         start_at=datetime.strptime(started[1], "%Y%m%dT%H%M%S").replace(tzinfo=UTC).isoformat() if started else None,
         local_time=_text(time_box[1]) if time_box else "",
-        team1=Team(name=_text(teams["1"][3]), logo=unescape(teams["1"][2])),
-        team2=Team(name=_text(teams["2"][3]), logo=unescape(teams["2"][2])),
+        team1=_team(teams["1"]),
+        team2=_team(teams["2"]),
         score1=int(scores[0]) if scores[0] else None,
         score2=int(scores[1]) if scores[1] else None,
         replay_url=unescape(replay_href[1]) if replay_href else None,
+        round=_text(round_label[1]) if round_label else None,
+        best_of=best_of,
     )
 
 
-def _schedule_days(pane: str) -> list[ScheduleDay]:
+def _schedule_days(pane: str, best_of: int = REGULAR_SEASON_BEST_OF) -> list[ScheduleDay]:
     markers = list(_DAY_OR_CARD.finditer(pane))
     days: list[ScheduleDay] = []
     for index, marker in enumerate(markers):
@@ -141,7 +161,7 @@ def _schedule_days(pane: str) -> list[ScheduleDay]:
             label = _DAY_LABEL.match(pane, marker.end())
             days.append(ScheduleDay(label=_text(label[1]) if label else "", matches=[]))
         elif days:
-            days[-1].matches.append(_scheduled_match(pane[marker.start() : end]))
+            days[-1].matches.append(_scheduled_match(pane[marker.start() : end], best_of))
     return days
 
 
@@ -153,12 +173,47 @@ def _standings(html: str) -> list[Standing]:
     return [_standing(row) for row in parse_html(block).select("tbody tr")]
 
 
+def _block(html: str, marker: str) -> str:
+    """The ``<div>`` that carries ``marker`` (an id attribute), or "" when the page has none."""
+    start = html.find(marker)
+    return _balanced_div(html, html.rfind("<div", 0, start)) if start >= 0 else ""
+
+
+def _seed(row: Tag) -> PlayoffSeed:
+    rank, team, match_wl = row.find_all("td", recursive=False)
+    image = team.find("img")
+    return PlayoffSeed(
+        seed=int(need(re.search(r"\d+", text_of(rank)), "a seed")[0]),
+        team=Team(name=attr(image, "alt") or text_of(team), logo=attr(image, "src")),
+        match_wl=parse_record(text_of(match_wl)),
+    )
+
+
+def _playoffs(html: str) -> PlayoffsResponse:
+    pane = _block(html, _PLAYOFFS_MARKER)
+    days = _schedule_days(pane, PLAYOFFS_BEST_OF)
+    mark_grand_final(days)
+    standings = _block(html, _PLAYOFFS_STANDINGS_MARKER)
+    bracket = _IMAGE_SRC.search(standings)
+    return PlayoffsResponse(
+        bracket_image=unescape(bracket[1]) if bracket else None,
+        seeds=[_seed(row) for row in parse_html(standings).select("tbody tr")] if standings else [],
+        days=days,
+    )
+
+
+class Season(NamedTuple):
+    weeks: list[ScheduleWeek]
+    standings: list[Standing]
+    playoffs: PlayoffsResponse
+
+
 @ttl_cache(CACHE_SECONDS)
-def get_season(lang: str) -> tuple[list[ScheduleWeek], list[Standing]]:
-    """Schedule weeks and standings, both read from one fetch of the schedule page in ``lang``."""
+def get_season(lang: str) -> Season:
+    """Schedule weeks, standings and playoffs, all read from one fetch of the schedule page in ``lang``."""
     html = fetch_page(EsportsSourceProvider.get_id_base_url(), f"/{lang}/schedule").text
     weeks = [ScheduleWeek(week=week, days=_schedule_days(pane)) for week, pane in _week_panes(html)]
-    return weeks, _standings(html)
+    return Season(weeks, _standings(html), _playoffs(html))
 
 
 def _asset(image: Tag) -> Asset:

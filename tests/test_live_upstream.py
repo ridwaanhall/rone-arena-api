@@ -251,6 +251,10 @@ def test_esports_id_schedule_standings_and_match() -> None:
         assert len(game_team["players"]) == 5
         assert all(p["damage_dealt"] and p["gold"] and p["items"] for p in game_team["players"])
 
+    playoffs = client.get("/api/esports/id/playoffs").json()
+    assert playoffs["days"] and playoffs["seeds"] and playoffs["bracket_image"].startswith("https://wsrv.nl/")
+    assert all(m["round"] for day in playoffs["days"] for m in day["matches"])
+
 
 def test_esports_ph_schedule_standings_and_match() -> None:
     schedule = client.get("/api/esports/ph/schedule").json()
@@ -266,3 +270,7 @@ def test_esports_ph_schedule_standings_and_match() -> None:
     for game_team in game["teams"]:
         assert len(game_team["players"]) == 5
         assert all(p["item_sequence"] and p["damage_dealt"] is not None for p in game_team["players"])
+    assert game["duration_estimate_seconds"] and 300 < game["duration_estimate_seconds"] < 3600
+
+    playoffs = client.get("/api/esports/ph/playoffs").json()
+    assert playoffs["days"] and playoffs["seeds"] and playoffs["bracket_image"].startswith("https://wsrv.nl/")

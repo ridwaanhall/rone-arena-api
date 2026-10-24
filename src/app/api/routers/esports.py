@@ -11,6 +11,7 @@ from app.core.enums import LeagueEnum, LeagueLanguageEnum
 from app.schemas.esports import (
     CalculateRequest,
     MatchDetailResponse,
+    PlayoffsResponse,
     ScheduleResponse,
     SimulateRequest,
     StandingsResponse,
@@ -57,12 +58,43 @@ _SCHEDULE_EXAMPLE = {
                             "score1": 2,
                             "score2": 0,
                             "replay_url": None,
+                            "round": None,
+                            "best_of": 3,
+                            "status": "finished",
+                            "winner": "team1",
                         }
                     ],
                 }
             ],
         }
     ]
+}
+
+_PLAYOFFS_EXAMPLE = {
+    "bracket_image": "https://wsrv.nl/?url=https://example.com/playoffs/bracket.png",
+    "seeds": [{"seed": 1, "team": {"name": "TLID", "full_name": None, "logo": _LOGO}, "match_wl": {"win": 12, "lose": 4}}],
+    "days": [
+        {
+            "day": None,
+            "label": "Sunday, 8 November 2026",
+            "matches": [
+                {
+                    "match_id": None,
+                    "start_at": "2026-11-08T09:00:00+00:00",
+                    "local_time": "16:00",
+                    "team1": {"name": "TLID", "full_name": None, "logo": _LOGO},
+                    "team2": {"name": "TBD", "full_name": None, "logo": None},
+                    "score1": None,
+                    "score2": None,
+                    "replay_url": None,
+                    "round": "Grand Finals",
+                    "best_of": 7,
+                    "status": "scheduled",
+                    "winner": None,
+                }
+            ],
+        }
+    ],
 }
 
 _STANDINGS_EXAMPLE = {
@@ -103,6 +135,8 @@ def _match_example(match_id: str, duration: str | None, stats: dict[str, int], s
             {
                 "number": 1,
                 "duration": duration,
+                "duration_estimate": None if duration else "16:48",
+                "duration_estimate_seconds": None if duration else 1008,
                 "timeline_minutes": [0, 2, 4] if sequence else [],
                 "teams": [
                     {
@@ -113,6 +147,8 @@ def _match_example(match_id: str, duration: str | None, stats: dict[str, int], s
                         "players": [{**_PLAYER_EXAMPLE, "item_sequence": sequence}],
                     }
                 ],
+                "highlights": [],
+                "screenshots": [],
             }
         ],
     }
@@ -139,7 +175,18 @@ _SCHEDULE_DESCRIPTION = (
     "Each match has:\n"
     "- **match_id**: Value for the matches endpoint; null while no details page exists.\n"
     "- **start_at**: Start time in UTC (ISO 8601). **local_time** is the time as shown on the site.\n"
-    "- **team1** / **team2** with logo, and **score1** / **score2** (null until played).\n\n"
+    "- **team1** / **team2** with logo, and **score1** / **score2** (null until played).\n"
+    "- **best_of** (3 in the regular season), **status** (`scheduled`, `in_progress` or `finished`, from the score) "
+    "and **winner** (`team1`, `team2`, or null until finished).\n\n"
+    "Data is read from the league's public site and cached for 5 minutes."
+)
+_PLAYOFFS_DESCRIPTION = (
+    "Playoffs of {league}: the bracket image, the playoff seeds and every playoff match, grouped by day.\n{lang_param}\n"
+    "- **bracket_image**: The league's bracket picture, through the image proxy; null when none is published.\n"
+    "- **seeds**: Regular-season rank and match win-lose of each playoff team, best first.{seeds_note}\n"
+    "- **days** / **matches**: Same fields as the schedule endpoint. **best_of** is 5, and 7 for the grand final "
+    "(the last match). A side that is not decided yet is named `TBD` with a null logo.{round_note}\n\n"
+    "**match_id** works with the matches endpoint, as in the regular season. "
     "Data is read from the league's public site and cached for 5 minutes."
 )
 _STANDINGS_DESCRIPTION = (
@@ -149,7 +196,7 @@ _STANDINGS_DESCRIPTION = (
 _MATCH_DESCRIPTION = (
     "Full match history of one match of {league}: every game with both teams and all players "
     "(hero, KDA, items, emblem, talents, gold, damage dealt, damage taken and tower damage).{extra}\n\n"
-    "Battle spells are not published by the league site. Data is cached for 5 minutes."
+    "Battle spells are not published by the league site. Regular-season and playoff matches both work. Data is cached for 5 minutes."
 )
 
 
@@ -162,7 +209,24 @@ _MATCH_DESCRIPTION = (
     responses=_example(_SCHEDULE_EXAMPLE),
 )
 def id_schedule(week: Week = None, lang: LeagueLang = LeagueLanguageEnum.ENGLISH) -> ScheduleResponse:
-    return select_weeks(indonesia.get_season(lang.value)[0], week)
+    return select_weeks(indonesia.get_season(lang.value).weeks, week)
+
+
+@router.get(
+    path="/id/playoffs",
+    name="api.esports.id_playoffs",
+    response_model=PlayoffsResponse,
+    summary="Indonesia Playoffs",
+    description=_PLAYOFFS_DESCRIPTION.format(
+        league="the Indonesian professional league",
+        lang_param=_LANG_PARAM,
+        seeds_note=" Read from the league's playoff table.",
+        round_note=" Each match also has its **round**, as the league names it (`Round 1 Match 1`, `Upper Bracket Finals`...).",
+    ),
+    responses=_example(_PLAYOFFS_EXAMPLE),
+)
+def id_playoffs(lang: LeagueLang = LeagueLanguageEnum.ENGLISH) -> PlayoffsResponse:
+    return indonesia.get_season(lang.value).playoffs
 
 
 @router.get(
@@ -174,7 +238,7 @@ def id_schedule(week: Week = None, lang: LeagueLang = LeagueLanguageEnum.ENGLISH
     responses=_example(_STANDINGS_EXAMPLE),
 )
 def id_standings(lang: LeagueLang = LeagueLanguageEnum.ENGLISH) -> StandingsResponse:
-    return StandingsResponse(standings=indonesia.get_season(lang.value)[1])
+    return StandingsResponse(standings=indonesia.get_season(lang.value).standings)
 
 
 @router.get(
@@ -207,6 +271,23 @@ def ph_schedule(week: Week = None) -> ScheduleResponse:
 
 
 @router.get(
+    path="/ph/playoffs",
+    name="api.esports.ph_playoffs",
+    response_model=PlayoffsResponse,
+    summary="Philippines Playoffs",
+    description=_PLAYOFFS_DESCRIPTION.format(
+        league="the Philippine professional league",
+        lang_param="",
+        seeds_note=" The site publishes none, so these are the top of the regular-season standings (all but the bottom 2).",
+        round_note=" The league names no rounds, so **round** is null.",
+    ),
+    responses=_example(_PLAYOFFS_EXAMPLE),
+)
+def ph_playoffs() -> PlayoffsResponse:
+    return philippines.get_playoffs()
+
+
+@router.get(
     path="/ph/standings",
     name="api.esports.ph_standings",
     response_model=StandingsResponse,
@@ -227,7 +308,10 @@ def ph_standings() -> StandingsResponse:
         league="the Philippine professional league",
         extra=(
             " Each team also reports its totals (gold, damage, buffs, objectives) and every player has the "
-            "**item_sequence**, the items in purchase order with their position on the timeline."
+            "**item_sequence**, the items in purchase order with their position on the timeline. The site gives no game clock, "
+            "so each game has **duration_estimate** (`m:ss`) and **duration_estimate_seconds**: total gold over gold per minute, "
+            "averaged over both teams, close to the real length but not exact. **highlights** (video links) and "
+            "**screenshots** are filled when the league attaches them."
         ),
     ),
     responses=_example(_PH_MATCH_EXAMPLE),

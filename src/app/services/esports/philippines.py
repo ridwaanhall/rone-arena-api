@@ -14,6 +14,8 @@ from app.schemas.esports import (
     GameTeam,
     Hero,
     MatchDetailResponse,
+    PlayoffSeed,
+    PlayoffsResponse,
     Player,
     ScheduleDay,
     ScheduleMatch,
@@ -24,9 +26,14 @@ from app.schemas.esports import (
 )
 from app.services.esports.common import (
     CACHE_SECONDS,
+    PH_ELIMINATED,
+    PLAYOFFS_BEST_OF,
+    REGULAR_SEASON_BEST_OF,
+    TO_BE_DECIDED,
     attr,
     fetch_page,
     kda_ratio,
+    mark_grand_final,
     need,
     need_attr,
     need_tag,
@@ -81,7 +88,12 @@ def get_standings() -> list[Standing]:
     return [_standing(row) for row in soup.select("#standing-regular-season #table-group tbody tr")]
 
 
-def _schedule_match(item: Tag, label: str) -> ScheduleMatch:
+def _team(name: str, logo: str) -> Team:
+    # Undecided playoff sides carry the league's own logo, which is left out.
+    return Team(name=name, logo=None if name == TO_BE_DECIDED else logo)
+
+
+def _schedule_match(item: Tag, label: str, best_of: int) -> ScheduleMatch:
     local_time = text_of(item.find("div"))
     names = [text_of(name) for name in item.select(".team-name")]
     logos = [need_attr(image, "src") for image in item.select("img")]
@@ -91,29 +103,31 @@ def _schedule_match(item: Tag, label: str) -> ScheduleMatch:
         match_id=href.rsplit("/", 1)[1] if href else None,
         start_at=_start_at(label, local_time),
         local_time=local_time,
-        team1=Team(name=names[0], logo=logos[0]),
-        team2=Team(name=names[1], logo=logos[1]),
+        team1=_team(names[0], logos[0]),
+        team2=_team(names[1], logos[1]),
         score1=int(score.group(1)) if score else None,
         score2=int(score.group(2)) if score else None,
+        best_of=best_of,
     )
 
 
-def _schedule_day(header: Tag) -> ScheduleDay:
+def _schedule_day(header: Tag, best_of: int = REGULAR_SEASON_BEST_OF) -> ScheduleDay:
     label = text_of(header.select_one(".match-category-day"))
     day = re.search(r"\d+", text_of(header.select_one(".match-category-day-no")))
     block = need_tag(header.find_parent(class_="col-lg-4"), "a schedule day")
     return ScheduleDay(
         day=int(day[0]) if day else None,
         label=label,
-        matches=[_schedule_match(item, label) for item in block.select(".schedule-item")],
+        matches=[_schedule_match(item, label, best_of) for item in block.select(".schedule-item")],
     )
 
 
 @ttl_cache(CACHE_SECONDS)
-def get_schedule() -> list[ScheduleWeek]:
+def _schedule_page() -> tuple[list[ScheduleWeek], list[ScheduleDay], str | None]:
+    """Regular-season weeks, playoff days and the bracket image, from one fetch of the schedule page."""
     soup = parse_html(fetch_page(EsportsSourceProvider.get_ph_base_url(), "/schedule").text)
     panes = [(need_attr(pane, "id"), pane) for pane in soup.select("#regular-season .tab-pane")]
-    return [
+    weeks = [
         ScheduleWeek(
             week=int(pane_id.rsplit("-", 1)[1]),
             days=[_schedule_day(header) for header in pane.select(".match-category-flex")],
@@ -121,6 +135,26 @@ def get_schedule() -> list[ScheduleWeek]:
         for pane_id, pane in panes
         if _WEEK_ID.match(pane_id)
     ]
+    # The playoff cards appear twice on the page; the first "playoffs" block is the schedule tab.
+    playoffs = soup.find(id="playoffs")
+    days = [_schedule_day(header, PLAYOFFS_BEST_OF) for header in playoffs.select(".match-category-flex")] if playoffs else []
+    mark_grand_final(days)
+    bracket = attr(playoffs.select_one(".playoffs-bracket img"), "src") if playoffs else None
+    return weeks, days, bracket
+
+
+def get_schedule() -> list[ScheduleWeek]:
+    return _schedule_page()[0]
+
+
+def get_playoffs() -> PlayoffsResponse:
+    _, days, bracket = _schedule_page()
+    table = get_standings()
+    return PlayoffsResponse(
+        bracket_image=bracket,
+        seeds=[PlayoffSeed(seed=row.rank, team=row.team, match_wl=row.match_wl) for row in table[: len(table) - PH_ELIMINATED]],
+        days=days,
+    )
 
 
 def _summary(pane: Tag) -> list[dict[str, int]]:
@@ -187,6 +221,23 @@ def _item_sequences(html: str) -> tuple[list[int], list[list[SequenceItem]]]:
     return axis, sequences
 
 
+def _duration_estimate(totals: list[dict[str, int]]) -> int | None:
+    """Game length in seconds from total gold over gold per minute, averaged over both teams."""
+    minutes = [side["total_gold"] / side["gold_per_min"] for side in totals if side.get("total_gold") and side.get("gold_per_min")]
+    return round(sum(minutes) / len(minutes) * 60) if minutes else None
+
+
+def _media(pane: Tag) -> tuple[list[str], list[str]]:
+    """Highlight video links and screenshot images of one game."""
+    highlights = [
+        link
+        for element in pane.select("#highlight a[href], #highlight iframe[src], #highlight source[src]")
+        if (link := attr(element, "href") or attr(element, "src")) and link.startswith("http")
+    ]
+    screenshots = [source for image in pane.select("#screenshots img") if (source := attr(image, "src"))]
+    return list(dict.fromkeys(highlights)), list(dict.fromkeys(screenshots))
+
+
 @ttl_cache(CACHE_SECONDS)
 def get_match(slug: str) -> MatchDetailResponse:
     base_url = EsportsSourceProvider.get_ph_base_url()
@@ -215,6 +266,8 @@ def get_match(slug: str) -> MatchDetailResponse:
                 payload={"_token": token, "battleId": battle_ids[str(number)], "matchName": slug},
             ).json()["data"]
         )
+        seconds = _duration_estimate(totals)
+        highlights, screenshots = _media(pane)
         players = [player for _, side_players in sides for player in side_players]
         for player, sequence in zip(players, sequences):
             player.item_sequence = sequence
@@ -222,6 +275,8 @@ def get_match(slug: str) -> MatchDetailResponse:
             Game(
                 number=number,
                 duration=None,
+                duration_estimate=f"{seconds // 60}:{seconds % 60:02d}" if seconds is not None else None,
+                duration_estimate_seconds=seconds,
                 timeline_minutes=axis,
                 teams=[
                     GameTeam(
@@ -233,6 +288,8 @@ def get_match(slug: str) -> MatchDetailResponse:
                     )
                     for side_totals, (team, side_players) in zip(totals, sides)
                 ],
+                highlights=highlights,
+                screenshots=screenshots,
             )
         )
     return MatchDetailResponse(match_id=slug, games=games)
