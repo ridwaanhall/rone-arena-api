@@ -81,6 +81,30 @@ def parse_record(value: str) -> Record:
     return Record(win=win, lose=lose)
 
 
+_DIV_TAG = re.compile(r"<(/?)div\b")
+
+
+def balanced_div(html: str, start: int) -> str:
+    """The ``<div>`` that opens at ``start``, up to its closing tag, found by counting nested divs.
+
+    The league pages are large (the Indonesian schedule is 2.4 MB, a Philippine match 0.8 MB) and building a
+    BeautifulSoup tree of one costs more CPU than a Cloudflare Worker request may use (error 1102), so the
+    scrapers slice the parts they need out of the text and parse those with regexes or a small tree.
+    """
+    depth = 0
+    for tag in _DIV_TAG.finditer(html, start):
+        depth += -1 if tag.group(1) else 1
+        if depth == 0:
+            return html[start : html.index(">", tag.start()) + 1]
+    raise _page_changed("the end of a block")
+
+
+def div_block(html: str, marker: str) -> str:
+    """The ``<div>`` whose opening tag carries ``marker`` (an id attribute), or "" when the page has none."""
+    start = html.find(marker)
+    return balanced_div(html, html.rfind("<div", 0, start)) if start >= 0 else ""
+
+
 def kda_ratio(kills: int, deaths: int, assists: int) -> float:
     return round((kills + assists) / max(deaths, 1), 2)
 

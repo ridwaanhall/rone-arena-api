@@ -31,6 +31,8 @@ from app.services.esports.common import (
     REGULAR_SEASON_BEST_OF,
     TO_BE_DECIDED,
     attr,
+    balanced_div,
+    div_block,
     fetch_page,
     kda_ratio,
     mark_grand_final,
@@ -69,7 +71,6 @@ _WEEK_MARKER = '<div id="t-week-'
 _STANDINGS_MARKER = 'id="standing-regular-season"'
 _PLAYOFFS_MARKER = 'id="playoffs"'
 _PLAYOFFS_STANDINGS_MARKER = 'id="standing-playoffs"'
-_DIV_TAG = re.compile(r"<(/?)div\b")
 # Markers in a week pane, in page order: a day heading, or the start of a match card.
 _DAY_OR_CARD = re.compile(r'<div class="match (date|position-relative)[^"]*">')
 _DAY_LABEL = re.compile(r"\s*(.*?)\s*</div>", re.S)
@@ -84,20 +85,6 @@ _MATCH_ID = re.compile(r"openMatchDetail\((\d+)\)")
 _CALENDAR_START = re.compile(r"dates=(\d{8}T\d{6})/")
 
 
-def _balanced_div(html: str, start: int) -> str:
-    """The ``<div>`` that opens at ``start``, up to its closing tag, found by counting nested divs."""
-    depth = 0
-    for tag in _DIV_TAG.finditer(html, start):
-        depth += -1 if tag.group(1) else 1
-        if depth == 0:
-            return html[start : html.index(">", tag.start()) + 1]
-    raise AppError(
-        status_code=502,
-        code="UPSTREAM_PAGE_CHANGED",
-        message="The league site returned a page in an unexpected format (a schedule block does not close).",
-    )
-
-
 def _week_panes(html: str) -> list[tuple[int, str]]:
     """(week number, markup) of each week pane.
 
@@ -109,7 +96,7 @@ def _week_panes(html: str) -> list[tuple[int, str]]:
     starts = [(m.start(), int(m[1])) for m in re.finditer(r'<div id="t-week-(\d+)"', html)]
     panes = []
     for index, (start, week) in enumerate(starts):
-        panes.append((week, html[start : starts[index + 1][0]] if index + 1 < len(starts) else _balanced_div(html, start)))
+        panes.append((week, html[start : starts[index + 1][0]] if index + 1 < len(starts) else balanced_div(html, start)))
     return panes
 
 
@@ -169,14 +156,8 @@ def _standings(html: str) -> list[Standing]:
     start = html.find(_STANDINGS_MARKER)
     if start < 0:
         return []
-    block = _balanced_div(html, html.rfind("<div", 0, start))
+    block = balanced_div(html, html.rfind("<div", 0, start))
     return [_standing(row) for row in parse_html(block).select("tbody tr")]
-
-
-def _block(html: str, marker: str) -> str:
-    """The ``<div>`` that carries ``marker`` (an id attribute), or "" when the page has none."""
-    start = html.find(marker)
-    return _balanced_div(html, html.rfind("<div", 0, start)) if start >= 0 else ""
 
 
 def _seed(row: Tag) -> PlayoffSeed:
@@ -190,10 +171,10 @@ def _seed(row: Tag) -> PlayoffSeed:
 
 
 def _playoffs(html: str) -> PlayoffsResponse:
-    pane = _block(html, _PLAYOFFS_MARKER)
+    pane = div_block(html, _PLAYOFFS_MARKER)
     days = _schedule_days(pane, PLAYOFFS_BEST_OF)
     mark_grand_final(days)
-    standings = _block(html, _PLAYOFFS_STANDINGS_MARKER)
+    standings = div_block(html, _PLAYOFFS_STANDINGS_MARKER)
     bracket = _IMAGE_SRC.search(standings)
     return PlayoffsResponse(
         bracket_image=unescape(bracket[1]) if bracket else None,

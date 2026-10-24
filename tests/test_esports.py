@@ -394,6 +394,24 @@ def test_match_status_follows_the_series_length() -> None:
     assert outcome(4, 3, best_of=7) == ("finished", "team1")
 
 
+
+def test_ph_item_sequences_read_attributes_split_across_lines() -> None:
+    # The live site puts newlines and extra classes between the attributes; the fixture is tidy.
+    html = json.loads(fixture("ph_items.json"))["data"]
+    messy = html.replace('class="item-dots', 'class="item-dots ').replace('" style="left', '"\n        style="left')
+
+    assert philippines._item_sequences(messy) == philippines._item_sequences(html)
+    assert sum(len(row) for row in philippines._item_sequences(messy)[1]) == html.count("item-dots")
+
+
+def test_ph_match_page_is_read_without_a_dom_parser(monkeypatch) -> None:
+    # A Philippine match page is 0.8 MB; a BeautifulSoup tree of it went over the Worker's CPU budget (error 1102).
+    def no_tree(*args, **kwargs):
+        raise AssertionError("the match page must not be parsed into a tree")
+
+    monkeypatch.setattr(philippines, "parse_html", no_tree)
+    assert client.get(f"/api/esports/ph/matches/{PH_SLUG}").status_code == 200
+
 def test_ph_match_slug_is_validated() -> None:
     assert client.get("/api/esports/ph/matches/Not_A_Slug").status_code == 422
     assert client.get("/api/esports/ph/matches/unknown-match-20260101").status_code == 404
