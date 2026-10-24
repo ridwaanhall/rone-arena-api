@@ -34,7 +34,8 @@ Workers Builds uploads a preview version for the branch; check it starts before 
 - Same or lower version, an existing tag, or any other branch: nothing happens. The old `4.x` tags predate
   the rename and are never compared.
 - Optional: edit the release on GitHub to add hand-written highlights.
-- FastAPI Cloud (`arena.fastapicloud.dev`, the "Primary" host) deploys separately with `fastapi deploy`.
+- FastAPI Cloud (`arena.fastapicloud.dev`, the "Primary" host) is connected to the GitHub repo and deploys `main`
+  on the same push; nothing to run by hand. Check `/api/openapi.json` there reports the new version.
 
 ## Backfill a missing release
 

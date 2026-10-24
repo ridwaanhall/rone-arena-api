@@ -145,13 +145,14 @@ uv run fastapi run
 
 #### Deploy
 
-Pushing to `main` deploys to Cloudflare Workers (`arena.rone.dev`) through Workers Builds,
-which runs `uv run pywrangler deploy`. Other branches get preview versions.
+Pushing to `main` deploys both hosts: Cloudflare Workers (`arena.rone.dev`) through Workers Builds,
+which runs `uv run pywrangler deploy` (other branches get preview versions), and FastAPI Cloud
+(`arena.fastapicloud.dev`), which is connected to the GitHub repository.
 
 ```bash
 # run the Worker locally (Linux/macOS; needs Node.js)
 uv run pywrangler dev
-# deploy the high-traffic fallback to FastAPI Cloud
+# deploy to FastAPI Cloud by hand (pushes to main already do this)
 fastapi deploy
 ```
 
