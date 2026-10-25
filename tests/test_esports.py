@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +16,7 @@ from app.core.exceptions import AppError
 from app.core.security import CryptoManager, EsportsSourceProvider
 from app.main import app
 from app.schemas.esports import ScheduleMatch, Team
-from app.services.esports import common, indonesia, philippines
+from app.services.esports import cambodia, common, indonesia, malaysia, philippines
 from app.services.esports.common import select_weeks, to_int
 from app.utils.ttl_cache import ttl_cache
 
@@ -23,6 +26,8 @@ ROOT = Path(__file__).parent.parent
 
 ID_BASE = "https://id.test"
 PH_BASE = "https://ph.test"
+MY_BASE = "https://my.test"
+KH_BASE = "https://kh.test"
 PH_SLUG = "rora-onic-20260821"
 
 
@@ -41,6 +46,13 @@ def upstream(monkeypatch):
         f"{PH_BASE}/": "ph_home.html",
         f"{PH_BASE}/schedule": "ph_schedule.html",
         f"{PH_BASE}/data/match/{PH_SLUG}": "ph_match.html",
+        f"{MY_BASE}/": "my_home.html",
+        f"{MY_BASE}/schedule": "my_schedule.html",
+        f"{MY_BASE}/ajax/rating/match-detail?matchId=278&isShowDetail=false": "my_match.html",
+        f"{KH_BASE}/teams": "kh_teams.html",
+        f"{KH_BASE}/schedule?stage=playoffs": "kh_playoffs.html",
+        # Only weeks 1 and 4 are saved; the other weeks reuse week 4's page.
+        **{f"{KH_BASE}/schedule?stage=regular&week={week}": f"kh_week{1 if week == 1 else 4}.html" for week in range(1, 6)},
     }
 
     def fake_request_page(*, method, url, headers, payload=None):
@@ -57,8 +69,24 @@ def upstream(monkeypatch):
     monkeypatch.setattr(common, "request_page", fake_request_page)
     monkeypatch.setattr(philippines, "request_page", fake_request_page)
     monkeypatch.setattr(EsportsSourceProvider, "get_id_base_url", classmethod(lambda cls: ID_BASE))
+    monkeypatch.setattr(cambodia, "request_page", fake_request_page)
     monkeypatch.setattr(EsportsSourceProvider, "get_ph_base_url", classmethod(lambda cls: PH_BASE))
-    for cached in (indonesia.get_season, indonesia.get_match, philippines.get_standings, philippines._schedule_page, philippines.get_match):
+    monkeypatch.setattr(EsportsSourceProvider, "get_my_base_url", classmethod(lambda cls: MY_BASE))
+    monkeypatch.setattr(EsportsSourceProvider, "get_kh_base_url", classmethod(lambda cls: KH_BASE))
+    for cached in (
+        indonesia.get_season,
+        indonesia.get_match,
+        philippines.get_standings,
+        philippines._schedule_page,
+        philippines.get_match,
+        malaysia.get_season,
+        malaysia._standings,
+        malaysia.get_match,
+        cambodia._week,
+        cambodia.get_standings,
+        cambodia.get_playoffs,
+        cambodia.get_image,
+    ):
         cached.cache_clear()
     return calls
 
@@ -436,6 +464,147 @@ def test_results_are_cached(upstream) -> None:
     assert len(upstream) == 1
 
 
+# ---- Malaysia
+
+
+def test_my_schedule_reads_weeks_days_scores_and_detail_ids() -> None:
+    body = client.get("/api/esports/my/schedule").json()
+
+    assert [week["week"] for week in body["weeks"]] == [1, 2]
+    day = body["weeks"][0]["days"][0]
+    assert day["day"] == 1 and day["label"] == "Friday, 14 Aug 2026"
+    match = day["matches"][0]
+    assert (match["team1"]["name"], match["score1"], match["score2"], match["team2"]["name"]) == ("AC", 1, 2, "BTRM")
+    assert match["match_id"] == "278" and match["status"] == "finished" and match["winner"] == "team2"
+    # 17:00 in Kuala Lumpur (UTC+8).
+    assert match["start_at"] == "2026-08-14T09:00:00+00:00"
+    assert match["replay_url"].startswith("https://www.youtube.com/")
+    assert sum(len(day["matches"]) for day in body["weeks"][0]["days"]) == 7
+
+
+def test_my_standings_read_short_and_full_names() -> None:
+    rows = client.get("/api/esports/my/standings").json()["standings"]
+
+    assert [(row["rank"], row["team"]["name"], row["match_point"], row["net_game_win"]) for row in rows[:2]] == [(1, "SRG", 11, 16), (2, "TR", 10, 11)]
+    assert rows[0]["team"]["full_name"] == "SELANGOR RED GIANTS"
+    assert rows[0]["match_wl"] == {"win": 11, "lose": 3} and rows[0]["game_wl"] == {"win": 24, "lose": 8}
+    assert len(rows) == 8
+
+
+def test_my_playoffs_read_rounds_series_length_and_seeds() -> None:
+    body = client.get("/api/esports/my/playoffs").json()
+
+    assert [seed["team"]["name"] for seed in body["seeds"]] == ["SRG", "TR", "VMS", "iG", "BTRM", "FL"]
+    first = body["days"][0]["matches"][0]
+    assert (first["team1"]["name"], first["team2"]["name"], first["round"], first["best_of"]) == ("VMS", "FL", "Upper Bracket QuarterFinals", 5)
+    assert first["start_at"] == "2026-10-28T07:00:00+00:00" and first["status"] == "scheduled"
+    rounds = [(match["round"], match["best_of"]) for day in body["days"] for match in day["matches"]]
+    assert rounds[-2:] == [("Lower Bracket Finals", 7), ("Grand Finals", 7)]
+    undecided = body["days"][1]["matches"][0]["team2"]
+    assert undecided == {"name": "TBD", "full_name": None, "logo": None}
+
+
+def test_my_match_details_map_the_shifted_figures() -> None:
+    body = client.get("/api/esports/my/matches/278").json()
+
+    game = body["games"][0]
+    assert game["duration"] == "10:35"
+    winners, losers = game["teams"]
+    assert (winners["team"]["name"], winners["winner"], winners["kills"]) == ("BTRM", True, 14)
+    assert (losers["team"]["name"], losers["winner"], losers["kills"]) == ("AC", False, 4)
+    tank = winners["players"][0]
+    assert (tank["name"], tank["hero"]["name"], tank["kills"], tank["deaths"], tank["assists"]) == ("Jeymz", "Barats", 0, 1, 10)
+    # The site's labels are shifted; a 10-minute game cannot have 47,101 gold, but a tank can take that much damage.
+    assert (tank["damage_dealt"], tank["gold"], tank["tower_damage"], tank["damage_taken"]) == (19615, 6219, 868, 47101)
+    assert [item["id"] for item in tank["items"]][:2] == ["1201", "2201"]
+    # Emblems and talents are printed for one side only, so they are left out.
+    assert tank["emblem"] is None and tank["talents"] == []
+    assert sum(player["kills"] for player in winners["players"]) == winners["kills"]
+
+
+def test_my_unknown_match_is_404(monkeypatch) -> None:
+    def failing(**kwargs):
+        raise AppError(status_code=500, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data")
+
+    monkeypatch.setattr(common, "request_page", failing)
+    response = client.get("/api/esports/my/matches/999999")
+    assert response.status_code == 404 and response.json()["code"] == "MATCH_NOT_FOUND"
+
+
+def test_my_schedule_and_playoffs_share_one_fetch_of_each_page(upstream) -> None:
+    client.get("/api/esports/my/schedule")
+    client.get("/api/esports/my/playoffs")
+    client.get("/api/esports/my/standings")
+
+    assert sorted(call.url for call in upstream) == [f"{MY_BASE}/", f"{MY_BASE}/schedule"]
+
+
+# ---- Cambodia
+
+
+def test_kh_schedule_reads_streamed_cards_into_their_days() -> None:
+    week = client.get("/api/esports/kh/schedule?week=1").json()["weeks"][0]
+
+    assert [day["label"] for day in week["days"]] == ["Friday, 18 September 2026", "Saturday, 19 September 2026", "Sunday, 20 September 2026"]
+    match = week["days"][0]["matches"][0]
+    assert (match["team1"]["name"], match["score1"], match["score2"], match["team2"]["name"]) == ("PRO", 2, 1, "GXL")
+    assert match["team1"]["full_name"] == "PRO Esports"
+    # 13:00 in Phnom Penh (UTC+7).
+    assert match["start_at"] == "2026-09-18T06:00:00+00:00" and match["match_id"] is None
+
+
+def test_kh_live_and_upcoming_matches_have_no_score() -> None:
+    days = client.get("/api/esports/kh/schedule?week=4").json()["weeks"][0]["days"]
+
+    last_day = days[-1]["matches"]
+    assert all(match["status"] == "scheduled" and match["score1"] is None for match in last_day)
+
+
+def test_kh_whole_season_fetches_each_week_once_and_unknown_weeks_never(upstream) -> None:
+    assert [week["week"] for week in client.get("/api/esports/kh/schedule").json()["weeks"]] == [1, 2, 3, 4, 5]
+    response = client.get("/api/esports/kh/schedule?week=9")
+
+    assert response.status_code == 404 and "1, 2, 3, 4, 5" in response.json()["message"]
+    assert len(upstream) == 5
+
+
+def test_kh_standings_and_playoff_seeds() -> None:
+    rows = client.get("/api/esports/kh/standings").json()["standings"]
+    assert [(row["team"]["name"], row["match_point"], row["net_game_win"]) for row in rows[:3]] == [("VGR", 6, 9), ("PRO", 6, 8), ("FLKH", 5, 7)]
+    assert rows[0]["team"]["full_name"] == "Vigor Apex"
+
+    playoffs = client.get("/api/esports/kh/playoffs").json()
+    assert [seed["team"]["name"] for seed in playoffs["seeds"]] == ["VGR", "PRO", "FLKH", "RVZ", "VAL", "TNR"]
+    # The bracket is not published yet.
+    assert playoffs["days"] == []
+
+
+def test_kh_logos_are_served_through_the_api_so_the_image_host_stays_hidden(monkeypatch) -> None:
+    logo = client.get("/api/esports/kh/standings").json()["standings"][0]["team"]["logo"]
+    assert "kh.test" not in logo and "/api/esports/kh/images/" in logo
+
+    fetched = []
+
+    def image(*, method, url, headers, payload=None):
+        fetched.append(url)
+        return SimpleNamespace(content=b"RIFF", headers={"content-type": "image/webp"})
+
+    monkeypatch.setattr(cambodia, "request_page", image)
+    response = client.get("/api/esports/kh/images/team%20rvz%20w.webp")
+    assert response.status_code == 200 and response.content == b"RIFF"
+    assert response.headers["cache-control"] == "public, max-age=86400"
+    assert fetched == ["https://cdn.kh.test/team%20rvz%20w.webp"]
+    assert client.get("/api/esports/kh/images/notes.txt").status_code == 422
+
+
+def test_simulator_reads_the_new_leagues_live_seasons() -> None:
+    my = client.post("/api/esports/my/standings/simulate", json={"results": []}).json()
+    assert (my["teams"], my["playoff_spots"], my["standings"][0]["team"]["name"]) == (8, 6, "SRG")
+
+    kh = client.post("/api/esports/kh/standings/simulate", json={"results": []}).json()
+    assert (kh["teams"], kh["eliminated"]) == (10, 4)
+
+
 # ---- encryption and secrecy
 
 
@@ -447,37 +616,74 @@ def test_sources_round_trip_through_the_crypto_manager() -> None:
     assert manager.decrypt(token) == "https://upstream.test"
 
 
+# SHA-256 of each league site's host name, so the tests can recognise a leaked host without the repository naming
+# it. Add a league's digest with its token (``hashlib.sha256(host.encode()).hexdigest()``, computed in a shell).
+HOST_DIGESTS = {
+    "3cba241fdb59518ec4d64bb4aba56f7a36dce823c9eb44e3d67ecbc3881830b9",
+    "5ab6d0cb13432a898129c34a9684f550d2080c2827dc0744005579d0fba60dd4",
+    "e1974da2f1f70f421b5623d1eacdc28c6384e74207ecd6e830629e5369106f29",
+    "5559aeeff1c05f607a01aa8c494d16bf515ff90bf5ca94fac60320e039104e6e",
+}
+_HOST_LIKE = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", re.I)
+
+
+def _named_hosts(text: str) -> set[str]:
+    """Every host-like word in ``text`` (and its parent domains) whose digest is a league site's."""
+    found = set()
+    for word in set(_HOST_LIKE.findall(text)):
+        labels = word.lower().split(".")
+        for index in range(len(labels) - 1):
+            candidate = ".".join(labels[index:])
+            if hashlib.sha256(candidate.encode()).hexdigest() in HOST_DIGESTS:
+                found.add(candidate)
+    return found
+
+
+def _real_hosts(monkeypatch) -> list[str]:
+    monkeypatch.undo()
+    return [urlsplit(url).hostname or "" for url in EsportsSourceProvider.all_base_urls()]
+
+
 @pytest.mark.skipif(not SECRET_KEY, reason="needs the real SECRET_KEY to decrypt the stored tokens")
 def test_stored_tokens_decrypt_to_the_league_sites(monkeypatch) -> None:
-    monkeypatch.undo()
+    hosts = _real_hosts(monkeypatch)
 
-    assert EsportsSourceProvider.get_id_base_url().startswith("https://id-")
-    assert EsportsSourceProvider.get_ph_base_url().startswith("https://ph-")
+    assert {hashlib.sha256(host.encode()).hexdigest() for host in hosts} == HOST_DIGESTS
 
 
 def _tracked_files() -> list[Path]:
-    listing = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
+    listing = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
     return [ROOT / name for name in listing if name and (ROOT / name).is_file() and (ROOT / name).suffix not in {".png", ".jpg", ".webp", ".ico", ".woff2", ".lock"}]
 
 
 def test_upstream_hosts_and_secret_never_appear_in_the_repository() -> None:
-    hosts = ("id-mpl.com", "ph-mpl.com")
     for path in _tracked_files():
-        if path == Path(__file__).resolve():
-            continue
         content = path.read_text(encoding="utf-8", errors="ignore")
-        assert not any(host in content for host in hosts), f"{path} names an upstream host"
+        assert not _named_hosts(content), f"{path} names an upstream host"
         if SECRET_KEY:
             assert SECRET_KEY not in content, f"{path} contains the secret key"
 
 
+def _rendered() -> list[str]:
+    pages = [client.get(url).text for url in ("/api/openapi.json", "/web/esports", "/", "/llms.txt", "/tools/standings")]
+    pages.append(json.dumps(client.get("/api").json()))
+    pages += [client.get(f"/api/esports/{path}").text for path in ("my/standings", "my/schedule", "my/matches/278", "kh/standings", "kh/schedule?week=1")]
+    return pages
+
+
 def test_upstream_hosts_and_secret_never_reach_the_website() -> None:
-    rendered = [client.get(url).text for url in ("/api/openapi.json", "/web/esports", "/")]
-    rendered.append(json.dumps(client.get("/api").json()))
-    for text in rendered:
-        assert "id-mpl" not in text and "ph-mpl" not in text
+    for text in _rendered():
+        assert not _named_hosts(text)
         if SECRET_KEY:
             assert SECRET_KEY not in text
+
+
+@pytest.mark.skipif(not SECRET_KEY, reason="needs the real SECRET_KEY to decrypt the stored tokens")
+def test_answers_never_carry_a_league_host_even_as_part_of_an_address(monkeypatch) -> None:
+    pages = _rendered()
+    hosts = _real_hosts(monkeypatch)
+    for text in pages:
+        assert not any(host in text for host in hosts)
 
 
 def test_upstream_errors_do_not_expose_the_upstream_url(monkeypatch) -> None:

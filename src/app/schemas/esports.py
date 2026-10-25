@@ -180,7 +180,7 @@ _SIMULATIONS_HELP = "How many seasons to simulate for the playoff probability (1
 
 class SimulateRequest(BaseModel):
     results: list[MatchResult] = Field(default_factory=list, max_length=400, description="Matches to set or clear. Everything else keeps the real result.")
-    eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs (the bottom of the table). Default: 3 for Indonesia, 2 for the Philippines.")
+    eliminated: int | None = Field(default=None, ge=0, le=19, description="Teams that miss the playoffs (the bottom of the table). Default: 3 for Indonesia, 2 for the Philippines, 2 for Malaysia, 4 for Cambodia.")
     model: ProbabilityModel = Field(default="form", description=_MODEL_HELP)
     simulations: int | None = Field(default=None, ge=100, le=20000, description=_SIMULATIONS_HELP)
 

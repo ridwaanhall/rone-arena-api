@@ -284,6 +284,7 @@ ul, ol { margin: 0; padding: 0; }
 /* Text tabs with an underline for the active one. */
 .tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
+#mode-tabs { flex-wrap: wrap; row-gap: 0; }
 .tab {
 	flex: none;
 	padding: 10px 0;

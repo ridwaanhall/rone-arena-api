@@ -97,6 +97,13 @@ class EsportsSourceProvider:
         b"gAAAAABqyhNRpD5pDEU1nSWncnLRIBwaAdRlP6bEgb3HIt7XRs34Qnn67_vTUeL9D5Xl_l7T2rEoBo8Qzw7cFbnBH4iGhqBiuT4hymFk8otQn5hboHuIDOs="
     )
 
+    ESPORTS_MY_KEY = (
+        b"gAAAAABq3Y-9h4i3wa997EEM0kBo6BQIpXY5e7vyFnc5fyna7f_xVSse6KffAx0R3eIyn1DDb7d1aG5XVAVlw9sjc5flRZtP0tIcPqkZnYRwDMNgSC12hPVTrr9Wy4-QcJNyuJLUfelW"
+    )
+    ESPORTS_KH_KEY = (
+        b"gAAAAABq3Y-9lqLeis5HLoyh295J2QekDW7_wnZ-waOiyIj7KWWl1p2mymt4qb3XYhTAqYrRvsdPtoRGFfI7ybbKeZdRSEFaTS1BjkOY6tsAsVcCOM_bQTM="
+    )
+
     @classmethod
     def get_id_base_url(cls) -> str:
         return _decrypt(cls.ESPORTS_ID_KEY)
@@ -104,3 +111,16 @@ class EsportsSourceProvider:
     @classmethod
     def get_ph_base_url(cls) -> str:
         return _decrypt(cls.ESPORTS_PH_KEY)
+
+    @classmethod
+    def get_my_base_url(cls) -> str:
+        return _decrypt(cls.ESPORTS_MY_KEY)
+
+    @classmethod
+    def get_kh_base_url(cls) -> str:
+        return _decrypt(cls.ESPORTS_KH_KEY)
+
+    @classmethod
+    def all_base_urls(cls) -> list[str]:
+        """Every league site, for the tests that check no host leaks into the repo or the website."""
+        return [cls.get_id_base_url(), cls.get_ph_base_url(), cls.get_my_base_url(), cls.get_kh_base_url()]

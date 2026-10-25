@@ -5,7 +5,7 @@
 	<h1>Standings simulator</h1>
 	<p class="lede">
 		Change the score of any match and watch the table, the playoff line and the eliminations move. Start from the real
-		Indonesian or Philippine season, or build your own league with any number of teams.
+		Indonesian, Philippine, Malaysian or Cambodian season, or build your own league with any number of teams.
 	</p>
 </header>
 
@@ -19,6 +19,8 @@
 			<div class="tabs" role="tablist" aria-label="League" id="mode-tabs">
 				<button type="button" class="tab is-active" role="tab" data-mode="id" aria-selected="true">Indonesia</button>
 				<button type="button" class="tab" role="tab" data-mode="ph" aria-selected="false">Philippines</button>
+				<button type="button" class="tab" role="tab" data-mode="my" aria-selected="false">Malaysia</button>
+				<button type="button" class="tab" role="tab" data-mode="kh" aria-selected="false">Cambodia</button>
 				<button type="button" class="tab" role="tab" data-mode="custom" aria-selected="false">Custom league</button>
 			</div>
 
@@ -101,13 +103,14 @@
 			<li>If they are still level, the league plays a tiebreaker match. The table marks these teams as tied.</li>
 		</ol>
 		<p>
-			These rules rebuild the official Indonesian and Philippine tables exactly. Game difference comes before the result between two
+			These rules rebuild the official Indonesian, Philippine, Malaysian and Cambodian tables exactly. Game difference comes before the result between two
 			teams: a team can lose to another and still finish above it.
 		</p>
 		<p>
-			A season has as many weeks as teams, and every team meets every other team twice. In a custom league the schedule is made for you
-			the same way. The teams that miss the playoffs are the ones at the bottom of the table: the last 3 in Indonesia, the last 2 in
-			the Philippines, and the number you choose in a custom league.
+			In Indonesia and the Philippines a season has as many weeks as teams, and every team meets every other team twice; Malaysia
+			also plays everyone twice, and Cambodia plays everyone once. In a custom league the schedule is made for you with every team
+			meeting every other twice. The teams that miss the playoffs are the ones at the bottom of the table: the last 3 in Indonesia,
+			the last 2 in the Philippines and Malaysia, the last 4 in Cambodia, and the number you choose in a custom league.
 		</p>
 		<p>
 			The status column shows what a team can still reach. <strong>Clinched</strong> means it is certain to make the playoffs,

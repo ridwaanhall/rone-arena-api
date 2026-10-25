@@ -28,7 +28,7 @@
 		alive: ["Alive", ""],
 		eliminated: ["Eliminated", "tag--loss"],
 	};
-	const LEAGUE_NAMES = { id: "Indonesia", ph: "Philippines", custom: "Custom league" };
+	const LEAGUE_NAMES = { id: "Indonesia", ph: "Philippines", my: "Malaysia", kh: "Cambodia", custom: "Custom league" };
 
 	const $ = (id) => document.getElementById(id);
 	const els = {
@@ -52,8 +52,8 @@
 		mode: "id",
 		week: null,
 		// Edits per mode: key "week|team1|team2" -> { week, team1, team2, score1, score2 } (scores null = cleared).
-		edits: { id: {}, ph: {}, custom: {} },
-		eliminated: { id: null, ph: null, custom: null },
+		edits: { id: {}, ph: {}, my: {}, kh: {}, custom: {} },
+		eliminated: { id: null, ph: null, my: null, kh: null, custom: null },
 		custom: { count: 8, names: [] },
 		model: "form",
 		data: null,

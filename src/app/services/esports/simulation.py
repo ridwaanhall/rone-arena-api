@@ -16,11 +16,16 @@ from app.schemas.esports import (
     StandingsSimulationResponse,
     Team,
 )
-from app.services.esports import indonesia, philippines, probability, standings
-from app.services.esports.common import ID_ELIMINATED, PH_ELIMINATED
+from app.services.esports import cambodia, indonesia, malaysia, philippines, probability, standings
+from app.services.esports.common import ID_ELIMINATED, KH_ELIMINATED, MY_ELIMINATED, PH_ELIMINATED
 
 # Teams that miss the playoffs by default.
-DEFAULT_ELIMINATED = {LeagueEnum.INDONESIA: ID_ELIMINATED, LeagueEnum.PHILIPPINES: PH_ELIMINATED}
+DEFAULT_ELIMINATED = {
+    LeagueEnum.INDONESIA: ID_ELIMINATED,
+    LeagueEnum.PHILIPPINES: PH_ELIMINATED,
+    LeagueEnum.MALAYSIA: MY_ELIMINATED,
+    LeagueEnum.CAMBODIA: KH_ELIMINATED,
+}
 CUSTOM_ELIMINATED = 3
 
 
@@ -105,12 +110,22 @@ def _from_schedule(weeks: list[ScheduleWeek], known: list[Standing]) -> tuple[di
     return teams, matches
 
 
-def simulate_league(league: LeagueEnum, request: SimulateRequest) -> StandingsSimulationResponse:
+def _season(league: LeagueEnum) -> tuple[list[ScheduleWeek], list[Standing]]:
+    """The league's live schedule and standings. Each league's season is its real one, so Cambodia's single round
+    robin needs nothing special here."""
     if league is LeagueEnum.INDONESIA:
         season = indonesia.get_season(LeagueLanguageEnum.ENGLISH.value)
-        weeks, known = season.weeks, season.standings
-    else:
-        weeks, known = philippines.get_schedule(), philippines.get_standings()
+        return season.weeks, season.standings
+    if league is LeagueEnum.MALAYSIA:
+        season = malaysia.get_season()
+        return season.weeks, season.standings
+    if league is LeagueEnum.CAMBODIA:
+        return cambodia.get_schedule(), cambodia.get_standings()
+    return philippines.get_schedule(), philippines.get_standings()
+
+
+def simulate_league(league: LeagueEnum, request: SimulateRequest) -> StandingsSimulationResponse:
+    weeks, known = _season(league)
     teams, matches = _from_schedule(weeks, known)
     if not matches:
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="The league schedule is not available right now.")
