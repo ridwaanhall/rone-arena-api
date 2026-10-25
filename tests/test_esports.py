@@ -522,6 +522,64 @@ def test_my_match_details_map_the_shifted_figures() -> None:
     assert sum(player["kills"] for player in winners["players"]) == winners["kills"]
 
 
+def _my_team2_kda_copied(page: str) -> str:
+    """The site's bad version of a match: team 2's KDA (with an extra class) repeats team 1's."""
+    parts = re.split(r'(player-info-stats team[12]")', page)
+    kda = re.compile(r'<div class="kda-content">\s*\d+/\d+/\d+\s*</div>')
+    last = None
+    for index in range(1, len(parts) - 1, 2):
+        found = kda.search(parts[index + 1])
+        if parts[index].endswith('team1"'):
+            last = found[0] if found else None
+        elif found and last:
+            parts[index + 1] = parts[index + 1].replace(found[0], last.replace('"kda-content"', '"kda-content me-2"'), 1)
+    return "".join(parts)
+
+
+def _serve_my_match(monkeypatch, pages: list[str]) -> list[str]:
+    served: list[str] = []
+
+    def fake(*, method, url, headers, payload=None):
+        served.append(url)
+        return SimpleNamespace(text=pages[min(len(served), len(pages)) - 1])
+
+    monkeypatch.setattr(common, "request_page", fake)
+    return served
+
+
+def test_my_match_refetches_the_version_whose_kills_do_not_add_up(monkeypatch) -> None:
+    good = fixture("my_match.html")
+    served = _serve_my_match(monkeypatch, [_my_team2_kda_copied(good), good])
+
+    body = client.get("/api/esports/my/matches/278").json()
+
+    assert len(served) == 2
+    for game in body["games"]:
+        for team in game["teams"]:
+            assert sum(player["kills"] for player in team["players"]) == team["kills"]
+
+
+def test_my_match_never_serves_kills_that_do_not_add_up(monkeypatch) -> None:
+    _serve_my_match(monkeypatch, [_my_team2_kda_copied(fixture("my_match.html"))])
+
+    response = client.get("/api/esports/my/matches/278")
+
+    # Every game of the bad version is wrong, and six tries never got a good copy: no wrong numbers are served.
+    assert response.status_code == 404 and response.json()["code"] == "MATCH_NOT_FOUND"
+
+
+def test_my_game_without_heroes_is_left_out(monkeypatch) -> None:
+    page = fixture("my_match.html")
+    game = page[page.index('<div class="card-match-detail') :]
+    # The saved match has one game; a copy of it without heroes stands in for the site's hero-less game 2.
+    blank = re.sub(r'(<img class="hero-logo[^"]*" src="[^"]*" alt=")[^"]*"', r'\1"', game).replace('data-game-no="1"', 'data-game-no="2"', 1)
+    _serve_my_match(monkeypatch, [page + blank])
+
+    body = client.get("/api/esports/my/matches/278").json()
+
+    assert [game["number"] for game in body["games"]] == [1]
+
+
 def test_my_unknown_match_is_404(monkeypatch) -> None:
     def failing(**kwargs):
         raise AppError(status_code=500, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data")

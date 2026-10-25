@@ -215,8 +215,9 @@ _GAME_TIME = re.compile(r'<div class="text-game-time">\s*([\d:]+)\s*</div>')
 _PLAYER_START = re.compile(r'player-info-stats team([12])"')
 _MID_START = re.compile(r'<div class="col-0 col-lg-mid\b')
 _PLAYER_NAME = re.compile(r'<div class="player-name">\s*(.*?)\s*</div>', re.S)
-_HERO = re.compile(r'<img class="hero-logo[^"]*" src="([^"]*)" alt="([^"]*)"')
-_KDA = re.compile(r'<div class="kda-content">\s*(\d+)/(\d+)/(\d+)\s*</div>')
+_HERO = re.compile(r'<img class="hero-logo[^"]*" src="([^"]*)" alt="([^"]+)"')
+# Team 2's KDA carries a spacing class as well (`kda-content me-2`) in one of the page's two versions.
+_KDA = re.compile(r'<div class="kda-content[^"]*">\s*(\d+)/(\d+)/(\d+)\s*</div>')
 _EQUIPMENT = re.compile(r'<img src="([^"]*)" alt="(\d+)" class="equipment-logo"')
 _PAIR = re.compile(r'<div class="kda-content">\s*([\d,.]+)\s*</div>\s*<div class="kda-text">.*?</div>\s*<div class="kda-content">\s*([\d,.]+)\s*</div>', re.S)
 # The four figures between two players, in page order. The site labels them tower damage, damage taken, hero
@@ -226,9 +227,12 @@ _PAIR = re.compile(r'<div class="kda-content">\s*([\d,.]+)\s*</div>\s*<div class
 _MID_FIGURES = ("damage_dealt", "gold", "tower_damage", "damage_taken")
 
 
-def _player(block: str, figures: dict[str, int]) -> Player:
+def _player(block: str, figures: dict[str, int]) -> Player | None:
+    """A player, or None when the site has not filled in the hero (it leaves some games without them)."""
     name = _text(need(_PLAYER_NAME.search(block), "a player name")[1])
-    hero = need(_HERO.search(block), "a hero")
+    hero = _HERO.search(block)
+    if not hero:
+        return None
     kills, deaths, assists = (int(part) for part in need(_KDA.search(block), "a KDA").groups())
     return Player(
         name=name,
@@ -249,13 +253,13 @@ def _player(block: str, figures: dict[str, int]) -> Player:
     )
 
 
-def _players(block: str) -> tuple[list[Player], list[Player]]:
+def _players(block: str) -> tuple[list[Player | None], list[Player | None]]:
     """Each lane row is team 1's player, the figures of both, then team 2's player."""
     marks = sorted(
         [(found.start(), found[1]) for found in _PLAYER_START.finditer(block)]
         + [(found.start(), "mid") for found in _MID_START.finditer(block)]
     )
-    sides: tuple[list[Player], list[Player]] = ([], [])
+    sides: tuple[list[Player | None], list[Player | None]] = ([], [])
     pending: list[str] = []
     figures: tuple[dict[str, int], dict[str, int]] = ({}, {})
     for index, (start, kind) in enumerate(marks):
@@ -289,28 +293,26 @@ def _game(number: int, block: str) -> Game | None:
             )
         )
     players = _players(block)
-    if len(sides) != 2 or not players[0]:
+    # A game the site published without its heroes says nothing about the draft, so it is left out.
+    if len(sides) != 2 or not players[0] or any(player is None for side in players for player in side):
         return None
     clock = _GAME_TIME.search(header)
     return Game(
         number=number,
         duration=clock[1] if clock else None,
         teams=[
-            GameTeam(team=team, winner=won, kills=kills, stats={}, players=side_players)
+            GameTeam(team=team, winner=won, kills=kills, stats={}, players=[player for player in side_players if player])
             for (team, won, kills), side_players in zip(sides, players)
         ],
     )
 
 
-@ttl_cache(CACHE_SECONDS)
-def get_match(match_id: int) -> MatchDetailResponse:
-    try:
-        html = fetch_page(EsportsSourceProvider.get_my_base_url(), f"/ajax/rating/match-detail?matchId={match_id}&isShowDetail=false").text
-    except AppError as error:
-        # The site answers an unknown match with a 500; say so plainly instead of passing on a server error.
-        if error.status_code in (404, 500):
-            raise AppError(status_code=404, code="MATCH_NOT_FOUND", message=f"No match details found for match {match_id}.") from error
-        raise
+def _consistent(game: Game) -> bool:
+    """The players' kills add up to the team's score."""
+    return all(sum(player.kills for player in team.players) == team.kills for team in game.teams)
+
+
+def _games(html: str) -> list[Game]:
     starts = list(_GAME_START.finditer(html))
     games = []
     for index, found in enumerate(starts):
@@ -318,6 +320,29 @@ def get_match(match_id: int) -> MatchDetailResponse:
         game = _game(int(found[1]), html[found.start() : end])
         if game:
             games.append(game)
+    return games
+
+
+# The site serves two versions of a match fragment at random (about 2 in 5 fetches get the bad one, Oct 2026), and
+# that one repeats team 1's KDA for team 2. A page whose kills do not add up is fetched again (six tries leave
+# under a 0.5 % chance of no good copy); a game still wrong after the last try is left out.
+_MATCH_TRIES = 6
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_match(match_id: int) -> MatchDetailResponse:
+    for _ in range(_MATCH_TRIES):
+        try:
+            html = fetch_page(EsportsSourceProvider.get_my_base_url(), f"/ajax/rating/match-detail?matchId={match_id}&isShowDetail=false").text
+        except AppError as error:
+            # The site answers an unknown match with a 500; say so plainly instead of passing on a server error.
+            if error.status_code in (404, 500):
+                raise AppError(status_code=404, code="MATCH_NOT_FOUND", message=f"No match details found for match {match_id}.") from error
+            raise
+        games = _games(html)
+        if all(_consistent(game) for game in games):
+            break
+    games = [game for game in games if _consistent(game)]
     if not games:
         raise AppError(status_code=404, code="MATCH_NOT_FOUND", message=f"No match details found for match {match_id}.")
     return MatchDetailResponse(match_id=str(match_id), games=games)
