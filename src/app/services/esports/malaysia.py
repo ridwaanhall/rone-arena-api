@@ -279,6 +279,14 @@ def _players(block: str) -> tuple[list[Player | None], list[Player | None]]:
     return sides
 
 
+# The match fragment cuts a long team name with a run of dots ("iG ........"); the schedule names the team "iG".
+_CUT_NAME = re.compile(r"\s*\.{2,}\s*$")
+
+
+def _team_name(markup: str) -> str:
+    return _CUT_NAME.sub("", _text(markup))
+
+
 def _game(number: int, block: str) -> Game | None:
     header = block[: block.find("team-versus-title mobile")]
     sides = []
@@ -287,7 +295,7 @@ def _game(number: int, block: str) -> Game | None:
         logo = _SIDE_LOGO.search(side)
         sides.append(
             (
-                Team(name=_text(need(_SIDE_NAME.search(side), "a team name")[1]), logo=unescape(logo[1]) if logo else None),
+                Team(name=_team_name(need(_SIDE_NAME.search(side), "a team name")[1]), logo=unescape(logo[1]) if logo else None),
                 found[2] == "victory",
                 int(need(_SIDE_KILLS.search(side), "a team's kills")[1]),
             )

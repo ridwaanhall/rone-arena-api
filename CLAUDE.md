@@ -159,7 +159,7 @@ League notes:
   The match fragment comes in two versions at random (about 2 in 5 fetches get the bad one, Oct 2026): the bad one
   repeats team 1's KDA for team 2 (`kda-content me-2`), and its real numbers are nowhere in it. `get_match` checks
   that each side's player kills add up to its score and fetches again, up to `_MATCH_TRIES` (6); a game still wrong is
-  left out, as is a game published without heroes (empty `alt`).
+  left out, as is a game published without heroes (empty `alt`). A long team name is cut with dots in the fragment ("iG ........"); `_team_name` drops them.
 - **Cambodia**: single round robin, 10 teams, 5 weeks; one page per week (`?stage=regular&week=N`), streamed React
   markup (day headings hold `<template id="P:x">` placeholders filled by `<div hidden id="S:x">` cards later in the
   page). Standings from `/teams`; playoffs from `?stage=playoffs` (empty until the bracket is published); seeds are the
