@@ -580,6 +580,16 @@ def test_my_game_without_heroes_is_left_out(monkeypatch) -> None:
     assert [game["number"] for game in body["games"]] == [1]
 
 
+def test_my_match_drops_the_dots_of_a_cut_team_name(monkeypatch) -> None:
+    page = fixture("my_match.html")
+    name = re.search(r'<div class="team-name">\s*(.*?)\s*</div>', page, re.S)[1]
+    _serve_my_match(monkeypatch, [page.replace(f'<div class="team-name">{name}</div>', f'<div class="team-name">{name} ........</div>', 1)])
+
+    body = client.get("/api/esports/my/matches/278").json()
+
+    assert body["games"][0]["teams"][0]["team"]["name"] == name
+
+
 def test_my_unknown_match_is_404(monkeypatch) -> None:
     def failing(**kwargs):
         raise AppError(status_code=500, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data")

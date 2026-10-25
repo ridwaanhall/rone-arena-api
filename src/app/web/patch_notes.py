@@ -18,6 +18,14 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.6.2",
+        "date": "2026-10-25",
+        "summary": "Malaysian team names read cleanly in match details.",
+        "fixed": [
+            "A Malaysian team whose name the league cuts short with dots (\"iG ........\") is named as in the schedule (\"iG\").",
+        ],
+    },
+    {
         "version": "1.6.1",
         "date": "2026-10-25",
         "summary": "Malaysian match pages load every time and never show another team's numbers.",
