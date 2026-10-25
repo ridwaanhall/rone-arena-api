@@ -18,6 +18,18 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.5.0",
+        "date": "2026-10-25",
+        "summary": "Answers come back faster on repeat visits, and spell and item texts read cleanly.",
+        "improved": [
+            "Hero, academy and esports answers are reused for 5 minutes, so repeat visits load faster.",
+        ],
+        "fixed": [
+            "Retribution's description no longer shows broken placeholders like <Num9>.",
+            "Boots no longer show the game's live counter text, such as \"Current: <#bv 25>\".",
+        ],
+    },
+    {
         "version": "1.4.0",
         "date": "2026-10-24",
         "summary": "Playoffs for the Indonesian and Philippine pro leagues, and match pages that load again.",
