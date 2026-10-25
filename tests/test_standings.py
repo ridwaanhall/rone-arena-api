@@ -24,7 +24,7 @@ def _match(week: int, a: str, b: str, s1: int | None, s2: int | None) -> Match:
 SNAPSHOTS = json.loads((Path(__file__).parent / "fixtures" / "esports" / "season_snapshots.json").read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("league", ["id", "ph"])
+@pytest.mark.parametrize("league", ["id", "ph", "my", "kh"])
 def test_formula_reproduces_the_official_table_of_a_real_season(league: str) -> None:
     snapshot = SNAPSHOTS[league]
     matches = [_match(week, a, b, s1, s2) for week, a, b, s1, s2 in snapshot["matches"]]

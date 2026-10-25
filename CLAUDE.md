@@ -97,7 +97,7 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
 4. **Upstream Auth Returns HTTP 200 with Errors**: Always validate `code` field in response, not just HTTP status
 5. **Upstream WAF answers bursts with an HTML 405**: `core/http.py` retries once, then returns 429 `UPSTREAM_RATE_LIMITED`. Don't fire many parallel upstream calls when testing; the block lasts minutes per address
 6. **The upstream IP lookup is IPv4-only**: it answers an IPv6 address with `code: -1, data: ""`. `/api/addon/ip` answers IPv6 visitors from Cloudflare's `request.cf` geolocation instead (handed to the app by `src/worker.py` through a ContextVar)
-7. **Esports endpoints scrape HTML, not JSON**: `services/esports/` parses the two league sites with BeautifulSoup. Their base URLs are Fernet tokens in `EsportsSourceProvider` (`core/security.py`), so no host name appears in the repo; fixtures in `tests/fixtures/esports/` use `*.test` hosts. Parsed results are cached for 300s (`utils/ttl_cache.py`). The Indonesian schedule page is 2.4 MB (mostly pop-ups); building a BeautifulSoup tree of it used the Worker's whole CPU budget (Cloudflare error 1102, about 2s of CPU), so `indonesia.py` reads the weeks with targeted regexes and only the small standings table with BeautifulSoup. The Philippine
+7. **Esports endpoints scrape HTML, not JSON** (rules for every league: "Adding or changing an MPL league" below): `services/esports/` parses the league sites with BeautifulSoup. Their base URLs are Fernet tokens in `EsportsSourceProvider` (`core/security.py`), so no host name appears in the repo; fixtures in `tests/fixtures/esports/` use `*.test` hosts. Parsed results are cached for 300s (`utils/ttl_cache.py`). The Indonesian schedule page is 2.4 MB (mostly pop-ups); building a BeautifulSoup tree of it used the Worker's whole CPU budget (Cloudflare error 1102, about 2s of CPU), so `indonesia.py` reads the weeks with targeted regexes and only the small standings table with BeautifulSoup. The Philippine
    match page (0.8 MB, five games in a playoff series) and its item-sequence responses hit the same 1102, so `philippines.get_match`
    reads them with regexes too (`balanced_div`/`div_block` in `common.py` slice the blocks; live markup splits attributes across lines,
    so patterns must allow `\s+` between them). Keep it that way; measure CPU with the Workers analytics (`workersInvocationsAdaptive`) rather than locally, where it looks about 5x cheaper. The Indonesian site's item images are presigned for 6h, so never cache longer. Playoffs (`/api/esports/{league}/playoffs`) come
@@ -113,13 +113,53 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
    cuts the clause that needs a missing number and drops live counters. `skilldesc_text` keeps its placeholders: it is a
    template filled from `numdescribe`, and `skilldesc` beside it is already filled
 
-9. **Standings formula (shared by both leagues)**: matches are first to 2 games; rank by match points, then net game wins,
-   then head-to-head among the tied teams, else `unresolved`. `services/esports/standings.py` reproduces both official tables
-   exactly (`tests/fixtures/esports/season_snapshots.json` holds the two real seasons). A season has as many weeks as teams,
-   every pair meets twice. The `/api/esports/{league}/standings/simulate` and `/standings/calculate` tools and the
+9. **Standings formula (shared by every league)**: matches are first to 2 games; rank by match points, then net game wins,
+   then head-to-head among the tied teams, else `unresolved`. `services/esports/standings.py` reproduces all four official tables
+   exactly (`tests/fixtures/esports/season_snapshots.json` holds the four real seasons). Indonesia, the Philippines and
+   Malaysia play a double round robin, Cambodia a single one; the simulator always starts from the league's real schedule. The `/api/esports/{league}/standings/simulate` and `/standings/calculate` tools and the
    `/tools/standings` page all call that one engine, so the page has no ranking logic of its own. Playoff cut defaults:
-   bottom 3 for Indonesia, bottom 2 for the Philippines, 3 for custom. Head-to-head among 3+ tied teams and the PH tie-breaks
+   bottom 3 for Indonesia, bottom 2 for the Philippines and Malaysia, bottom 4 for Cambodia, 3 for custom. Head-to-head among 3+ tied teams and the PH tie-breaks
    are assumptions (no such tie exists in the data yet)
+
+## Adding or changing an MPL league (esports scrapers)
+
+Four leagues today: Indonesia (`id`), the Philippines (`ph`), Malaysia (`my`) and Cambodia (`kh`). Rules for any league:
+
+1. **Official sites only**: a league's own site, copyright Moonton. Fan sites, wikis and aggregators are out. Today no
+   other country has one (Singapore's is gone, the Middle East and North Africa site only sells tickets).
+2. **Never type a league host anywhere tracked**: code, tests, fixtures, docs, commit messages, PR text. A base URL
+   exists only as a Fernet token in `EsportsSourceProvider` (`core/security.py`), made in a throwaway shell with
+   `CryptoManager(SECRET_KEY).encrypt(url)`; add the getter and the host's SHA-256 to `HOST_DIGESTS` in
+   `tests/test_esports.py`, also computed in a shell. The secrecy tests find leaks by those digests (every tracked file,
+   OpenAPI, the website, llms.txt, the new answers) and, with `SECRET_KEY` set, by decrypting. Fixtures use `*.test`
+   hosts and drop presigned or credentialed URLs. Images or links on the league's own domain must not reach an answer:
+   Cambodia's logos are served by `/api/esports/kh/images/{name}` (`cambodia.get_image`) for that reason.
+3. **CPU budget on the Worker (error 1102, about 2 s of CPU)**: check a page's size first. Above about 200 KB never
+   build a BeautifulSoup tree; slice with `balanced_div`/`div_block` and read with targeted regexes (allow `\s+`
+   between attributes). Parse once per fetch, cache the result 300 s (`ttl_cache(CACHE_SECONDS)`), and let one fetch
+   feed several endpoints. Locally: Malaysia's 0.9 MB schedule parses in about 0.03 s, a match in about 0.005 s,
+   a Cambodian week page in about 0.002 s. Confirm on the Worker with `workersInvocationsAdaptive`.
+4. **Answer with the shared schemas** (`schemas/esports.py`): an undecided side is `TBD` with `logo: null`, `best_of`
+   3/5/7 (`mark_finals` when the league names no rounds), `start_at` in UTC from the league's own time zone. An unknown
+   match is 404 `MATCH_NOT_FOUND`, never a 500 (a 500 makes the Worker redirect to the backup host).
+5. **CSRF-protected AJAX**: take the token and cookies from the page and pass the cookies explicitly (the pooled client's
+   jar is shared). Malaysia's match details need neither: a plain GET of its match-detail fragment.
+6. **Checklist for a new league**: token + getter (+ `all_base_urls`), `LeagueEnum`, `services/esports/<country>.py`,
+   `<X>_ELIMINATED` in `common.py` + `DEFAULT_ELIMINATED`/`_season` in `simulation.py`, router endpoints and the
+   simulate docs/examples, the standings page tab and `standings.js` (`LEAGUE_NAMES`, `edits`, `eliminated`),
+   `llms.py`, `web/credits.py` (`ESPORTS_SOURCES`), fixtures + tests + `season_snapshots.json`, this file, patch notes.
+7. **Credits name the league, never the host** (`web/credits.py`, shown in the footer, `/llms.txt` and the README).
+
+League notes:
+- **Malaysia**: one fetch of `/schedule` gives the 8 weeks and the playoff days (round names carry the series length,
+  "(BO5)"), one of `/` the standings (the table marks 6 playoff and 2 eliminated rows). Match ids are the schedule's
+  numeric detail ids. The match fragment's four figures per lane are labelled wrongly by the site; their real order is
+  hero damage, gold, tower damage, damage taken. It prints the same emblem and talents for both players of a lane, so
+  Malaysian players have no emblem or talents.
+- **Cambodia**: single round robin, 10 teams, 5 weeks; one page per week (`?stage=regular&week=N`), streamed React
+  markup (day headings hold `<template id="P:x">` placeholders filled by `<div hidden id="S:x">` cards later in the
+  page). Standings from `/teams`; playoffs from `?stage=playoffs` (empty until the bracket is published); seeds are the
+  top 6 (`KH_ELIMINATED = 4`, the format of past seasons). Today's matches show LIVE instead of a time. No match details.
 
 ## Branding & Trademark Constraints
 

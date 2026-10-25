@@ -23,6 +23,7 @@ from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.patch_notes import PATCH_NOTES, SECTIONS
 from app.web.routers.blog import _BLOG_POSTS
 from app.web.routers.root import SITE_NAME, absolute_url, image_url, markdown_path
+from app.web.credits import DATA_CREDITS
 from app.web.showcase import SHOWCASE, SUBMIT_URL
 
 SUMMARY = (
@@ -34,7 +35,7 @@ SUMMARY = (
 ABOUT = (
     "Rone Arena is a community-maintained project. It is not affiliated with or endorsed by "
     "Moonton; the game is named only to describe the data. Data comes from publicly accessible "
-    "game services and is provided for informational and educational use."
+    "game services and is provided for informational and educational use. " + DATA_CREDITS
 )
 
 KEY_FACTS: list[str] = [
@@ -339,7 +340,7 @@ def standings_markdown() -> str:
         "# Standings simulator: try different results in a pro league table",
         "",
         "> Change match results and see the table, the playoff line and the eliminations move. Start from the real "
-        "Indonesian or Philippine season, or build a custom league with 2 to 20 teams.",
+        "Indonesian, Philippine, Malaysian or Cambodian season, or build a custom league with 2 to 20 teams.",
         "",
         f"Interactive page: {_url('/tools/standings')}. The same calculator is an API, below.",
         "",
@@ -349,10 +350,11 @@ def standings_markdown() -> str:
         "- A team earns 1 match point per match won.",
         "- Ranking: match points, then net game wins (games won minus games lost), then head-to-head among the "
         "tied teams (match wins, then net game wins between them). A tie that survives all three is `unresolved`.",
-        "- These rules rebuild the official Indonesian and Philippine tables exactly. Net game wins come before head-to-head.",
-        "- A season has as many weeks as teams; every team meets every other team twice, with one fewer match per week than teams.",
+        "- These rules rebuild the official Indonesian, Philippine, Malaysian and Cambodian tables exactly. Net game wins come before head-to-head.",
+        "- Indonesia, the Philippines and Malaysia play a double round robin (every pair meets twice), Cambodia a single one. "
+        "A custom league is a double round robin with as many weeks as teams and one fewer match per week than teams.",
         "- Teams that miss the playoffs are the bottom of the table: the last 3 in Indonesia, the last 2 in the "
-        "Philippines, and a number you choose in a custom league (default 3).",
+        "Philippines and Malaysia, the last 4 in Cambodia, and a number you choose in a custom league (default 3).",
         "- Each team gets a status: `clinched` (certain to be in the playoffs), `eliminated` (certain to miss them) or "
         "`alive`. It is exact at the end of the season and conservative before it.",
         "- Each team has `playoff_probability`: its chance in percent (full precision) of finishing in the playoff spots, "
@@ -364,7 +366,7 @@ def standings_markdown() -> str:
         "## API",
         "",
         f"- [POST /api/esports/{{league}}/standings/simulate]({_md_url('/web/esports/{league}/standings/simulate')}): "
-        "the live Indonesia (`id`) or Philippines (`ph`) season with any results you override",
+        "the live Indonesia (`id`), Philippines (`ph`), Malaysia (`my`) or Cambodia (`kh`) season with any results you override",
         f"- [POST /api/esports/standings/calculate]({_md_url('/web/esports/standings/calculate')}): "
         "a custom league from team names (default Team A, Team B, ...) and results",
         "",

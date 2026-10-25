@@ -18,6 +18,20 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.6.0",
+        "date": "2026-10-25",
+        "summary": "Two more pro leagues: Malaysia and Cambodia, with their seasons, standings and playoffs.",
+        "new": [
+            "Follow the Malaysian league: every week's matches, the standings and the playoff bracket days.",
+            "Open any Malaysian match to see each game's heroes, KDA, items, gold and damage.",
+            "Follow the Cambodian league: every week's matches, the standings and the playoff seeds.",
+            "The standings simulator now has Malaysia and Cambodia tabs, starting from their real seasons.",
+        ],
+        "improved": [
+            "Every page now credits where its data comes from: the official league sites and the game's public services.",
+        ],
+    },
+    {
         "version": "1.5.0",
         "date": "2026-10-25",
         "summary": "Answers come back faster on repeat visits, and spell and item texts read cleanly.",

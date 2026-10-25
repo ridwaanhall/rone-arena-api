@@ -109,12 +109,17 @@ Attribution must be preserved to **Moonton (the creator of Mobile Legends: Bang 
 ### Notice
 
 All data is sourced from publicly available content and provided for educational, analytical, and community purposes only.
+
+**Data sources.** Esports data (schedules, standings, playoffs and match details) comes from the official public sites
+of MPL Indonesia, MPL Philippines, MPL Malaysia and MPL Cambodia; game data comes from Moonton's publicly available
+game services.
 Visual assets and references are used respectfully and do not imply official partnership or endorsement.
 
 ### Example Attribution (README or app footer)
 
 > Powered by Rone Arena API
 > Game data © Moonton (Mobile Legends: Bang Bang)
+> Esports data from the official MPL Indonesia, Philippines, Malaysia and Cambodia sites
 > API maintained by ridwaanhall / RoneAI
 > Unofficial project, not affiliated with or endorsed by Moonton
 

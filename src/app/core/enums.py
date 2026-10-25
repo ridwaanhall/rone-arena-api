@@ -30,6 +30,8 @@ class LeagueEnum(str, Enum):
     '''Professional leagues whose live schedule the standings simulator can start from.'''
     INDONESIA = "id"
     PHILIPPINES = "ph"
+    MALAYSIA = "my"
+    CAMBODIA = "kh"
 
 
 class RankEnum(str, Enum):

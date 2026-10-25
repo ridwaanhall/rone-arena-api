@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Path, Query
+from fastapi import APIRouter, Body, Depends, Path, Query, Response
 from fastapi.openapi.models import Example
 
 from app.api.dependencies import require_api_available
@@ -17,7 +17,7 @@ from app.schemas.esports import (
     StandingsResponse,
     StandingsSimulationResponse,
 )
-from app.services.esports import indonesia, philippines, simulation
+from app.services.esports import cambodia, indonesia, malaysia, philippines, simulation
 from app.services.esports.common import select_weeks
 from app.utils.client_ip import bind_client_ip
 
@@ -178,7 +178,7 @@ _SCHEDULE_DESCRIPTION = (
     "- **team1** / **team2** with logo, and **score1** / **score2** (null until played).\n"
     "- **best_of** (3 in the regular season), **status** (`scheduled`, `in_progress` or `finished`, from the score) "
     "and **winner** (`team1`, `team2`, or null until finished).\n\n"
-    "Data is read from the league's public site and cached for 5 minutes."
+    "Data is read from the league's official public site and cached for 5 minutes."
 )
 _PLAYOFFS_DESCRIPTION = (
     "Playoffs of {league}: the bracket image, the playoff seeds and every playoff match, grouped by day.\n{lang_param}\n"
@@ -187,16 +187,16 @@ _PLAYOFFS_DESCRIPTION = (
     "- **days** / **matches**: Same fields as the schedule endpoint. **best_of** is 5, and 7 for the lower bracket final "
     "and the grand final. A side that is not decided yet is named `TBD` with a null logo.{round_note}\n\n"
     "**match_id** works with the matches endpoint, as in the regular season. "
-    "Data is read from the league's public site and cached for 5 minutes."
+    "Data is read from the league's official public site and cached for 5 minutes."
 )
 _STANDINGS_DESCRIPTION = (
     "Regular-season standings of {league}: rank, team, match point, match win-lose, "
-    "net game win and game win-lose.\n{lang_param}\nData is read from the league's public site and cached for 5 minutes."
+    "net game win and game win-lose.\n{lang_param}\nData is read from the league's official public site and cached for 5 minutes."
 )
 _MATCH_DESCRIPTION = (
     "Full match history of one match of {league}: every game with both teams and all players "
     "(hero, KDA, items, emblem, talents, gold, damage dealt, damage taken and tower damage).{extra}\n\n"
-    "Battle spells are not published by the league site. Regular-season and playoff matches both work. Data is cached for 5 minutes."
+    "Battle spells are not published by the league sites. Regular-season and playoff matches both work. Data is cached for 5 minutes."
 )
 
 
@@ -330,13 +330,129 @@ def ph_match(
     return philippines.get_match(match_slug)
 
 
+@router.get(
+    path="/my/schedule",
+    name="api.esports.my_schedule",
+    response_model=ScheduleResponse,
+    summary="Malaysia Regular Season Schedule",
+    description=_SCHEDULE_DESCRIPTION.format(league="the Malaysian professional league", lang_param=""),
+    responses=_example(_SCHEDULE_EXAMPLE),
+)
+def my_schedule(week: Week = None) -> ScheduleResponse:
+    return select_weeks(malaysia.get_season().weeks, week)
+
+
+@router.get(
+    path="/my/playoffs",
+    name="api.esports.my_playoffs",
+    response_model=PlayoffsResponse,
+    summary="Malaysia Playoffs",
+    description=_PLAYOFFS_DESCRIPTION.format(
+        league="the Malaysian professional league",
+        lang_param="",
+        seeds_note=" The teams the league's standings mark as playoff teams (6 of 8).",
+        round_note=(
+            " Each match also has its **round** as the league names it (`Upper Bracket QuarterFinals`...), and **best_of** "
+            "is the series length the league states for that round. The league publishes no bracket picture."
+        ),
+    ),
+    responses=_example(_PLAYOFFS_EXAMPLE),
+)
+def my_playoffs() -> PlayoffsResponse:
+    return malaysia.get_season().playoffs
+
+
+@router.get(
+    path="/my/standings",
+    name="api.esports.my_standings",
+    response_model=StandingsResponse,
+    summary="Malaysia Regular Season Standings",
+    description=_STANDINGS_DESCRIPTION.format(league="the Malaysian professional league", lang_param=""),
+    responses=_example(_STANDINGS_EXAMPLE),
+)
+def my_standings() -> StandingsResponse:
+    return StandingsResponse(standings=malaysia.get_season().standings)
+
+
+@router.get(
+    path="/my/matches/{match_id}",
+    name="api.esports.my_match",
+    response_model=MatchDetailResponse,
+    summary="Malaysia Match Details",
+    description=_MATCH_DESCRIPTION.format(
+        league="the Malaysian professional league",
+        extra=(
+            " Each team also reports the game winner and its kills; the game has a duration. **emblem** and **talents** "
+            "are null and empty: the league site shows the same set for both players of a lane, so it cannot be told whose it is."
+        ),
+    ),
+    responses=_example(_ID_MATCH_EXAMPLE),
+)
+def my_match(
+    match_id: Annotated[int, Path(title="Match ID", description="**match_id** from the schedule endpoint.", ge=1)],
+) -> MatchDetailResponse:
+    return malaysia.get_match(match_id)
+
+
+@router.get(
+    path="/kh/schedule",
+    name="api.esports.kh_schedule",
+    response_model=ScheduleResponse,
+    summary="Cambodia Regular Season Schedule",
+    description=_SCHEDULE_DESCRIPTION.format(league="the Cambodian professional league", lang_param="")
+    + " The Cambodian season is a single round robin (every pair meets once), and the league publishes no match details, "
+    "so **match_id** is always null. A match on today's card shows no time while it is live or about to start.",
+    responses=_example(_SCHEDULE_EXAMPLE),
+)
+def kh_schedule(week: Week = None) -> ScheduleResponse:
+    return select_weeks(cambodia.get_schedule(week), week)
+
+
+@router.get(
+    path="/kh/playoffs",
+    name="api.esports.kh_playoffs",
+    response_model=PlayoffsResponse,
+    summary="Cambodia Playoffs",
+    description=_PLAYOFFS_DESCRIPTION.format(
+        league="the Cambodian professional league",
+        lang_param="",
+        seeds_note=" The site publishes none, so these are the top of the regular-season standings (6 of 10, the league's usual format).",
+        round_note=" The league names no rounds, so **round** is null; **days** stays empty until the league publishes the bracket.",
+    ),
+    responses=_example(_PLAYOFFS_EXAMPLE),
+)
+def kh_playoffs() -> PlayoffsResponse:
+    return cambodia.get_playoffs()
+
+
+@router.get(
+    path="/kh/standings",
+    name="api.esports.kh_standings",
+    response_model=StandingsResponse,
+    summary="Cambodia Regular Season Standings",
+    description=_STANDINGS_DESCRIPTION.format(league="the Cambodian professional league", lang_param=""),
+    responses=_example(_STANDINGS_EXAMPLE),
+)
+def kh_standings() -> StandingsResponse:
+    return StandingsResponse(standings=cambodia.get_standings())
+
+
+@router.get(path="/kh/images/{name}", name="api.esports.kh_image", include_in_schema=False)
+def kh_image(
+    name: Annotated[str, Path(pattern=r"^[\w%. -]+\.(?:webp|png|jpe?g)$", max_length=120)],
+) -> Response:
+    """A Cambodian team logo, served from here so the league's image host never appears in an answer."""
+    content, media_type = cambodia.get_image(name)
+    return Response(content=content, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
+
+
 # ---- standings tools
 
 _RULES = (
     "Matches are first to 2 games, so a finished match is 2-0, 2-1, 1-2 or 0-2 (a 1-1 needs a deciding game). "
     "A team gets 1 match point per match won. Teams are ranked by match points, then net game wins "
     "(games won minus games lost), then head-to-head among the tied teams; a tie that survives all three "
-    "is reported as `unresolved`. The same rules reproduce the official Indonesian and Philippine tables.\n\n"
+    "is reported as `unresolved`. The same rules reproduce the official Indonesian, Philippine, Malaysian and Cambodian tables.\n\n"
     "Each team also gets a **status** from what it can still reach: `clinched` (certain to be in the playoffs), "
     "`eliminated` (certain to miss them) or `alive`. The status is exact once the season is over and "
     "conservative before that, so a decided team can still read `alive`, never the other way round.\n\n"
@@ -353,7 +469,7 @@ _SIMULATE_DESCRIPTION = (
     "result would do to the table and the playoff line.\n\n"
     "The schedule and real results are the league's live ones (see the schedule endpoints). "
     "Send `{\"results\": []}` to get the current table with statuses. **eliminated** is how many teams at the bottom miss the "
-    "playoffs; it defaults to 3 for Indonesia (`id`) and 2 for the Philippines (`ph`).\n\n"
+    "playoffs; it defaults to 3 for Indonesia (`id`), 2 for the Philippines (`ph`), 2 for Malaysia (`my`) and 4 for Cambodia (`kh`).\n\n"
     + _RULES
     + "\n\nThe real schedule is cached for 5 minutes."
 )
@@ -411,6 +527,14 @@ _SIMULATE_BODIES: dict[str, Example] = {
         "summary": "Philippines: flip one result",
         "value": {"results": [{"week": 8, "team1": "RORA", "team2": "TWIS", "score1": 0, "score2": 2}], "eliminated": 2},
     },
+    "malaysia": {
+        "summary": "Malaysia: flip one result",
+        "value": {"results": [{"week": 8, "team1": "VMS", "team2": "SRG", "score1": 2, "score2": 0}], "eliminated": 2},
+    },
+    "cambodia": {
+        "summary": "Cambodia: flip one result",
+        "value": {"results": [{"week": 4, "team1": "VGR", "team2": "FLKH", "score1": 0, "score2": 2}], "eliminated": 4},
+    },
     "current": {"summary": "Current table, no changes", "value": {"results": []}},
 }
 _CALCULATE_BODIES: dict[str, Example] = {
@@ -438,7 +562,7 @@ _CALCULATE_BODIES: dict[str, Example] = {
     responses=_example(_SIMULATION_EXAMPLE),
 )
 def simulate_standings(
-    league: Annotated[LeagueEnum, Path(title="League", description="`id` for Indonesia or `ph` for the Philippines.")],
+    league: Annotated[LeagueEnum, Path(title="League", description="`id` for Indonesia, `ph` for the Philippines, `my` for Malaysia or `kh` for Cambodia.")],
     body: Annotated[SimulateRequest, Body(openapi_examples=_SIMULATE_BODIES)],
 ) -> StandingsSimulationResponse:
     return simulation.simulate_league(league, body)

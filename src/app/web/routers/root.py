@@ -29,6 +29,7 @@ from app.core.config import (
 )
 from app.core.images import wsrv_url
 from app.core.paths import PUBLIC_DIR
+from app.web.credits import DATA_CREDITS
 from app.web.openapi_catalog import GROUP_META, WEB_GROUPS, get_group_operations
 from app.web.page_cache import page_cached
 from app.web.patch_notes import PATCH_NOTES, SECTIONS
@@ -117,6 +118,7 @@ def _shared_context(request: Request, current_group: str | None = None) -> dict[
         "current_group": current_group,
         "group_counts": {group: len(get_group_operations(request.app, group)) for group in WEB_GROUPS},
         "current_year": datetime.now(UTC).year,
+        "data_credits": DATA_CREDITS,
         "api_version": PROJECT_VERSION,
         "asset_version": _asset_version_for(request),
         "is_available": IS_AVAILABLE,
@@ -250,7 +252,7 @@ def standings_page(request: Request) -> HTMLResponse:
         {
             "title": "Standings simulator: try different results in a pro league table",
             "web_title": "Standings simulator",
-            "seo_description": "Change match results and watch the Indonesian or Philippine league table, playoff line and eliminations move. Or build a custom league with any number of teams.",
+            "seo_description": "Change match results and watch the Indonesian, Philippine, Malaysian or Cambodian league table, playoff line and eliminations move. Or build a custom league with any number of teams.",
             "seo_keywords": "standings simulator, league standings calculator, mpl standings, playoff race, tiebreaker, rone arena api",
         }
     )

@@ -25,6 +25,10 @@ FINALS_BEST_OF = 7
 # Teams at the bottom of the regular season that miss the playoffs.
 ID_ELIMINATED = 3
 PH_ELIMINATED = 2
+# Malaysia: 6 of 8 teams go through (the site marks them). Cambodia: 6 of 10, the format of past seasons; the
+# site does not mark the line.
+MY_ELIMINATED = 2
+KH_ELIMINATED = 4
 
 # Name the league sites give an undecided playoff side.
 TO_BE_DECIDED = "TBD"
