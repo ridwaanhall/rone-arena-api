@@ -18,6 +18,16 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.6.1",
+        "date": "2026-10-25",
+        "summary": "Malaysian match pages load every time and never show another team's numbers.",
+        "fixed": [
+            "Malaysian match pages no longer fail at random: the league site sometimes sends a faulty copy, which is now fetched again.",
+            "Team 2's kills, deaths and assists in Malaysian matches are always their own, never a copy of team 1's.",
+            "A Malaysian game the league published without heroes is left out instead of breaking the whole match.",
+        ],
+    },
+    {
         "version": "1.6.0",
         "date": "2026-10-25",
         "summary": "Two more pro leagues: Malaysia and Cambodia, with their seasons, standings and playoffs.",
