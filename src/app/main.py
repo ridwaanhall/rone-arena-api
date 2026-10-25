@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.core.cache_headers import PublicCacheHeaders
 from app.core.config import DEBUG, IS_AVAILABLE, PROJECT_VERSION
 from app.core.images import wsrv_json
 from app.core.paths import PUBLIC_DIR
@@ -93,6 +94,8 @@ app.add_middleware(
 )
 # Web pages answer `Accept: text/markdown` with their markdown twin and link it in a header.
 app.add_middleware(MarkdownNegotiation)
+# Public hero, academy and esports answers may be kept by browsers and shared caches for 5 minutes.
+app.add_middleware(PublicCacheHeaders)
 
 def _inline_enum_defaults_in_parameters(schema: dict[str, object]) -> None:
     components = schema.get("components", {})

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core import config
+from app.core.game_text import clean_game_json
 from app.core.http import UpstreamHeaderBuilder, request_json
 from app.utils.client_ip import get_bound_client_ip
 
@@ -56,4 +57,5 @@ def build_query(
 def post_source(base_path: str, source_id: str, payload: dict[str, Any], lang: str) -> Any:
     url = f"{config.require_access_key(config.RONE_DEV_ACCESS_KEY, 'RONE_DEV_ACCESS_KEY')}{base_path}/{source_id}"
     headers = UpstreamHeaderBuilder.get_academy_header(lang, client_ip=get_bound_client_ip())
-    return request_json(method="POST", url=url, payload=payload, headers=headers)
+    # The game's texts sometimes arrive with run-time placeholders it never filled in (`core/game_text.py`).
+    return clean_game_json(request_json(method="POST", url=url, payload=payload, headers=headers))
