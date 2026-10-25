@@ -9,6 +9,14 @@ skills in `.claude/skills/`: `release` (end to end), `bump-version`, `patch-note
 For AI agents, `/llms.txt`, `/llms-full.txt` and a `.md` twin of every web page (`/index.md`, `/web/heroes.md`, ...)
 are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current when pages or product facts change.
 
+## Working with the owner
+
+- **Every finished change is released on its branch**: bump the version (`bump-version`), add patch notes
+  (`patch-notes`), commit and push to the working branch (never to `main`), then **ask the owner whether to open a PR**.
+  Open or merge a PR only when asked.
+- An instruction such as "don't bump" or "don't merge" applies only to the task it was given for, not to later work.
+- When the owner asks to merge, merge without waiting for the builds or checks to finish.
+
 ## Configuration
 
 - `IS_MAINTENANCE`: set to `true` to restrict the API and show the maintenance page on `/`.
