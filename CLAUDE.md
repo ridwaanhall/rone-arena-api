@@ -99,7 +99,13 @@ LIVE_UPSTREAM=1 pytest tests/test_live_upstream.py
    3/5/7; the lower bracket final and grand final are 7, found by round name in ID and as the last two matches in PH) drives `status`/`winner` on every match. PH games have no clock,
    so `duration_estimate` is total gold over gold per minute The Philippine item sequences are a CSRF-protected POST: the token comes from the match page and the request must carry that page's cookies explicitly (the pooled client's jar is shared across callers)
 
-8. **Standings formula (shared by both leagues)**: matches are first to 2 games; rank by match points, then net game wins,
+8. **Unfilled game-text placeholders**: the content source sometimes ships a text without the numbers the game fills in at
+   run time (Retribution's `<Num9> kills or assists to gain <Num10> ...`, the boots' live `(Current: <#bv 25>)`).
+   `core/game_text.py` (`clean_game_json`, applied in `services/source.post_source`, so every hero and academy answer)
+   cuts the clause that needs a missing number and drops live counters. `skilldesc_text` keeps its placeholders: it is a
+   template filled from `numdescribe`, and `skilldesc` beside it is already filled
+
+9. **Standings formula (shared by both leagues)**: matches are first to 2 games; rank by match points, then net game wins,
    then head-to-head among the tied teams, else `unresolved`. `services/esports/standings.py` reproduces both official tables
    exactly (`tests/fixtures/esports/season_snapshots.json` holds the two real seasons). A season has as many weeks as teams,
    every pair meets twice. The `/api/esports/{league}/standings/simulate` and `/standings/calculate` tools and the
