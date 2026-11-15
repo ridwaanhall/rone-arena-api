@@ -46,6 +46,7 @@ from app.services.esports.common import (
     balanced_div,
     div_block,
     fetch_page,
+    image_file_key,
     find_standing,
     find_team,
     is_staff,
@@ -456,10 +457,6 @@ _DATA_ORDER = re.compile(r'data-order="([^"]*)"')
 _TEAM_FIGURES = ("kills", "deaths", "assists", "gold", "damage", "lord", "tortoise", "tower")
 
 
-def _logo_file(source: str) -> str:
-    return unescape(source).strip().rsplit("/", 1)[-1].split("?", 1)[0].casefold()
-
-
 class _DataPage(NamedTuple):
     teams: list[TeamStatistics]
     players: PlayerStatisticsResponse
@@ -470,7 +467,7 @@ def _stat_team(name: str, teams: list[TeamSummary], logo: str | None = None) -> 
     """A team from its short or full name (or its logo), with the names and logo of the team list."""
     wanted = name.casefold()
     for team in teams:
-        if wanted in (team.name.casefold(), (team.full_name or "").casefold()) or (logo and team.logo and _logo_file(team.logo) == _logo_file(logo)):
+        if wanted in (team.name.casefold(), (team.full_name or "").casefold()) or (logo and team.logo and image_file_key(team.logo) == image_file_key(logo)):
             return Team(name=team.name, full_name=team.full_name, logo=team.logo)
     return Team(name=name, logo=unescape(logo).strip() if logo else None)
 
@@ -491,7 +488,7 @@ def _rankings(html: str, teams: list[TeamSummary]) -> tuple[list[Leaderboard], l
         else:
             entries = []
             for rank, (photo, logo, name, value) in enumerate(_RANKED_PLAYER.findall(block), start=1):
-                team = next((item for item in teams if item.logo and _logo_file(item.logo) == _logo_file(logo)), None)
+                team = next((item for item in teams if item.logo and image_file_key(item.logo) == image_file_key(logo)), None)
                 entries.append(
                     LeaderboardEntry(
                         rank=rank,

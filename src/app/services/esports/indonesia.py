@@ -54,6 +54,7 @@ from app.services.esports.common import (
     balanced_div,
     div_block,
     fetch_page,
+    image_file_key,
     find_standing,
     find_team,
     is_staff,
@@ -444,10 +445,6 @@ class _Statistics(NamedTuple):
     photos: dict[tuple[str, str], str]
 
 
-def _image_file(source: str) -> str:
-    return unquote(urlsplit(unquote(unescape(source)).split("url=", 1)[-1]).path.rsplit("/", 1)[-1]).casefold()
-
-
 def stat_hero(source: str, name: str | None = None) -> Hero:
     source = unescape(source).strip()
     # Pool images carry no alt text; the file is named after the hero ("Yi%20Sun-shin.jpg").
@@ -459,7 +456,7 @@ class _StatsContext:
     """Turns logos and photo addresses of the statistics page into teams and safe photo links."""
 
     def __init__(self, teams: list[TeamStatistics]) -> None:
-        self.by_logo = {_image_file(row.team.logo or ""): row.team for row in teams if row.team.logo}
+        self.by_logo = {image_file_key(row.team.logo or ""): row.team for row in teams if row.team.logo}
         self.by_name = {row.team.name.casefold(): row.team for row in teams}
         self.photos: dict[tuple[str, str], str] = {}
 
@@ -467,7 +464,7 @@ class _StatsContext:
         folder = _PLAYER_FOLDER.search(photo or "")
         if folder and folder[1].casefold() in self.by_name:
             return self.by_name[folder[1].casefold()]
-        return self.by_logo.get(_image_file(logo)) if logo else None
+        return self.by_logo.get(image_file_key(logo)) if logo else None
 
     def photo(self, source: str) -> str | None:
         source = unescape(source).strip()

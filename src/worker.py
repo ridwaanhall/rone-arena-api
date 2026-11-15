@@ -9,7 +9,7 @@ import js  # pyright: ignore[reportMissingImports]  # only exists in the Workers
 from workers import Response, WorkerEntrypoint, asgi
 
 from app.core.config import ALTERNATIVE_ENDPOINT_URL
-from app.core.fallback import EDGE_CACHE_SECONDS, FALLBACK_STATUSES, backup_url, edge_cacheable, redirect_headers
+from app.core.fallback import EDGE_BROWSER_CACHE_CONTROL, EDGE_CACHE_SECONDS, FALLBACK_STATUSES, backup_url, edge_cacheable, redirect_headers
 from app.main import app
 from app.utils.client_ip import reset_edge_geo, set_edge_geo
 from app.web.warm import warm
@@ -40,7 +40,7 @@ class Default(WorkerEntrypoint):
         if cacheable:
             hit = await _edge_match(url)
             if hit:
-                return hit
+                return _edge_answer(hit)
         token = set_edge_geo(_edge_geo(request))
         try:
             response = await asgi.fetch(app, request, self.env, self.ctx)
@@ -65,6 +65,20 @@ async def _edge_match(url: str):
         return await js.caches.default.match(url)
     except Exception:
         return None
+
+
+def _edge_answer(hit):
+    """A cached answer, rebuilt so its caching headers are ours.
+
+    Returned as it comes out of the Cache API, a hit was sent with the zone's Browser Cache TTL
+    (``max-age=14400``, 4 hours), not the 5 minutes it was stored with, and browsers kept esports data that long.
+    """
+    try:
+        answer = js.Response.new(hit.body, hit)
+        answer.headers.set("Cache-Control", EDGE_BROWSER_CACHE_CONTROL)
+        return answer
+    except Exception:
+        return hit
 
 
 def _edge_store(ctx, url: str, response) -> None:

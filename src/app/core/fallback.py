@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit, urlunsplit
 
+from app.core.cache_headers import PUBLIC_CACHE_CONTROL
+
 # Server errors worth retrying elsewhere: a crash, a bad upstream answer, an upstream timeout.
 FALLBACK_STATUSES = frozenset({500, 502, 504})
 
@@ -35,6 +37,8 @@ def redirect_headers(location: str, reason: str) -> dict[str, str]:
 # Cloudflare's Cache API is shared by every copy in a data center, so the Worker keeps successful GET
 # answers there for the same 5 minutes and most copies never scrape at all.
 EDGE_CACHE_SECONDS = 300
+# What a browser is told about an answer served from that cache: the same as a fresh answer.
+EDGE_BROWSER_CACHE_CONTROL = PUBLIC_CACHE_CONTROL
 EDGE_CACHE_PREFIXES = ("/api/esports/",)
 
 

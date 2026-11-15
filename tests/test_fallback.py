@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from app.core.cache_headers import PUBLIC_CACHE_CONTROL
+
 from app.core.fallback import FALLBACK_STATUSES, backup_url, redirect_headers
 
 BACKUP = "https://arena.fastapicloud.dev"
@@ -154,6 +156,18 @@ def test_esports_answers_are_shared_through_the_edge_cache(worker) -> None:
     stored = worker.outcome["cache"].stored[url]
     assert stored.headers["Cache-Control"] == "public, max-age=300"
     assert second.headers["X-Rone-Edge-Cache"] == "HIT"
+    assert second.headers["Cache-Control"] == PUBLIC_CACHE_CONTROL
+
+
+def test_an_edge_cache_hit_tells_browsers_five_minutes_whatever_the_cache_says(worker) -> None:
+    # The Cache API hands a hit back with the zone's Browser Cache TTL (4 hours), not what was stored.
+    url = "https://arena.rone.dev/api/esports/kh/teams"
+    worker.outcome["cache"].stored[url] = _Response("{}", 200, {"Cache-Control": "public, max-age=14400", "X-Rone-Edge-Cache": "HIT"})
+
+    hit = _call(worker, url)
+
+    assert worker.outcome.get("calls", 0) == 0
+    assert hit.headers["Cache-Control"] == PUBLIC_CACHE_CONTROL == "public, max-age=300, stale-while-revalidate=60"
 
 
 @pytest.mark.parametrize(

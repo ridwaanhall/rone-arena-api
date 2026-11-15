@@ -1082,6 +1082,32 @@ def test_kh_statistics_read_every_tab_and_serve_images_through_the_api() -> None
     assert "kh.test" not in json.dumps([players, heroes, pool, paquito, mvp])
 
 
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://cdn.kh.test/cdn-cgi/image/width=48,quality=75,format=auto/teams/_0006_see-you-soon.webp",
+        "https://wsrv.nl/?url=https%3A%2F%2Farena.rone.dev%2Fapi%2Fesports%2Fkh%2Fimages%2Fteams%2F_0006_see-you-soon.webp",
+        "https://wsrv.nl?url=https://cdn.kh.test/teams/_0006_SEE-YOU-SOON.webp",
+        "http://127.0.0.1:8000/api/esports/kh/images/teams/_0006_see-you-soon.webp",
+    ],
+)
+def test_image_file_key_reads_the_file_through_any_proxy_wrapping(url) -> None:
+    assert common.image_file_key(url) == "_0006_see-you-soon.webp"
+
+
+def test_kh_statistics_find_teams_when_logos_come_back_through_the_image_proxy(monkeypatch) -> None:
+    # In production every logo in an answer is wrapped by wsrv.nl; the team matching must still see the file.
+    from app.core import images
+
+    monkeypatch.setattr(images, "USE_WSRV", True)
+    monkeypatch.setattr(cambodia.config, "API_URL", "https://arena.rone.dev/api/")
+    players = client.get("/api/esports/kh/statistics/players").json()["players"]
+
+    assert players[1]["team"]["logo"].startswith("https://wsrv.nl/?url=")
+    assert [player["team"]["name"] for player in players] == ["SYS", "TNR", "FLKH"]
+
+
 # ---- encryption and secrecy
 
 

@@ -73,7 +73,8 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
   Worker dies before Python runs (Cloudflare 1102 CPU/memory limits).
 - **Shared edge cache**: `src/worker.py` keeps successful `GET /api/esports/...` answers in Cloudflare's Cache API
   for 300s (`EDGE_CACHE_*` in `app/core/fallback.py`), so Worker copies in one data center share one scrape instead
-  of each paying the CPU of a cold parse. Hits carry `X-Rone-Edge-Cache: HIT`.
+  of each paying the CPU of a cold parse. Hits carry `X-Rone-Edge-Cache: HIT`. The Cache API hands a hit back with the
+  zone's Browser Cache TTL (`max-age=14400`), so `_edge_answer` rebuilds it with `PUBLIC_CACHE_CONTROL` (1.7.2).
 - **Browser and shared caching**: `core/cache_headers.py` (`PublicCacheHeaders`) adds `Cache-Control: public, max-age=300,
   stale-while-revalidate=60` to successful `GET` answers under `/api/heroes`, `/api/academy` and `/api/esports/`, so callers'
   browsers and CDNs reuse them. Never on `/api/user` or `/api/addon` (the IP lookup is per visitor), on requests with an
@@ -179,6 +180,9 @@ Four leagues today: Indonesia (`id`), the Philippines (`ph`), Malaysia (`my`) an
    and there are no leaderboards. KH has one page per tab (`/statistics?tab=teams|players|heroes|hero-pools|player-pools|mvp`,
    the pools about 0.9 MB each), the same sections as ID; teams are matched by logo file, a player pool's team comes from
    the player table, and hero portraits (`heroes/square/`) go through `/api/esports/kh/images/` like logos and photos.
+   Match logos with `image_file_key` (`common.py`) only: in production an answer's logo is wrapped by wsrv.nl
+   (`https://wsrv.nl/?url=<encoded>`), which tests do not do by default, and 1.7.0 shipped KH statistics with no teams
+   for that reason (`test_kh_statistics_find_teams_when_logos_come_back_through_the_image_proxy` turns the wrapping on).
    Standings are left to the existing standings endpoints.
 
 League notes:
