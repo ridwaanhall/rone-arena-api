@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -474,13 +475,28 @@ def test_ph_item_sequences_read_attributes_split_across_lines() -> None:
     assert sum(len(row) for row in philippines._item_sequences(messy)[1]) == html.count("item-dots")
 
 
-def test_ph_match_page_is_read_without_a_dom_parser(monkeypatch) -> None:
-    # A Philippine match page is 0.8 MB; a BeautifulSoup tree of it went over the Worker's CPU budget (error 1102).
-    def no_tree(*args, **kwargs):
-        raise AssertionError("the match page must not be parsed into a tree")
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"/api/esports/ph/matches/{PH_SLUG}",
+        "/api/esports/ph/schedule",
+        "/api/esports/ph/standings",
+        "/api/esports/ph/playoffs",
+        "/api/esports/ph/teams/onic",
+        "/api/esports/id/schedule",
+        "/api/esports/id/standings",
+        "/api/esports/id/playoffs",
+        "/api/esports/id/teams/onic",
+    ],
+)
+def test_pages_are_read_without_beautifulsoup(monkeypatch, path: str) -> None:
+    # Importing bs4 and building a tree on a fresh Worker copy ran out of the Worker's resources (error 1102): every
+    # Philippine team request and about half the Indonesian schedule requests failed (1.7.5). These answers must
+    # come from patterns alone, so bs4 is made unimportable here.
+    monkeypatch.setitem(sys.modules, "bs4", None)
+    monkeypatch.setitem(sys.modules, "bs4.element", None)
+    assert client.get(path).status_code == 200
 
-    monkeypatch.setattr(philippines, "parse_html", no_tree)
-    assert client.get(f"/api/esports/ph/matches/{PH_SLUG}").status_code == 200
 
 def test_ph_match_slug_is_validated() -> None:
     assert client.get("/api/esports/ph/matches/Not_A_Slug").status_code == 422

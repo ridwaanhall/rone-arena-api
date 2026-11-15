@@ -73,6 +73,8 @@ from app.services.esports.common import (
     table_headers,
     table_rows,
     social_links,
+    strip_comments,
+    tag_attr,
     team_matches,
     text_of,
     to_int,
@@ -86,20 +88,27 @@ if TYPE_CHECKING:
 _STAT_BY_ICON = {"sword": "damage_dealt", "shield": "damage_taken", "tower": "tower_damage", "money": "gold"}
 
 
-def _standing(row: Tag) -> Standing:
-    image = row.select_one(".team-logo img")
-    match_point, match_wl, net_game_win, game_wl = (text_of(cell) for cell in row.find_all("td", recursive=False)[1:])
+_RANK = re.compile(r'<div class="team-rank\b[^"]*"\s*>(.*?)</div>', re.S)
+_FULL_NAME = re.compile(r'<span class="d-none\b[^"]*"\s*>(.*?)</span>', re.S)
+
+
+def _standing(cells: list[str]) -> Standing:
+    if len(cells) != 5:
+        need(None, "a standings row")
+    info, match_point, match_wl, net_game_win, game_wl = cells
+    rank = _RANK.search(info)
+    full_name = _FULL_NAME.search(info)
     return Standing(
-        rank=to_int(text_of(row.select_one(".team-rank"))),
+        rank=to_int(plain_text(need(rank, "a team's rank")[1])),
         team=Team(
-            name=need_attr(image, "alt"),
-            full_name=text_of(row.select_one(".team-name .d-none")),
-            logo=attr(image, "src"),
+            name=need(tag_attr(info, "img", "alt"), "a team's name"),
+            full_name=plain_text(full_name[1]) if full_name else "",
+            logo=tag_attr(info, "img", "src"),
         ),
-        match_point=to_int(match_point),
-        match_wl=parse_record(match_wl),
-        net_game_win=to_int(net_game_win),
-        game_wl=parse_record(game_wl),
+        match_point=to_int(plain_text(match_point)),
+        match_wl=parse_record(plain_text(match_wl)),
+        net_game_win=to_int(plain_text(net_game_win)),
+        game_wl=parse_record(plain_text(game_wl)),
     )
 
 
@@ -193,16 +202,17 @@ def _standings(html: str) -> list[Standing]:
     if start < 0:
         return []
     block = balanced_div(html, html.rfind("<div", 0, start))
-    return [_standing(row) for row in parse_html(block).select("tbody tr")]
+    return [_standing(cells) for cells in table_rows(strip_comments(block))]
 
 
-def _seed(row: Tag) -> PlayoffSeed:
-    rank, team, match_wl = row.find_all("td", recursive=False)
-    image = team.find("img")
+def _seed(cells: list[str]) -> PlayoffSeed:
+    if len(cells) != 3:
+        need(None, "a playoff seed row")
+    rank, team, match_wl = cells
     return PlayoffSeed(
-        seed=int(need(re.search(r"\d+", text_of(rank)), "a seed")[0]),
-        team=Team(name=attr(image, "alt") or text_of(team), logo=attr(image, "src")),
-        match_wl=parse_record(text_of(match_wl)),
+        seed=int(need(re.search(r"\d+", plain_text(rank)), "a seed")[0]),
+        team=Team(name=tag_attr(team, "img", "alt") or plain_text(team), logo=tag_attr(team, "img", "src")),
+        match_wl=parse_record(plain_text(match_wl)),
     )
 
 
@@ -214,7 +224,7 @@ def _playoffs(html: str) -> PlayoffsResponse:
     bracket = _IMAGE_SRC.search(standings)
     return PlayoffsResponse(
         bracket_image=unescape(bracket[1]) if bracket else None,
-        seeds=[_seed(row) for row in parse_html(standings).select("tbody tr")] if standings else [],
+        seeds=[_seed(cells) for cells in table_rows(strip_comments(standings))] if standings else [],
         days=days,
     )
 

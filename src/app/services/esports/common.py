@@ -300,6 +300,31 @@ def plain_text(markup: str) -> str:
     return unescape(" ".join(_TABLE_TAG.sub(" ", markup).split())).replace("\xa0", " ").strip()
 
 
+_COMMENT = re.compile(r"<!--.*?-->", re.S)
+
+
+def strip_comments(markup: str) -> str:
+    """Markup without its HTML comments (the leagues comment out whole table columns)."""
+    return _COMMENT.sub("", markup)
+
+
+def tag_attr(markup: str, tag: str, name: str) -> str | None:
+    """An attribute of the first ``<tag>`` in ``markup``, unescaped, or None. Attributes may sit in any order and
+    across lines."""
+    opening = re.search(rf"<{tag}\b[^>]*>", markup)
+    if not opening:
+        return None
+    value = re.search(rf'\s{name}\s*=\s*"([^"]*)"', opening[0])
+    return unescape(value[1]) if value else None
+
+
+def element_text(markup: str, class_fragment: str, start: int = 0) -> str:
+    """The text of the first ``<div>`` from ``start`` whose class attribute contains ``class_fragment`` (nested divs
+    included), or an empty string."""
+    found = re.search(rf'<div\b[^>]*\bclass="[^"]*{class_fragment}[^"]*"', markup[start:])
+    return plain_text(balanced_div(markup, start + found.start())) if found else ""
+
+
 def table_headers(table: str) -> list[str]:
     # Sortable tables add arrows to each label ("Kills ▲ ▼").
     return [plain_text(cell).replace("▲", "").replace("▼", "").strip().casefold() for cell in _HEADER_CELL.findall(table)]

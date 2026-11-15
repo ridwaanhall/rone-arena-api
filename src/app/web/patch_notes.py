@@ -18,6 +18,14 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.7.5",
+        "date": "2026-11-15",
+        "summary": "Philippine and Indonesian esports answers work reliably on arena.rone.dev.",
+        "fixed": [
+            "On arena.rone.dev, Philippine team pages failed every time and Indonesian schedules, standings and team pages failed about half the time with a resource-limit error. The schedule and standings pages are now read in a lighter way, with the same answers.",
+        ],
+    },
+    {
         "version": "1.7.4",
         "date": "2026-11-15",
         "summary": "Indonesian player photos load reliably on arena.rone.dev.",

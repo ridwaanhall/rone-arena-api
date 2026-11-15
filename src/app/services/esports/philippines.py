@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime, timedelta, timezone
 from html import unescape
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
 
 from app.core.http import UpstreamHeaderBuilder, request_page
 from app.core.security import EsportsSourceProvider
@@ -42,7 +42,6 @@ from app.services.esports.common import (
     PLAYOFFS_BEST_OF,
     REGULAR_SEASON_BEST_OF,
     TO_BE_DECIDED,
-    attr,
     balanced_div,
     div_block,
     fetch_page,
@@ -53,10 +52,7 @@ from app.services.esports.common import (
     kda_ratio,
     mark_finals,
     need,
-    need_attr,
-    need_tag,
     normalize_role,
-    parse_html,
     parse_record,
     plain_text,
     player_figures,
@@ -65,14 +61,13 @@ from app.services.esports.common import (
     table_headers,
     table_rows,
     social_links,
+    strip_comments,
+    tag_attr,
+    element_text,
     team_matches,
-    text_of,
     to_int,
 )
 from app.utils.ttl_cache import ttl_cache
-
-if TYPE_CHECKING:
-    from bs4.element import Tag
 
 _MANILA = timezone(timedelta(hours=8))
 _WEEK_ID = re.compile(r"^week-\d+$")
@@ -97,12 +92,14 @@ def _start_at(label: str, local_time: str) -> str | None:
     return started.replace(tzinfo=_MANILA).astimezone(UTC).isoformat()
 
 
-def _standing(row: Tag) -> Standing:
-    rank, team, match_point, match_wl, net_game_win, game_wl = (text_of(cell) for cell in row.find_all("td", recursive=False))
-    logo = _BACKGROUND_URL.search(attr(row.select_one(".team-logo"), "style") or "")
+def _standing(cells: list[str]) -> Standing:
+    if len(cells) != 6:
+        need(None, "a standings row")
+    rank, team, match_point, match_wl, net_game_win, game_wl = (plain_text(cell) for cell in cells)
+    logo = _BACKGROUND_URL.search(cells[1])
     return Standing(
         rank=to_int(rank),
-        team=Team(name=team, logo=logo.group(1) if logo else None),
+        team=Team(name=team, logo=unescape(logo.group(1)) if logo else None),
         match_point=to_int(match_point),
         match_wl=parse_record(match_wl),
         net_game_win=to_int(net_game_win),
@@ -112,8 +109,14 @@ def _standing(row: Tag) -> Standing:
 
 @ttl_cache(CACHE_SECONDS)
 def get_standings() -> list[Standing]:
-    soup = parse_html(fetch_page(EsportsSourceProvider.get_ph_base_url(), "/").text)
-    return [_standing(row) for row in soup.select("#standing-regular-season #table-group tbody tr")]
+    # The home page is about 0.6 MB: the table is sliced out and read with patterns, never parsed into a tree.
+    html = fetch_page(EsportsSourceProvider.get_ph_base_url(), "/").text
+    section = html.find('id="standing-regular-season"')
+    group = html.find('id="table-group"', section) if section >= 0 else -1
+    if group < 0:
+        return []
+    table = strip_comments(html[group : html.find("</table>", group)])
+    return [_standing(cells) for cells in table_rows(table)]
 
 
 def _team(name: str, logo: str) -> Team:
@@ -121,14 +124,29 @@ def _team(name: str, logo: str) -> Team:
     return Team(name=name, logo=None if name == TO_BE_DECIDED else logo)
 
 
-def _schedule_match(item: Tag, label: str, best_of: int) -> ScheduleMatch:
-    local_time = text_of(item.find("div"))
-    names = [text_of(name) for name in item.select(".team-name")]
-    logos = [need_attr(image, "src") for image in item.select("img")]
-    score = _SCORE.search(text_of(item.select_one(".mt-n2")))
-    href = attr(item.select_one("a[href*='/data/match/']"), "href")
+# The schedule page (about 0.4 MB) is read with patterns: a BeautifulSoup tree of it, plus importing bs4 on a fresh
+# Worker copy, ran out of the Worker's resources (error 1102) on every Philippine team request (1.7.5).
+_WEEK_PANE = re.compile(r'<div class="tab-pane\b[^"]*"\s+id="(week-\d+)"')
+_DAY_HEADER = re.compile(r'<div class="match-category-flex\b')
+_DAY_NUMBER = re.compile(r'class="match-category-day-no"\s*>(.*?)</div>', re.S)
+_DAY_LABEL = re.compile(r'class="match-category-day(?:\s[^"]*)?"\s*>(.*?)</div>', re.S)
+_ITEM = re.compile(r'<div class="schedule-item\b')
+_TEAM_NAME = re.compile(r'<div class="team-name"\s*>(.*?)</div>', re.S)
+_IMAGE = re.compile(r"<img\b[^>]*>")
+_MATCH_LINK = re.compile(r'<a\b[^>]*?\shref="([^"]*/data/match/[^"]*)"')
+
+
+def _schedule_match(item: str, label: str, best_of: int) -> ScheduleMatch:
+    first_div = item.find("<div", 1)
+    local_time = plain_text(balanced_div(item, first_div)) if first_div > 0 else ""
+    names = [plain_text(name) for name in _TEAM_NAME.findall(item)]
+    logos = [need(tag_attr(image, "img", "src"), "a team logo") for image in _IMAGE.findall(item)]
+    if len(names) < 2 or len(logos) < 2:
+        need(None, "a match's teams")
+    score = _SCORE.search(element_text(item, r"\bmt-n2\b"))
+    href = _MATCH_LINK.search(item)
     return ScheduleMatch(
-        match_id=href.rsplit("/", 1)[1] if href else None,
+        match_id=unescape(href[1]).rsplit("/", 1)[1] if href else None,
         start_at=_start_at(label, local_time),
         local_time=local_time,
         team1=_team(names[0], logos[0]),
@@ -139,35 +157,45 @@ def _schedule_match(item: Tag, label: str, best_of: int) -> ScheduleMatch:
     )
 
 
-def _schedule_day(header: Tag, best_of: int = REGULAR_SEASON_BEST_OF) -> ScheduleDay:
-    label = text_of(header.select_one(".match-category-day"))
-    day = re.search(r"\d+", text_of(header.select_one(".match-category-day-no")))
-    block = need_tag(header.find_parent(class_="col-lg-4"), "a schedule day")
-    return ScheduleDay(
-        day=int(day[0]) if day else None,
-        label=label,
-        matches=[_schedule_match(item, label, best_of) for item in block.select(".schedule-item")],
-    )
+def _pieces(markup: str, marker: re.Pattern[str]) -> list[str]:
+    """``markup`` cut at each match of ``marker``: every piece runs from one marker to the next."""
+    starts = [found.start() for found in marker.finditer(markup)]
+    return [markup[start : starts[index + 1] if index + 1 < len(starts) else len(markup)] for index, start in enumerate(starts)]
+
+
+def _schedule_days(block: str, best_of: int = REGULAR_SEASON_BEST_OF) -> list[ScheduleDay]:
+    days = []
+    for piece in _pieces(block, _DAY_HEADER):
+        label_match = _DAY_LABEL.search(piece)
+        label = plain_text(label_match[1]) if label_match else ""
+        number = _DAY_NUMBER.search(piece)
+        day = re.search(r"\d+", plain_text(number[1])) if number else None
+        days.append(
+            ScheduleDay(
+                day=int(day[0]) if day else None,
+                label=label,
+                matches=[_schedule_match(item, label, best_of) for item in _pieces(piece, _ITEM)],
+            )
+        )
+    return days
 
 
 @ttl_cache(CACHE_SECONDS)
 def _schedule_page() -> tuple[list[ScheduleWeek], list[ScheduleDay], str | None]:
     """Regular-season weeks, playoff days and the bracket image, from one fetch of the schedule page."""
-    soup = parse_html(fetch_page(EsportsSourceProvider.get_ph_base_url(), "/schedule").text)
-    panes = [(need_attr(pane, "id"), pane) for pane in soup.select("#regular-season .tab-pane")]
+    html = fetch_page(EsportsSourceProvider.get_ph_base_url(), "/schedule").text
+    season = div_block(html, 'id="regular-season"')
     weeks = [
-        ScheduleWeek(
-            week=int(pane_id.rsplit("-", 1)[1]),
-            days=[_schedule_day(header) for header in pane.select(".match-category-flex")],
-        )
-        for pane_id, pane in panes
-        if _WEEK_ID.match(pane_id)
+        ScheduleWeek(week=int(pane_id.rsplit("-", 1)[1]), days=_schedule_days(balanced_div(season, pane.start())))
+        for pane in _WEEK_PANE.finditer(season)
+        if _WEEK_ID.match(pane_id := pane[1])
     ]
     # The playoff cards appear twice on the page; the first "playoffs" block is the schedule tab.
-    playoffs = soup.find(id="playoffs")
-    days = [_schedule_day(header, PLAYOFFS_BEST_OF) for header in playoffs.select(".match-category-flex")] if playoffs else []
+    playoffs = div_block(html, 'id="playoffs"')
+    days = _schedule_days(playoffs, PLAYOFFS_BEST_OF)
     mark_finals(days)
-    bracket = attr(playoffs.select_one(".playoffs-bracket img"), "src") if playoffs else None
+    bracket_at = playoffs.find("playoffs-bracket")
+    bracket = tag_attr(playoffs[bracket_at:], "img", "src") if bracket_at >= 0 else None
     return weeks, days, bracket
 
 
