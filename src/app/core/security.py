@@ -3,10 +3,12 @@ from __future__ import annotations
 import base64
 import hashlib
 from functools import cache
-
-from cryptography.fernet import Fernet
+from typing import TYPE_CHECKING
 
 from app.core.config import SECRET_KEY
+
+if TYPE_CHECKING:
+    from cryptography.fernet import Fernet
 
 
 class KeyDeriver:
@@ -22,8 +24,12 @@ class CryptoManager:
     """Encrypt/decrypt helper used to decode private upstream route prefixes."""
 
     def __init__(self, secret_key: str) -> None:
+        # Imported here, not at startup: the Worker's startup snapshot has a memory cap and cryptography is about
+        # 0.8 MB of it; addresses are decrypted on first use anyway (`_decrypt`).
+        from cryptography.fernet import Fernet
+
         self.key = KeyDeriver.derive_key(secret_key)
-        self.fernet = Fernet(self.key)
+        self.fernet: Fernet = Fernet(self.key)
 
     def encrypt(self, text: str) -> bytes:
         return self.fernet.encrypt(text.encode())

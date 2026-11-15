@@ -18,6 +18,14 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.7.3",
+        "date": "2026-11-15",
+        "summary": "arena.rone.dev gets the latest fixes again.",
+        "fixed": [
+            "arena.rone.dev now has the Cambodian team names and fresher esports answers from 1.7.2; until now only the main address had them.",
+        ],
+    },
+    {
         "version": "1.7.2",
         "date": "2026-11-15",
         "summary": "Cambodian player statistics name each player's team again, and esports answers stay fresh in your browser.",

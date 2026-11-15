@@ -7,8 +7,6 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 from typing import TYPE_CHECKING
 
-import httpx
-
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
 from app.schemas.esports import (
@@ -23,6 +21,7 @@ from app.schemas.esports import (
 )
 
 if TYPE_CHECKING:
+    import httpx
     from bs4 import BeautifulSoup
     from bs4.element import PageElement, Tag
 
