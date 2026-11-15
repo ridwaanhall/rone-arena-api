@@ -53,6 +53,7 @@ from app.services.esports.common import (
     TO_BE_DECIDED,
     balanced_div,
     fetch_page,
+    image_file_key,
     find_standing,
     find_team,
     is_staff,
@@ -524,15 +525,11 @@ def _first_table(html: str) -> str:
     return table[0] if table else ""
 
 
-def _file_key(source: str) -> str:
-    return unquote(urlsplit(unescape(source)).path).rsplit("/", 1)[-1].casefold()
-
-
 def _team_by_logo(source: str) -> Team | None:
     """The team whose logo file is ``source``'s (the pages size the same logo differently)."""
-    key = _file_key(source)
+    key = image_file_key(source)
     for team in get_teams():
-        if team.logo and _file_key(team.logo) == key:
+        if team.logo and image_file_key(team.logo) == key:
             return Team(name=team.name, full_name=team.full_name, logo=team.logo)
     return None
 

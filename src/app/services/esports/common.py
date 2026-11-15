@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from html import unescape
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from typing import TYPE_CHECKING
 
@@ -337,3 +337,19 @@ def player_figures(headers: list[str], cells: list[str]) -> dict[str, int | floa
             text = plain_text(cell)
             figures[field] = stat_int(text) if field in PLAYER_INT_FIELDS else stat_float(text)
     return figures
+
+
+def image_file_key(source: str) -> str:
+    """The file name an image URL points at, lower-cased, through any image-proxy wrapping.
+
+    Answers carry images through wsrv.nl in production (``https://wsrv.nl/?url=<encoded URL>``), the league sites
+    sometimes wrap them themselves (``https://wsrv.nl?url=https://...``), and tests run unwrapped; matching a team by
+    its logo has to see the same file in all three. The resizing prefix some hosts add does not change the name.
+    """
+    url = unescape(source).strip()
+    for _ in range(3):
+        wrapped = parse_qs(urlsplit(url).query).get("url")
+        if not wrapped or (urlsplit(url).hostname or "").removeprefix("www.") != "wsrv.nl":
+            break
+        url = wrapped[0]
+    return unquote(urlsplit(url).path).rsplit("/", 1)[-1].casefold()
