@@ -164,7 +164,9 @@ Four leagues today: Indonesia (`id`), the Philippines (`ph`), Malaysia (`my`) an
    the same socials, role spelling, 404 `TEAM_NOT_FOUND`, standing row and match list (taken from the cached schedule,
    never from the team page). `team_id` is the slug of the league's team page; `name` is the short name the schedule uses.
    Indonesia: list `/en/teams`, page `/en/team/{id}` (roster only); player photos are on a subdomain of the league host,
-   so they are served by `/api/esports/id/images/{team_id}/{file}` (`indonesia.get_player_photo`). Philippines: list
+   so they are served by `/api/esports/id/images/{team_id}/{file}` (`indonesia.get_player_photo`). A photo is looked up in
+   `_roster` (the team page alone), never through `get_team`, which also parses the 2.4 MB schedule: on a fresh Worker
+   copy that cost an image request a 503 (1.7.4). Philippines: list
    `/teams`, page `/team/{id}` (description, achievements, roster from hidden inputs). Malaysia: the list comes from the
    home page's standings links, page `/team/{id}` (about 330 KB: regexes only) has birth dates, nationality (from the
    flag file), hometown, previous team, archetype, tier, socials and season stats per member. Cambodia: list = the cards

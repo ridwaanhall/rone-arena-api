@@ -107,7 +107,8 @@ def upstream(monkeypatch):
         cambodia.get_playoffs,
         cambodia.get_image,
         indonesia.get_teams,
-        indonesia._team_page,
+        indonesia._roster,
+        indonesia.get_team,
         indonesia.get_player_photo,
         philippines.get_teams,
         philippines.get_team,
@@ -844,6 +845,13 @@ def test_id_player_photos_are_served_through_the_api_so_the_league_host_stays_hi
     assert client.get("/api/esports/id/images/onic/Nobody.png").json()["code"] == "IMAGE_NOT_FOUND"
     assert client.get("/api/esports/id/images/onic/notes.txt").status_code == 422
 
+
+def test_id_player_photo_reads_only_the_team_page(upstream, monkeypatch) -> None:
+    # A photo must not pay for the 2.4 MB schedule: on a fresh Worker copy that overran the CPU budget (a 503).
+    monkeypatch.setattr(indonesia, "request_page", lambda **kwargs: SimpleNamespace(content=b"PNG", headers={"content-type": "image/png"}))
+
+    assert client.get("/api/esports/id/images/onic/Kiboy.png").status_code == 200
+    assert not any("/schedule" in call.url for call in upstream)
 
 def test_ph_teams_list_short_and_full_names() -> None:
     teams = client.get("/api/esports/ph/teams").json()["teams"]
