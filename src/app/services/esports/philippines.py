@@ -4,9 +4,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime, timedelta, timezone
 from html import unescape
-from typing import NamedTuple
-
-from bs4.element import Tag
+from typing import TYPE_CHECKING, NamedTuple
 
 from app.core.http import UpstreamHeaderBuilder, request_page
 from app.core.security import EsportsSourceProvider
@@ -71,6 +69,9 @@ from app.services.esports.common import (
     to_int,
 )
 from app.utils.ttl_cache import ttl_cache
+
+if TYPE_CHECKING:
+    from bs4.element import Tag
 
 _MANILA = timezone(timedelta(hours=8))
 _WEEK_ID = re.compile(r"^week-\d+$")

@@ -58,7 +58,11 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
   (which has no secrets, or only `SECRET_KEY`) still starts, and the endpoints that need one answer 503
   `NOT_CONFIGURED` via `require_access_key` in `core/config.py`.
 - Worker constraints: top-level imports run once at deploy time and are snapshotted (no
-  randomness or network at import, e.g. the httpx client is created on first use); sync routes
+  randomness or network at import, e.g. the httpx client is created on first use). The snapshot has a memory cap:
+  over it, the production deploy fails with error 10021 "Python startup exceeded memory limits" (preview uploads do
+  not run this check, so a green PR preview proves nothing). 1.7.0 crossed it; bs4 (about 2.5 MB) is now imported on
+  first use in `services/esports/common.py`. Keep request-only libraries out of module scope and compare
+  `tracemalloc` after `import app.main` (33.9 MB at 1.7.1) before adding a heavy import; sync routes
   run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate
   (`app/web/page_cache.py`) to stay inside the per-request CPU budget.
 - FastAPI Cloud hosts `arena.fastapicloud.dev` (`ALTERNATIVE_ENDPOINT_URL`, the site's "Primary" host). It is
