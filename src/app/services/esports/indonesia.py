@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from html import unescape
-from typing import TYPE_CHECKING, NamedTuple
+from typing import NamedTuple
 from urllib.parse import quote, unquote, urlsplit
 
 from app.core import config
@@ -50,7 +50,6 @@ from app.services.esports.common import (
     PLAYOFFS_BEST_OF,
     REGULAR_SEASON_BEST_OF,
     TO_BE_DECIDED,
-    attr,
     balanced_div,
     div_block,
     fetch_page,
@@ -61,10 +60,7 @@ from app.services.esports.common import (
     kda_ratio,
     mark_finals,
     need,
-    need_attr,
-    need_tag,
     normalize_role,
-    parse_html,
     parse_record,
     plain_text,
     player_figures,
@@ -73,16 +69,16 @@ from app.services.esports.common import (
     table_headers,
     table_rows,
     social_links,
+    class_block,
+    class_blocks,
+    class_spans,
+    child_divs,
     strip_comments,
     tag_attr,
     team_matches,
-    text_of,
     to_int,
 )
 from app.utils.ttl_cache import ttl_cache
-
-if TYPE_CHECKING:
-    from bs4.element import Tag
 
 # The per-player "data" row has no labels, only icons; the icon names the figure.
 _STAT_BY_ICON = {"sword": "damage_dealt", "shield": "damage_taken", "tower": "tower_damage", "money": "gold"}
@@ -243,41 +239,57 @@ def get_season(lang: str) -> Season:
     return Season(weeks, _standings(html), _playoffs(html))
 
 
-def _asset(image: Tag) -> Asset:
-    return Asset(id=need_attr(image, "alt"), image=need_attr(image, "src"))
+# A match page is about 230 KB: read with patterns, like the schedule (a BeautifulSoup tree of it, plus importing bs4
+# on a fresh Worker copy, failed with error 1102 about one request in three, 1.7.5).
+_IMG = re.compile(r"<img\b[^>]*>")
+_LEAF_DIV = re.compile(r"<div\b[^>]*>([^<]*)</div>")
+_CLASS_ATTR = re.compile(r'\sclass="([^"]*)"')
 
 
-def _is_item(image: Tag) -> bool:
-    source = need_attr(image, "src")
-    return (attr(image, "alt") or "").isdigit() and "/emblem/" not in source and "/rune/" not in source
+class _Image(NamedTuple):
+    alt: str | None
+    src: str
 
 
-def _player(block: Tag) -> Player:
-    images = block.find_all("img")
-    hero = next(image for image in images if (alt := attr(image, "alt")) and not alt.isdigit())
+def _images(markup: str) -> list[_Image]:
+    return [_Image(tag_attr(tag, "img", "alt"), need(tag_attr(tag, "img", "src"), "an image")) for tag in _IMG.findall(markup)]
+
+
+def _asset(image: _Image) -> Asset:
+    return Asset(id=need(image.alt, "an image's alt text"), image=image.src)
+
+
+def _is_item(image: _Image) -> bool:
+    return (image.alt or "").isdigit() and "/emblem/" not in image.src and "/rune/" not in image.src
+
+
+def _player(block: str) -> Player:
+    images = _images(block)
+    hero = next(image for image in images if image.alt and not image.alt.isdigit())
     # Name and hero are the only plain text cells; the KDA and data rows are skipped.
+    skipped = [span for token in ("kda", "data") for span in class_spans(block, token)]
     name = next(
-        text_of(cell)
-        for cell in block.find_all("div")
-        if not cell.find(True) and text_of(cell) and not cell.find_parent(class_=("kda", "data"))
+        text
+        for cell in _LEAF_DIV.finditer(block)
+        if (text := plain_text(cell[1])) and not any(start <= cell.start() < end for start, end in skipped)
     )
-    kills, deaths, assists = (int(part) for part in text_of(block.select_one(".kda-content")).split("/"))
+    kills, deaths, assists = (int(part) for part in plain_text(class_block(block, "kda-content")).split("/"))
     stats = {
-        stat: to_int(text_of(cell))
-        for cell in block.select(".data > div")
+        stat: to_int(plain_text(cell))
+        for cell in child_divs(class_block(block, "data"))
         for icon, stat in _STAT_BY_ICON.items()
-        if icon in need_attr(cell.find("img"), "src")
+        if icon in need(tag_attr(cell, "img", "src"), "a figure's icon")
     }
     return Player(
         name=name,
-        hero=Hero(name=need_attr(hero, "alt"), image=need_attr(hero, "src")),
+        hero=Hero(name=need(hero.alt, "a hero"), image=hero.src),
         kills=kills,
         deaths=deaths,
         assists=assists,
         kda=kda_ratio(kills, deaths, assists),
         items=[_asset(image) for image in images if _is_item(image)],
-        emblem=next((_asset(image) for image in images if "/emblem/" in need_attr(image, "src")), None),
-        talents=[_asset(image) for image in images if "/rune/" in need_attr(image, "src")],
+        emblem=next((_asset(image) for image in images if "/emblem/" in image.src), None),
+        talents=[_asset(image) for image in images if "/rune/" in image.src],
         gold=stats.get("gold"),
         damage_dealt=stats.get("damage_dealt"),
         damage_taken=stats.get("damage_taken"),
@@ -285,27 +297,39 @@ def _player(block: Tag) -> Player:
     )
 
 
-def _game(number: int, pane: Tag) -> Game:
-    header = need_tag(pane.find("div", recursive=False), "the game header")
-    columns = need_tag(pane.select_one(".row"), "the player columns").find_all("div", recursive=False)
+def _sides(header: str) -> list[str]:
+    """The victory and defeat blocks of a game header, in page order."""
+    found = [
+        balanced_div(header, tag.start())
+        for tag in re.finditer(r"<div\b[^>]*>", header)
+        if (classes := _CLASS_ATTR.search(tag[0])) and {"victory", "defeat"} & set(classes[1].split())
+    ]
+    return found
+
+
+def _game(number: int, pane: str) -> Game:
+    first = pane.find("<div", 1)
+    header = balanced_div(pane, need(first if first > 0 else None, "the game header"))
+    columns = child_divs(need(class_block(pane, "row") or None, "the player columns"))
     teams = [
         GameTeam(
-            team=Team(name=text_of(side.select_one(".mt-0")), logo=need_attr(side.select_one(".team-logo img"), "src")),
-            winner="victory" in (attr(side, "class") or "").split(),
-            kills=int(need(re.search(r"\d+", text_of(side.select_one(".pt-4"))), "a team's kills")[0]),
+            team=Team(name=plain_text(class_block(side, "mt-0")), logo=need(tag_attr(class_block(side, "team-logo"), "img", "src"), "a team logo")),
+            winner="victory" in need(_CLASS_ATTR.search(side), "a side's class")[1].split(),
+            kills=int(need(re.search(r"\d+", plain_text(class_block(side, "pt-4"))), "a team's kills")[0]),
             stats={},
-            players=[_player(block) for block in column.find_all("div", recursive=False)],
+            players=[_player(block) for block in child_divs(column)],
         )
-        for side, column in zip(header.select(".victory, .defeat"), columns)
+        for side, column in zip(_sides(header), columns)
     ]
-    clock = header.find("img", src=re.compile("clock"))
-    return Game(number=number, duration=text_of(clock.parent) if clock else None, teams=teams)
+    clock = re.search(r'<img\b[^>]*\ssrc="[^"]*clock[^"]*"', header)
+    duration = plain_text(balanced_div(header, header.rfind("<div", 0, clock.start()))) if clock else None
+    return Game(number=number, duration=duration, teams=teams)
 
 
 @ttl_cache(CACHE_SECONDS)
 def get_match(match_id: int) -> MatchDetailResponse:
-    soup = parse_html(fetch_page(EsportsSourceProvider.get_id_base_url(), f"/match-detail/{match_id}").text)
-    panes = soup.select(".tab-content.match-detail")
+    html = fetch_page(EsportsSourceProvider.get_id_base_url(), f"/match-detail/{match_id}").text
+    panes = [pane for pane in class_blocks(html, "match-detail") if "tab-content" in need(_CLASS_ATTR.search(pane), "a pane's class")[1].split()]
     if not panes:
         raise AppError(status_code=404, code="MATCH_NOT_FOUND", message=f"No match details found for match {match_id}.")
     return MatchDetailResponse(match_id=str(match_id), games=[_game(number, pane) for number, pane in enumerate(panes, start=1)])

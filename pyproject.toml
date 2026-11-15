@@ -1,6 +1,6 @@
 [project]
 name = "rone-arena-api"
-version = "1.7.5"
+version = "1.7.6"
 description = "Unofficial community data API for the game Mobile Legends: Bang Bang"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
@@ -19,7 +19,6 @@ dependencies = [
     "cryptography>=45",
     "fastapi[standard]>=0.162.0; sys_platform != 'emscripten'",
     "fastapi-cloud-cli>=0.26.0; sys_platform != 'emscripten'",
-    "beautifulsoup4>=4.15.0",
 ]
 
 [project.urls]

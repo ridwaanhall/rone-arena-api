@@ -487,6 +487,7 @@ def test_ph_item_sequences_read_attributes_split_across_lines() -> None:
         "/api/esports/id/standings",
         "/api/esports/id/playoffs",
         "/api/esports/id/teams/onic",
+        "/api/esports/id/matches/1036",
     ],
 )
 def test_pages_are_read_without_beautifulsoup(monkeypatch, path: str) -> None:
