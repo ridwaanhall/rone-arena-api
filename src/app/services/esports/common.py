@@ -22,18 +22,10 @@ from app.schemas.esports import (
 
 if TYPE_CHECKING:
     import httpx
-    from bs4 import BeautifulSoup
-    from bs4.element import PageElement, Tag
 
-# BeautifulSoup is imported on first use, never at startup: the Worker snapshots the memory of everything imported
-# at startup, and bs4 (with soupsieve) is about 2.5 MB of it, enough to push the snapshot over Cloudflare's limit
-# (error 10021, "Python startup exceeded memory limits"). Keep heavy, request-only libraries out of module scope.
-
-
-def _tag_class() -> type[Tag]:
-    from bs4.element import Tag
-
-    return Tag
+# The pages are read with regexes only, never a DOM parser: bs4 at startup pushed the Worker's snapshot over its
+# memory limit (error 10021), and imported on first use it ran a fresh Worker copy out of resources (error 1102,
+# 1.7.5). Keep heavy, request-only libraries out of module scope.
 
 
 # Upstream responses are parsed (and cached) for five minutes: long enough to absorb
@@ -59,20 +51,6 @@ KH_ELIMINATED = 4
 TO_BE_DECIDED = "TBD"
 
 
-def text_of(element: PageElement | None) -> str:
-    return element.get_text(" ", strip=True) if element else ""
-
-
-def attr(element: PageElement | None, name: str) -> str | None:
-    """An attribute as one string (``class`` lists are joined with spaces), or None when it is not there."""
-    if not isinstance(element, _tag_class()):
-        return None
-    value = element.get(name)
-    if value is None:
-        return None
-    return value if isinstance(value, str) else " ".join(value)
-
-
 def _page_changed(what: str) -> AppError:
     return AppError(
         status_code=502,
@@ -85,19 +63,6 @@ def need[T](value: T | None, what: str = "an expected value") -> T:
     """``value`` unless it is missing, which means the league site changed its page."""
     if value is None:
         raise _page_changed(what)
-    return value
-
-
-def need_tag(element: PageElement | None, what: str = "an expected element") -> Tag:
-    if not isinstance(element, _tag_class()):
-        raise _page_changed(what)
-    return element
-
-
-def need_attr(element: PageElement | None, name: str) -> str:
-    value = attr(element, name)
-    if value is None:
-        raise _page_changed(f"the {name!r} attribute")
     return value
 
 
@@ -118,8 +83,8 @@ def balanced_div(html: str, start: int) -> str:
     """The ``<div>`` that opens at ``start``, up to its closing tag, found by counting nested divs.
 
     The league pages are large (the Indonesian schedule is 2.4 MB, a Philippine match 0.8 MB) and building a
-    BeautifulSoup tree of one costs more CPU than a Cloudflare Worker request may use (error 1102), so the
-    scrapers slice the parts they need out of the text and parse those with regexes or a small tree.
+    DOM tree of one costs more CPU than a Cloudflare Worker request may use (error 1102), so the scrapers slice
+    the parts they need out of the text and read those with regexes.
     """
     depth = 0
     for tag in _DIV_TAG.finditer(html, start):
@@ -145,12 +110,6 @@ def fetch_page(base_url: str, path: str) -> httpx.Response:
         url=f"{base_url}{path}",
         headers=UpstreamHeaderBuilder.get_esports_header(base_url),
     )
-
-
-def parse_html(html: str) -> BeautifulSoup:
-    from bs4 import BeautifulSoup
-
-    return BeautifulSoup(html, "html.parser")
 
 
 def select_weeks(weeks: list[ScheduleWeek], week: int | None) -> ScheduleResponse:
@@ -323,6 +282,43 @@ def element_text(markup: str, class_fragment: str, start: int = 0) -> str:
     included), or an empty string."""
     found = re.search(rf'<div\b[^>]*\bclass="[^"]*{class_fragment}[^"]*"', markup[start:])
     return plain_text(balanced_div(markup, start + found.start())) if found else ""
+
+
+def _class_pattern(token: str) -> re.Pattern[str]:
+    return re.compile(rf'<div\b[^>]*?\sclass="(?:[^"]*\s)?{re.escape(token)}(?:\s[^"]*)?"')
+
+
+def class_blocks(markup: str, token: str) -> list[str]:
+    """Every ``<div>`` whose class list holds ``token`` (as a whole word), in page order, each up to its closing tag."""
+    return [balanced_div(markup, found.start()) for found in _class_pattern(token).finditer(markup)]
+
+
+def class_spans(markup: str, token: str) -> list[tuple[int, int]]:
+    """(start, end) in ``markup`` of every ``<div>`` whose class list holds ``token``."""
+    spans = []
+    for found in _class_pattern(token).finditer(markup):
+        spans.append((found.start(), found.start() + len(balanced_div(markup, found.start()))))
+    return spans
+
+
+def class_block(markup: str, token: str) -> str:
+    """The first ``<div>`` whose class list holds ``token``, or an empty string."""
+    found = _class_pattern(token).search(markup)
+    return balanced_div(markup, found.start()) if found else ""
+
+
+def child_divs(block: str) -> list[str]:
+    """The ``<div>`` children directly inside ``block`` (itself one ``<div>``), in order."""
+    children = []
+    depth = 0
+    for tag in _DIV_TAG.finditer(block):
+        if tag.group(1):
+            depth -= 1
+        else:
+            depth += 1
+            if depth == 2:
+                children.append(balanced_div(block, tag.start()))
+    return children
 
 
 def table_headers(table: str) -> list[str]:
