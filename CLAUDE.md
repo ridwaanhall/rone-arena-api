@@ -60,9 +60,13 @@ are generated in `src/app/web/llms.py`; the `llms-txt` skill keeps them current 
 - Worker constraints: top-level imports run once at deploy time and are snapshotted (no
   randomness or network at import, e.g. the httpx client is created on first use). The snapshot has a memory cap:
   over it, the production deploy fails with error 10021 "Python startup exceeded memory limits" (preview uploads do
-  not run this check, so a green PR preview proves nothing). 1.7.0 crossed it; bs4 (about 2.5 MB) is now imported on
-  first use in `services/esports/common.py`. Keep request-only libraries out of module scope and compare
-  `tracemalloc` after `import app.main` (33.9 MB at 1.7.1) before adding a heavy import; sync routes
+  not run this check, so a green PR preview proves nothing). 1.7.0 crossed it and 1.7.2 hit it again at the same size,
+  so the limit sits right there: bs4 (2.5 MB, `services/esports/common.py`), httpx (1.7 MB, `core/http.py`) and
+  cryptography (0.8 MB, `CryptoManager`) are now imported on first use. The snapshot also holds what `warm()` builds
+  (`app/web/warm.py`: the OpenAPI schema, about 3.6 MB live, the endpoint catalogs and the compiled templates), so
+  more endpoints or longer OpenAPI descriptions cost snapshot memory too. Keep request-only libraries out of module
+  scope, and before adding a heavy import or many endpoints compare `tracemalloc` after `import app.main` plus
+  `warm(app)` with `click`, `rich` and `pygments` blocked in `sys.modules` (the Worker has no httpx CLI extras); sync routes
   run inline (the runtime SDK patches anyio's threadpool); web pages are cached per isolate
   (`app/web/page_cache.py`) to stay inside the per-request CPU budget.
 - FastAPI Cloud hosts `arena.fastapicloud.dev` (`ALTERNATIVE_ENDPOINT_URL`, the site's "Primary" host). It is

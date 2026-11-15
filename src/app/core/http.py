@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import random
 from functools import cache
-from typing import Any
-
-import httpx
+from typing import TYPE_CHECKING, Any
 
 from app.core.exceptions import AppError
 from app.core.images import wsrv_json
+
+if TYPE_CHECKING:
+    import httpx
+
+# httpx is imported on first use, never at startup: the Cloudflare Worker snapshots the memory of everything imported
+# at startup, the snapshot has a hard cap (error 10021, "Python startup exceeded memory limits"), and httpx is about
+# 1.7 MB of it. Every upstream call goes through `_get_client`, which imports it.
 
 
 class UpstreamHeaderBuilder:
@@ -140,6 +145,8 @@ class UpstreamHeaderBuilder:
 # module state at deploy time, where building an SSL context is not allowed.
 @cache
 def _get_client() -> httpx.Client:
+    import httpx
+
     return httpx.Client(timeout=30.0, follow_redirects=True)
 
 
@@ -150,12 +157,15 @@ def _is_waf_block(response: httpx.Response) -> bool:
 
 
 def _fetch(method: str, url: str, headers: dict[str, str], **kwargs: Any) -> httpx.Response:
+    client = _get_client()
+    from httpx import HTTPError
+
     try:
-        response = _get_client().request(method, url, headers=headers, **kwargs)
+        response = client.request(method, url, headers=headers, **kwargs)
         if _is_waf_block(response):
             # One retry: on Workers the next request often leaves from another address.
-            response = _get_client().request(method, url, headers=headers, **kwargs)
-    except httpx.HTTPError as exc:
+            response = client.request(method, url, headers=headers, **kwargs)
+    except HTTPError as exc:
         raise AppError(status_code=502, code="UPSTREAM_REQUEST_FAILED", message="Failed to fetch data", details=str(exc)) from exc
 
     if _is_waf_block(response):
