@@ -158,6 +158,299 @@ class MatchDetailResponse(BaseModel):
     games: list[Game]
 
 
+# ---- teams
+
+
+class SocialLink(BaseModel):
+    # facebook, instagram, youtube, x, tiktok... (from the link's host).
+    platform: str
+    url: str
+
+
+class TeamSummary(BaseModel):
+    # Value for the league's team endpoint.
+    team_id: str
+    # Short name, as the schedule and standings write it.
+    name: str
+    full_name: str | None = None
+    logo: Image | None = None
+
+
+class TeamsResponse(BaseModel):
+    teams: list[TeamSummary]
+
+
+class PlayerSeasonStats(BaseModel):
+    """A player's regular-season totals, as the league prints them on the team page (Malaysian league only)."""
+
+    matches: int
+    kills: int
+    deaths: int
+    assists: int
+    kda: float
+    savage: int | None = None
+    maniac: int | None = None
+
+
+class RosterMember(BaseModel):
+    # Value for the league's player endpoint (Cambodian league only); null elsewhere.
+    player_id: str | None = None
+    name: str
+    # Role as the league names it: "Roam", "Gold Lane", "Coach", "Analyst"...
+    role: str
+    photo: Image | None = None
+    # Further details only the Malaysian league publishes; null or empty elsewhere.
+    archetype: str | None = None
+    secondary_role: str | None = None
+    tier: str | None = None
+    birth_date: str | None = None
+    age: int | None = None
+    nationality: str | None = None
+    hometown: str | None = None
+    previous_team: Team | None = None
+    socials: list[SocialLink] = []
+    stats: PlayerSeasonStats | None = None
+
+
+class Achievement(BaseModel):
+    title: str
+    # "1st", "5th - 8th"...; null when the league gives none.
+    placement: str | None = None
+    # Cambodian league only: the date (YYYY-MM-DD), the event's tier ("S-Tier") and the prize, as the league writes them.
+    date: str | None = None
+    tier: str | None = None
+    prize: str | None = None
+
+
+class TeamStats(BaseModel):
+    """Team totals the league prints on the team page (Cambodian league only); a figure it leaves out is null."""
+
+    # "MPL KH S11" for the season, "Career" for all seasons together.
+    label: str
+    matches_played: int | None = None
+    games_played: int | None = None
+    match_wl: Record | None = None
+    game_wl: Record | None = None
+    # Percent of matches won.
+    win_rate: float | None = None
+    kills: int | None = None
+    gold: int | None = None
+    damage: int | None = None
+    lord: int | None = None
+    tortoise: int | None = None
+    tower: int | None = None
+
+
+class TeamMatch(ScheduleMatch):
+    stage: Literal["regular_season", "playoffs"]
+    # Regular-season week; null in the playoffs.
+    week: int | None
+    day_label: str
+    opponent: Team
+    # From this team's side; null until the match is finished.
+    result: Literal["win", "loss"] | None
+
+
+class TeamDetailResponse(TeamSummary):
+    # Season the roster is for, as the league states it.
+    season: int | None = None
+    tagline: str | None = None
+    description: str | None = None
+    socials: list[SocialLink] = []
+    team_photo: Image | None = None
+    gallery: list[Image] = []
+    # Team entrance music (Malaysian league only); a signed link that expires within hours.
+    entrance_music: str | None = None
+    achievements: list[Achievement] = []
+    # Further facts the league lists about the team ("region", "owner", "manager"); Cambodian league only.
+    profile: dict[str, str] = {}
+    # Season and career totals (Cambodian league only).
+    stats: list[TeamStats] = []
+    players: list[RosterMember]
+    # Coaches, analysts and managers.
+    staff: list[RosterMember]
+    # Regular-season standing; null before the league publishes the table.
+    standing: Standing | None = None
+    # Every regular-season and playoff match of the team, in schedule order.
+    matches: list[TeamMatch] = []
+
+
+class PlayerStats(BaseModel):
+    """A player's totals as the league prints them (Cambodian league only); a figure it leaves out is null."""
+
+    # "MPL KH S11" for the season, "Career" for all seasons together.
+    label: str
+    heroes_played: int | None = None
+    mvp_points: int | None = None
+    matches_played: int | None = None
+    games_played: int | None = None
+    kills: int | None = None
+    assists: int | None = None
+    gold: int | None = None
+    gold_per_min: int | None = None
+    damage_dealt: int | None = None
+    damage_taken: int | None = None
+    tower_damage: int | None = None
+
+
+class TeamHistoryEntry(BaseModel):
+    # Value for the team endpoint; null when the league has no page for the team.
+    team_id: str | None
+    name: str
+    # As the league writes it: "2026 – Present".
+    period: str | None
+
+
+class PlayerDetailResponse(BaseModel):
+    player_id: str
+    name: str
+    role: str
+    photo: Image | None = None
+    # The player's current team.
+    team: TeamSummary | None = None
+    # Biography facts as the league lists them ("full_name", "based"...).
+    profile: dict[str, str] = {}
+    team_history: list[TeamHistoryEntry] = []
+    stats: list[PlayerStats] = []
+
+
+# ---- season statistics
+
+
+class TeamStatistics(BaseModel):
+    team: Team
+    kills: int | None = None
+    deaths: int | None = None
+    assists: int | None = None
+    gold: int | None = None
+    damage: int | None = None
+    lord: int | None = None
+    tortoise: int | None = None
+    tower: int | None = None
+
+
+class TeamStatisticsResponse(BaseModel):
+    teams: list[TeamStatistics]
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    name: str
+    team: Team | None = None
+    photo: Image | None = None
+    hero: Hero | None = None
+    # The figure ranked: a total, an average, a KDA or a percentage, as the board says.
+    value: float
+
+
+class Leaderboard(BaseModel):
+    # As the league names it: "Top 5 Kills", "KDA Ranking", "Top 5 Hero Pick"...
+    title: str
+    entries: list[LeaderboardEntry]
+
+
+class PlayerStatistics(BaseModel):
+    name: str
+    team: Team | None = None
+    role: str | None = None
+    games: int | None = None
+    kills: int | None = None
+    deaths: int | None = None
+    assists: int | None = None
+    avg_kills: float | None = None
+    avg_deaths: float | None = None
+    avg_assists: float | None = None
+    kda: float | None = None
+    # Percent of the team's kills the player took part in.
+    kill_participation: float | None = None
+
+
+class PlayerStatisticsResponse(BaseModel):
+    leaderboards: list[Leaderboard]
+    players: list[PlayerStatistics]
+
+
+class HeroStatistics(BaseModel):
+    hero: Hero
+    picks: int
+    bans: int
+    wins: int
+    # Percentages; the rates of picks and bans are published by the Philippine league only.
+    pick_rate: float | None = None
+    ban_rate: float | None = None
+    win_rate: float | None = None
+
+
+class HeroStatisticsResponse(BaseModel):
+    leaderboards: list[Leaderboard]
+    heroes: list[HeroStatistics]
+
+
+class PoolHero(BaseModel):
+    hero: Hero
+    picks: int
+    win_rate: float | None
+
+
+class HeroPool(BaseModel):
+    """The heroes one player has played this season (Indonesian league only)."""
+
+    name: str
+    team: Team | None = None
+    role: str | None = None
+    # Different heroes played.
+    total: int
+    heroes: list[PoolHero]
+
+
+class HeroPoolsResponse(BaseModel):
+    players: list[HeroPool]
+
+
+class PoolPlayer(BaseModel):
+    name: str
+    team: Team | None = None
+    photo: Image | None = None
+    picks: int
+    win_rate: float | None
+
+
+class PlayerPool(BaseModel):
+    """The players who have played one hero this season (Indonesian league only)."""
+
+    hero: Hero
+    # Different players who played it.
+    total: int
+    players: list[PoolPlayer]
+
+
+class PlayerPoolsResponse(BaseModel):
+    heroes: list[PlayerPool]
+
+
+class MvpStanding(BaseModel):
+    rank: int
+    name: str
+    team: Team | None = None
+    photo: Image | None = None
+    points: int
+
+
+class MvpStandingsResponse(BaseModel):
+    standings: list[MvpStanding]
+
+
+class SavageManiac(BaseModel):
+    name: str
+    team: Team | None = None
+    savage: int
+    maniac: int
+
+
+class SavageManiacResponse(BaseModel):
+    players: list[SavageManiac]
+
+
 # ---- standings simulator
 
 

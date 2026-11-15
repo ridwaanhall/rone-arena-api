@@ -10,12 +10,22 @@ from app.api.params import LeagueLang
 from app.core.enums import LeagueEnum, LeagueLanguageEnum
 from app.schemas.esports import (
     CalculateRequest,
+    HeroPoolsResponse,
+    HeroStatisticsResponse,
+    MvpStandingsResponse,
+    PlayerPoolsResponse,
+    PlayerStatisticsResponse,
+    SavageManiacResponse,
+    TeamStatisticsResponse,
     MatchDetailResponse,
+    PlayerDetailResponse,
     PlayoffsResponse,
     ScheduleResponse,
     SimulateRequest,
     StandingsResponse,
     StandingsSimulationResponse,
+    TeamDetailResponse,
+    TeamsResponse,
 )
 from app.services.esports import cambodia, indonesia, malaysia, philippines, simulation
 from app.services.esports.common import select_weeks
@@ -193,6 +203,76 @@ _STANDINGS_DESCRIPTION = (
     "Regular-season standings of {league}: rank, team, match point, match win-lose, "
     "net game win and game win-lose.\n{lang_param}\nData is read from the league's official public site and cached for 5 minutes."
 )
+_TEAM_SUMMARY = {"team_id": "onic", "name": "ONIC", "full_name": "ONIC PH", "logo": _LOGO}
+_TEAMS_EXAMPLE = {"teams": [_TEAM_SUMMARY]}
+_MEMBER_EXAMPLE = {
+    "name": "AJ",
+    "role": "Mid Lane",
+    "photo": "https://wsrv.nl/?url=https://example.com/players/aj.png",
+    "archetype": "Flex Mid",
+    "secondary_role": "Jungle",
+    "tier": "B",
+    "birth_date": "2001-07-10",
+    "age": 25,
+    "nationality": "Malaysia",
+    "hometown": "Kedah",
+    "previous_team": {"name": "CG (Free Agent)", "full_name": None, "logo": None},
+    "socials": [{"platform": "instagram", "url": "https://www.instagram.com/example"}],
+    "stats": {"matches": 22, "kills": 74, "deaths": 49, "assists": 66, "kda": 2.86, "savage": 0, "maniac": 0},
+}
+_TEAM_EXAMPLE = {
+    **_TEAM_SUMMARY,
+    "season": 18,
+    "tagline": None,
+    "description": "The OGs of the league are ready to lead the team back to the top.",
+    "socials": [{"platform": "instagram", "url": "https://www.instagram.com/example"}],
+    "team_photo": None,
+    "gallery": [],
+    "entrance_music": None,
+    "achievements": [{"title": "M6 World Championship", "placement": "1st"}],
+    "players": [_MEMBER_EXAMPLE],
+    "staff": [{**_MEMBER_EXAMPLE, "name": "Pheww", "role": "Coach", "archetype": None, "secondary_role": None, "tier": None, "stats": None}],
+    "standing": _STANDINGS_EXAMPLE["standings"][0],
+    "matches": [
+        {
+            **_SCHEDULE_EXAMPLE["weeks"][0]["days"][0]["matches"][0],
+            "stage": "regular_season",
+            "week": 1,
+            "day_label": "Friday, 14 August 2026",
+            "opponent": {"name": "RRQ", "full_name": None, "logo": _LOGO},
+            "result": "win",
+        }
+    ],
+}
+_TEAMS_DESCRIPTION = (
+    "Teams of {league} this season: **team_id** (for the team endpoint), short **name** as the schedule and standings "
+    "write it, **full_name** and **logo**.{note}\n\nData is read from the league's official public site and cached for 5 minutes."
+)
+_TEAM_DESCRIPTION = (
+    "Everything {league} publishes about one team:\n"
+    "- **season**, **socials** (`platform` and `url`){extra_team}\n"
+    "- **players** and **staff** (coaches, analysts): **name**, **role** in one spelling for every league "
+    "(`Gold Lane`, `EXP Lane`, `Mid Lane`, `Jungle`, `Roam`, `Coach`, `Assistant Coach`, `Analyst`) and **photo**.{extra_member}\n"
+    "- **standing**: the team's row of the regular-season table (null before the league publishes it).\n"
+    "- **matches**: every regular-season and playoff match of the team, with the schedule's fields plus **stage**, **week**, "
+    "**day_label**, **opponent** and **result** (`win`, `loss`, or null until finished); **match_id** works with the matches endpoint.\n\n"
+    "An unknown **team_id** returns 404 `TEAM_NOT_FOUND` with the league's ids. Data is cached for 5 minutes."
+)
+_TEAM_ID_HELP = "**team_id** from the teams endpoint{example}."
+
+
+def _team_id(example: str):
+    return Annotated[
+        str,
+        Path(title="Team ID", description=_TEAM_ID_HELP.format(example=f", e.g. `{example}`"), pattern=r"^[a-z0-9-]+$", max_length=60),
+    ]
+
+
+IdTeamId = _team_id("onic")
+PhTeamId = _team_id("tlph")
+MyTeamId = _team_id("rrq-tora")
+KhTeamId = _team_id("pro-esports")
+
 _MATCH_DESCRIPTION = (
     "Full match history of one match of {league}: every game with both teams and all players "
     "(hero, KDA, items, emblem, talents, gold, damage dealt, damage taken and tower damage).{extra}\n\n"
@@ -256,6 +336,44 @@ def id_match(
     match_id: Annotated[int, Path(title="Match ID", description="**match_id** from the schedule endpoint.", ge=1)],
 ) -> MatchDetailResponse:
     return indonesia.get_match(match_id)
+
+@router.get(
+    path="/id/teams",
+    name="api.esports.id_teams",
+    response_model=TeamsResponse,
+    summary="Indonesia Teams",
+    description=_TEAMS_DESCRIPTION.format(league="the Indonesian professional league", note=" **full_name** is on the team endpoint."),
+    responses=_example(_TEAMS_EXAMPLE),
+)
+def id_teams() -> TeamsResponse:
+    return TeamsResponse(teams=indonesia.get_teams())
+
+
+@router.get(
+    path="/id/teams/{team_id}",
+    name="api.esports.id_team",
+    response_model=TeamDetailResponse,
+    summary="Indonesia Team Details",
+    description=_TEAM_DESCRIPTION.format(
+        league="the Indonesian professional league",
+        extra_team=". The league publishes no description or achievements.",
+        extra_member=" Photos are served through this API.",
+    ),
+    responses=_example(_TEAM_EXAMPLE),
+)
+def id_team(team_id: IdTeamId) -> TeamDetailResponse:
+    return indonesia.get_team(team_id)
+
+
+@router.get(path="/id/images/{team_id}/{name}", name="api.esports.id_image", include_in_schema=False)
+def id_image(
+    team_id: Annotated[str, Path(pattern=r"^[a-z0-9-]+$", max_length=60)],
+    name: Annotated[str, Path(pattern=r"^[\w%. ()-]+\.(?:webp|png|jpe?g)$", max_length=120)],
+) -> Response:
+    """A roster photo of the Indonesian league, served from here so the league's file host never appears in an answer."""
+    content, media_type = indonesia.get_player_photo(team_id, name)
+    return Response(content=content, media_type=media_type, headers={"Cache-Control": "public, max-age=3600"})
+
 
 
 @router.get(
@@ -329,6 +447,34 @@ def ph_match(
 ) -> MatchDetailResponse:
     return philippines.get_match(match_slug)
 
+@router.get(
+    path="/ph/teams",
+    name="api.esports.ph_teams",
+    response_model=TeamsResponse,
+    summary="Philippines Teams",
+    description=_TEAMS_DESCRIPTION.format(league="the Philippine professional league", note=""),
+    responses=_example(_TEAMS_EXAMPLE),
+)
+def ph_teams() -> TeamsResponse:
+    return TeamsResponse(teams=philippines.get_teams())
+
+
+@router.get(
+    path="/ph/teams/{team_id}",
+    name="api.esports.ph_team",
+    response_model=TeamDetailResponse,
+    summary="Philippines Team Details",
+    description=_TEAM_DESCRIPTION.format(
+        league="the Philippine professional league",
+        extra_team=", the league's **description** of the team and its **achievements** (`title` and `placement`, as the league writes them).",
+        extra_member="",
+    ),
+    responses=_example(_TEAM_EXAMPLE),
+)
+def ph_team(team_id: PhTeamId) -> TeamDetailResponse:
+    return philippines.get_team(team_id)
+
+
 
 @router.get(
     path="/my/schedule",
@@ -393,6 +539,38 @@ def my_match(
 ) -> MatchDetailResponse:
     return malaysia.get_match(match_id)
 
+@router.get(
+    path="/my/teams",
+    name="api.esports.my_teams",
+    response_model=TeamsResponse,
+    summary="Malaysia Teams",
+    description=_TEAMS_DESCRIPTION.format(league="the Malaysian professional league", note=""),
+    responses=_example(_TEAMS_EXAMPLE),
+)
+def my_teams() -> TeamsResponse:
+    return TeamsResponse(teams=malaysia.get_teams())
+
+
+@router.get(
+    path="/my/teams/{team_id}",
+    name="api.esports.my_team",
+    response_model=TeamDetailResponse,
+    summary="Malaysia Team Details",
+    description=_TEAM_DESCRIPTION.format(
+        league="the Malaysian professional league",
+        extra_team=", **tagline**, **description**, **team_photo**, the **gallery** and **entrance_music** (a signed link that expires within hours).",
+        extra_member=(
+            " The Malaysian league also gives each member's **birth_date**, **age**, **nationality**, **hometown**, **previous_team**, "
+            "**socials**, and for players the **archetype** (`Flex Jungler`...), **secondary_role**, **tier** (the league's rating) and "
+            "season **stats** (matches, kills, deaths, assists, KDA, savages and maniacs, as the league counts them)."
+        ),
+    ),
+    responses=_example(_TEAM_EXAMPLE),
+)
+def my_team(team_id: MyTeamId) -> TeamDetailResponse:
+    return malaysia.get_team(team_id)
+
+
 
 @router.get(
     path="/kh/schedule",
@@ -437,13 +615,276 @@ def kh_standings() -> StandingsResponse:
     return StandingsResponse(standings=cambodia.get_standings())
 
 
-@router.get(path="/kh/images/{name}", name="api.esports.kh_image", include_in_schema=False)
+_KH_PLAYER_EXAMPLE = {
+    "player_id": "d7",
+    "name": "D7",
+    "role": "Roam",
+    "photo": "https://wsrv.nl/?url=https://arena.rone.dev/api/esports/kh/images/players/D7.webp",
+    "team": {"team_id": "vigor-apex", "name": "VGR", "full_name": "Vigor Apex", "logo": _LOGO},
+    "profile": {"full_name": "D7", "based": "Cambodia"},
+    "team_history": [{"team_id": "vigor-apex", "name": "Vigor Apex", "period": "2026 – Present"}],
+    "stats": [
+        {
+            "label": "MPL KH S11",
+            "heroes_played": 4,
+            "mvp_points": 0,
+            "matches_played": 3,
+            "games_played": 8,
+            "kills": 5,
+            "assists": 68,
+            "gold": 65592,
+            "gold_per_min": 555,
+            "damage_dealt": 189093,
+            "damage_taken": 852688,
+            "tower_damage": 2252,
+        }
+    ],
+}
+
+
+@router.get(
+    path="/kh/teams",
+    name="api.esports.kh_teams",
+    response_model=TeamsResponse,
+    summary="Cambodia Teams",
+    description=_TEAMS_DESCRIPTION.format(league="the Cambodian professional league", note=""),
+    responses=_example(_TEAMS_EXAMPLE),
+)
+def kh_teams() -> TeamsResponse:
+    return TeamsResponse(teams=cambodia.get_teams())
+
+
+@router.get(
+    path="/kh/teams/{team_id}",
+    name="api.esports.kh_team",
+    response_model=TeamDetailResponse,
+    summary="Cambodia Team Details",
+    description=_TEAM_DESCRIPTION.format(
+        league="the Cambodian professional league",
+        extra_team=(
+            ", the league's **description**, **achievements** (`title`, `placement`, `date`, `tier`, `prize`; the league types "
+            "them by hand, so a few read oddly), **profile** facts it lists (`region`, `owner`, `manager`) and **stats**: season "
+            "and career totals (matches and games played, match and game win-lose, win rate, kills, gold, damage, lords, "
+            "turtles and towers). The league publishes no social links."
+        ),
+        extra_member=" Each member also has a **player_id** for the player endpoint. Photos and logos are served through this API.",
+    ),
+    responses=_example(_TEAM_EXAMPLE),
+)
+def kh_team(team_id: KhTeamId) -> TeamDetailResponse:
+    return cambodia.get_team(team_id)
+
+
+@router.get(
+    path="/kh/players/{player_id}",
+    name="api.esports.kh_player",
+    response_model=PlayerDetailResponse,
+    summary="Cambodia Player Details",
+    description=(
+        "One player of the Cambodian professional league: **name**, **role**, **photo**, current **team**, **profile** "
+        "(`full_name`, `based`...), **team_history** (team and period) and **stats**, the season and career totals "
+        "(heroes played, MVP points, matches and games played, kills, assists, gold, gold per minute, damage dealt, "
+        "damage taken and tower damage). An unknown **player_id** returns 404 `PLAYER_NOT_FOUND`. Data is cached for 5 minutes."
+    ),
+    responses=_example(_KH_PLAYER_EXAMPLE),
+)
+def kh_player(
+    player_id: Annotated[
+        str,
+        Path(title="Player ID", description="**player_id** from the team endpoint, e.g. `d7`.", pattern=r"^[a-z0-9-]+$", max_length=80),
+    ],
+) -> PlayerDetailResponse:
+    return cambodia.get_player(player_id)
+
+
+@router.get(path="/kh/images/{name:path}", name="api.esports.kh_image", include_in_schema=False)
 def kh_image(
-    name: Annotated[str, Path(pattern=r"^[\w%. -]+\.(?:webp|png|jpe?g)$", max_length=120)],
+    name: Annotated[str, Path(pattern=r"^(?:(?:teams|players|heroes/square)/)?[\w%. ()-]+\.(?:webp|png|jpe?g)$", max_length=160)],
 ) -> Response:
-    """A Cambodian team logo, served from here so the league's image host never appears in an answer."""
+    """A Cambodian team logo or player photo, served from here so the league's image host never appears in an answer."""
     content, media_type = cambodia.get_image(name)
     return Response(content=content, media_type=media_type, headers={"Cache-Control": "public, max-age=86400"})
+
+
+# ---- season statistics
+
+_STAT_TEAM = {"name": "TLID", "full_name": "TEAM LIQUID ID", "logo": _LOGO}
+_STAT_HERO = {"name": "Hirara", "image": _HERO_IMAGE}
+_TEAM_STATS_EXAMPLE = {
+    "teams": [
+        {"team": _STAT_TEAM, "kills": 606, "deaths": 499, "assists": 1595, "gold": 2644312, "damage": 10852558, "lord": 75, "tortoise": 96, "tower": 333}
+    ]
+}
+_PLAYER_STATS_EXAMPLE = {
+    "leaderboards": [
+        {
+            "title": "Top 5 Kills",
+            "entries": [{"rank": 1, "name": "NNAEL", "team": _STAT_TEAM, "photo": None, "hero": None, "value": 305}],
+        }
+    ],
+    "players": [
+        {
+            "name": "MORENOOO",
+            "team": _STAT_TEAM,
+            "role": "Mid Lane",
+            "games": 67,
+            "kills": 155,
+            "deaths": 109,
+            "assists": 505,
+            "avg_kills": 2.31,
+            "avg_deaths": 1.63,
+            "avg_assists": 7.54,
+            "kda": 6.06,
+            "kill_participation": 78.0,
+        }
+    ],
+}
+_HERO_STATS_EXAMPLE = {
+    "leaderboards": [
+        {"title": "Top 5 Pick", "entries": [{"rank": 1, "name": "Hirara", "team": None, "photo": None, "hero": _STAT_HERO, "value": 103}]}
+    ],
+    "heroes": [{"hero": _STAT_HERO, "picks": 103, "bans": 40, "wins": 55, "pick_rate": None, "ban_rate": None, "win_rate": 53.0}],
+}
+_STATS_NOTE = " Data is read from the league's official public site and cached for 5 minutes."
+_STAT_LEAGUES = {
+    "id": ("Indonesia", "the Indonesian professional league", indonesia),
+    "ph": ("Philippines", "the Philippine professional league", philippines),
+    "my": ("Malaysia", "the Malaysian professional league", malaysia),
+    "kh": ("Cambodia", "the Cambodian professional league", cambodia),
+}
+_PLAYER_STATS_NOTES = {
+    "id": " Leaderboards: the top 5 by kills, assists and average KDA (at least 5 games). Each player has a **role**.",
+    "ph": " Leaderboards: the top 5 by average kills, average assists and KDA. The league gives no games played or role.",
+    "my": " The league publishes no leaderboards. Each player's **role** comes from the league's lane filter.",
+    "kh": " Leaderboards: the top 5 by kills, assists and average KDA (at least 5 games). Each player has a **role**; photos and logos are served through this API.",
+}
+_HERO_STATS_NOTES = {
+    "id": " Leaderboards: the top 5 heroes by picks, bans and win rate.",
+    "ph": " Leaderboards: the top 5 heroes by picks, bans and win rate. Only this league also gives **pick_rate** and **ban_rate**.",
+    "my": " The league publishes no leaderboards.",
+    "kh": " Leaderboards: the top 5 heroes by picks, bans and win rate. Only heroes picked or banned this season are listed; hero images are served through this API.",
+}
+
+
+def _statistics_routes(league: str) -> None:
+    country, name, service = _STAT_LEAGUES[league]
+    router.add_api_route(
+        f"/{league}/statistics/teams",
+        service.get_team_statistics,
+        name=f"api.esports.{league}_team_statistics",
+        response_model=TeamStatisticsResponse,
+        summary=f"{country} Team Statistics",
+        description=(
+            f"Season totals of every team of {name}: kills, deaths, assists, gold, damage, lords, turtles (**tortoise**) and "
+            "towers destroyed." + _STATS_NOTE
+        ),
+        responses=_example(_TEAM_STATS_EXAMPLE),
+    )
+    router.add_api_route(
+        f"/{league}/statistics/players",
+        service.get_player_statistics,
+        name=f"api.esports.{league}_player_statistics",
+        response_model=PlayerStatisticsResponse,
+        summary=f"{country} Player Statistics",
+        description=(
+            f"Season statistics of every player of {name}: games, total and average kills, deaths and assists, KDA and kill "
+            "participation (percent), with the player's team, and the league's **leaderboards** (each entry's **value** is the figure "
+            "the board ranks). A figure the league leaves out, or a substitute who has not played, is null."
+            + _PLAYER_STATS_NOTES[league]
+            + _STATS_NOTE
+        ),
+        responses=_example(_PLAYER_STATS_EXAMPLE),
+    )
+    router.add_api_route(
+        f"/{league}/statistics/heroes",
+        service.get_hero_statistics,
+        name=f"api.esports.{league}_hero_statistics",
+        response_model=HeroStatisticsResponse,
+        summary=f"{country} Hero Statistics",
+        description=f"Picks, bans, wins and win rate (percent) of every hero in {name} this season." + _HERO_STATS_NOTES[league] + _STATS_NOTE,
+        responses=_example(_HERO_STATS_EXAMPLE),
+    )
+
+
+for _league in _STAT_LEAGUES:
+    _statistics_routes(_league)
+
+
+_HERO_POOLS_EXAMPLE = {
+    "players": [
+        {
+            "name": "MORENOOO",
+            "team": _STAT_TEAM,
+            "role": "Mid Lane",
+            "total": 12,
+            "heroes": [{"hero": {"name": "Selena", "image": _HERO_IMAGE}, "picks": 18, "win_rate": 33.0}],
+        }
+    ]
+}
+_PLAYER_POOLS_EXAMPLE = {
+    "heroes": [
+        {
+            "hero": {"name": "Miya", "image": _HERO_IMAGE},
+            "total": 10,
+            "players": [{"name": "Zeonn", "team": _STAT_TEAM, "photo": None, "picks": 7, "win_rate": 71.0}],
+        }
+    ]
+}
+_MVP_EXAMPLE = {"standings": [{"rank": 1, "name": "KEVIN", "team": _STAT_TEAM, "photo": None, "points": 151}]}
+
+
+def _pool_routes(league: str) -> None:
+    """Hero pools, player pools and the MVP race: published by the Indonesian and Cambodian leagues."""
+    country, name, service = _STAT_LEAGUES[league]
+    router.add_api_route(
+        f"/{league}/statistics/hero-pools",
+        service.get_hero_pools,
+        name=f"api.esports.{league}_hero_pools",
+        response_model=HeroPoolsResponse,
+        summary=f"{country} Hero Pools",
+        description=(
+            f"Every hero each player of {name} has played this season: the player, team and **role**, **total** different heroes, "
+            "and per hero the **picks** and **win_rate** (percent)." + _STATS_NOTE
+        ),
+        responses=_example(_HERO_POOLS_EXAMPLE),
+    )
+    router.add_api_route(
+        f"/{league}/statistics/player-pools",
+        service.get_player_pools,
+        name=f"api.esports.{league}_player_pools",
+        response_model=PlayerPoolsResponse,
+        summary=f"{country} Player Pools",
+        description=(
+            f"For every hero, the players of {name} who have played it this season: **total** different players, and per player "
+            "the team, **photo** (served through this API), **picks** and **win_rate** (percent)." + _STATS_NOTE
+        ),
+        responses=_example(_PLAYER_POOLS_EXAMPLE),
+    )
+    router.add_api_route(
+        f"/{league}/statistics/mvp",
+        service.get_mvp_standings,
+        name=f"api.esports.{league}_mvp_standings",
+        response_model=MvpStandingsResponse,
+        summary=f"{country} MVP Standings",
+        description=f"The MVP race of {name}: rank, player, team, **photo** and **points**." + _STATS_NOTE,
+        responses=_example(_MVP_EXAMPLE),
+    )
+
+
+for _league in ("id", "kh"):
+    _pool_routes(_league)
+
+
+@router.get(
+    path="/my/statistics/savage-maniac",
+    name="api.esports.my_savage_maniac",
+    response_model=SavageManiacResponse,
+    summary="Malaysia Savage and Maniac",
+    description="How many savages and maniacs each player of the Malaysian professional league has this season, with the team." + _STATS_NOTE,
+    responses=_example({"players": [{"name": "Innocent", "team": _STAT_TEAM, "savage": 1, "maniac": 1}]}),
+)
+def my_savage_maniac() -> SavageManiacResponse:
+    return malaysia.get_savage_maniac()
 
 
 # ---- standings tools

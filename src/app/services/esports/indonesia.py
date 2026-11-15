@@ -1,17 +1,36 @@
-"""Scraper for the Indonesian league site: schedule, standings and match details."""
+"""Scraper for the Indonesian league site: schedule, standings, match details and teams."""
 from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
 from html import unescape
 from typing import NamedTuple
+from urllib.parse import quote, unquote, urlsplit
 
 from bs4.element import Tag
 
+from app.core import config
 from app.core.exceptions import AppError
+from app.core.http import UpstreamHeaderBuilder, request_page
 from app.core.security import EsportsSourceProvider
 from app.schemas.esports import (
     Asset,
+    HeroPool,
+    HeroPoolsResponse,
+    HeroStatistics,
+    HeroStatisticsResponse,
+    Leaderboard,
+    LeaderboardEntry,
+    MvpStanding,
+    MvpStandingsResponse,
+    PlayerPool,
+    PlayerPoolsResponse,
+    PlayerStatistics,
+    PlayerStatisticsResponse,
+    PoolHero,
+    PoolPlayer,
+    TeamStatistics,
+    TeamStatisticsResponse,
     Game,
     GameTeam,
     Hero,
@@ -19,11 +38,14 @@ from app.schemas.esports import (
     PlayoffSeed,
     PlayoffsResponse,
     Player,
+    RosterMember,
     ScheduleDay,
     ScheduleMatch,
     ScheduleWeek,
     Standing,
     Team,
+    TeamDetailResponse,
+    TeamSummary,
 )
 from app.services.esports.common import (
     CACHE_SECONDS,
@@ -34,13 +56,25 @@ from app.services.esports.common import (
     balanced_div,
     div_block,
     fetch_page,
+    find_standing,
+    find_team,
+    is_staff,
     kda_ratio,
     mark_finals,
     need,
     need_attr,
     need_tag,
+    normalize_role,
     parse_html,
     parse_record,
+    plain_text,
+    player_figures,
+    stat_float,
+    stat_int,
+    table_headers,
+    table_rows,
+    social_links,
+    team_matches,
     text_of,
     to_int,
 )
@@ -263,3 +297,358 @@ def get_match(match_id: int) -> MatchDetailResponse:
     if not panes:
         raise AppError(status_code=404, code="MATCH_NOT_FOUND", message=f"No match details found for match {match_id}.")
     return MatchDetailResponse(match_id=str(match_id), games=[_game(number, pane) for number, pane in enumerate(panes, start=1)])
+
+
+# ---- teams: the list page is about 60 KB and a team page about 110 KB, read with patterns like the schedule
+
+_TEAM_CARD = re.compile(r'<a href="[^"]*/team/([\w-]+)">\s*<div class="team-card-frame">.*?<img src="([^"]*)" alt="([^"]*)"', re.S)
+_TEAM_HEADING = re.compile(r"<h4\b[^>]*>\s*<img src=['\"]([^'\"]*)['\"] alt=\"([^\"]*)\" class=\"team-logo\"\s*/?>\s*(.*?)\s*</h4>", re.S)
+_ROSTER_MARKER = 'data-ga-impression="Section Roster Team Detail"'
+_ROSTER_SEASON = re.compile(r"ROSTER\s+SEASON\s+(\d+)", re.I)
+_ROSTER_CARD = re.compile(
+    r'<img src="([^"]*)" alt="[^"]*">\s*</div>\s*</div>\s*<div class="player-name">\s*(.*?)\s*</div>\s*<div class="player-role[^"]*">\s*(.*?)\s*</div>',
+    re.S,
+)
+# Player photos live on the league's own file host (a subdomain of its site, signed for six hours), whose name would
+# give the source away, so they are served through this API (``get_player_photo``).
+PHOTO_PATH = "esports/id/images/"
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_teams() -> list[TeamSummary]:
+    html = fetch_page(EsportsSourceProvider.get_id_base_url(), "/en/teams").text
+    teams = {team_id: TeamSummary(team_id=team_id, name=_text(name), logo=unescape(logo)) for team_id, logo, name in _TEAM_CARD.findall(html)}
+    return list(teams.values())
+
+
+def _is_league_file(source: str) -> bool:
+    host = urlsplit(source).hostname or ""
+    site = urlsplit(EsportsSourceProvider.get_id_base_url()).hostname or ""
+    return host == site or host.endswith(f".{site}")
+
+
+def _file_name(source: str) -> str:
+    return unquote(urlsplit(source).path.rsplit("/", 1)[-1])
+
+
+class _TeamPage(NamedTuple):
+    detail: TeamDetailResponse
+    # Signed address of each player photo on the league's file host, by file name.
+    photos: dict[str, str]
+
+
+@ttl_cache(CACHE_SECONDS)
+def _team_page(team_id: str) -> _TeamPage:
+    team = find_team(get_teams(), team_id)
+    html = fetch_page(EsportsSourceProvider.get_id_base_url(), f"/en/team/{team_id}").text
+    roster = div_block(html, _ROSTER_MARKER)
+    if not roster:
+        raise AppError(status_code=404, code="TEAM_NOT_FOUND", message=f"No team {team_id!r} in this league.")
+    heading = _TEAM_HEADING.search(html)
+    socials = div_block(html, 'class="d-flex flex-row justify-content-center align-items-center icon-socmed"')
+    season = _ROSTER_SEASON.search(roster)
+    photos: dict[str, str] = {}
+    members = []
+    for source, name, role in _ROSTER_CARD.findall(roster):
+        source = unescape(source)
+        photo: str | None = source
+        if _is_league_file(source):
+            photos[_file_name(source)] = source
+            photo = f"{config.API_URL}{PHOTO_PATH}{team_id}/{quote(_file_name(source))}"
+        members.append(RosterMember(name=_text(name), role=normalize_role(_text(role)), photo=photo))
+    season_data = get_season("en")
+    # The page heads with the full name; the schedule and standings use the short one from the team list.
+    name = team.name
+    standing = find_standing(season_data.standings, name)
+    detail = TeamDetailResponse(
+        team_id=team_id,
+        name=name,
+        full_name=_text(heading[3]) if heading else None,
+        logo=unescape(heading[1]) if heading else team.logo,
+        season=int(season[1]) if season else None,
+        socials=social_links(socials),
+        players=[member for member in members if not is_staff(member.role)],
+        staff=[member for member in members if is_staff(member.role)],
+        standing=standing,
+        matches=team_matches(name, season_data.weeks, season_data.playoffs.days),
+    )
+    return _TeamPage(detail, photos)
+
+
+def _team_photos(team_id: str) -> dict[str, str]:
+    try:
+        return _team_page(team_id).photos
+    except AppError:
+        return {}
+
+
+def get_team(team_id: str) -> TeamDetailResponse:
+    return _team_page(team_id).detail
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_player_photo(team_id: str, name: str) -> tuple[bytes, str]:
+    """A roster photo from the league's file host: (bytes, content type)."""
+    name = unquote(name)
+    source = _team_photos(team_id).get(name) or _statistics().photos.get((team_id, name))
+    if source is None:
+        raise AppError(status_code=404, code="IMAGE_NOT_FOUND", message="No such player photo.")
+    response = request_page(method="GET", url=source, headers=UpstreamHeaderBuilder.get_esports_header(EsportsSourceProvider.get_id_base_url()))
+    return response.content, response.headers.get("content-type", "image/png")
+
+
+# ---- season statistics: one page of about 1.9 MB (hero and player pools are most of it), read with patterns only.
+# Its sections are tab panes; each runs to the start of the next.
+
+_STAT_SECTIONS = ("teams", "players", "heroes", "hero-pools", "player-pools", "mvp-standings")
+_STAT_TABLE = re.compile(r"<table\b.*?</table>", re.S)
+_ROW_LOGO = re.compile(r'<img src="([^"]*)"')
+_ROW_TEAM_NAMES = re.compile(r'<span class="d-lg-none">\s*(.*?)\s*</span>\s*<span class="d-none d-lg-block">\s*(.*?)\s*</span>', re.S)
+_PLAYER_FOLDER = re.compile(r"/player/([^/]+)/")
+_BOARD_HEADING = re.compile(r'<div class="top-(player|hero)-stats-outer[^"]*">\s*<h5[^>]*>\s*(.*?)\s*</h5>', re.S)
+_PLAYER_ENTRY = re.compile(
+    r'<div class="player-photo">\s*<img src="([^"]*)"[^>]*>\s*</div>\s*<div class="team-logo">\s*<img src="([^"]*)"[^>]*>\s*</div>'
+    r'\s*<div class="value">\s*(.*?)\s*</div>.*?<div class="player-name">\s*(.*?)\s*</div>',
+    re.S,
+)
+_HERO_ENTRY = re.compile(
+    r'<div class="hero-photo">\s*<img src="([^"]*)"[^>]*>\s*</div>\s*<div class="value[^"]*">\s*(.*?)\s*</div>.*?<div class="hero-name">\s*(.*?)\s*</div>',
+    re.S,
+)
+_HERO_CELL = re.compile(r'<img src="([^"]*)"\s+alt="([^"]*)"')
+_POOL_HERO = re.compile(
+    r'<img src="([^"]*)" class="hero-pool-image">\s*<div class="hero-pool-pick[^"]*">\s*(\d+)\s*</div>\s*<div class="hero-pool-count">\s*([^<]*?)\s*</div>'
+)
+_POOL_PLAYER = re.compile(
+    r'<img src="([^"]*)" class="player-pool-image">\s*</div>\s*<div class="player-pool-info">\s*(.*?)\s*</div>'
+    r'\s*<div class="player-pool-pick[^"]*">\s*(\d+)\s*</div>\s*<div class="player-pool-count">\s*([^<]*?)\s*</div>',
+    re.S,
+)
+_MVP_CARD = re.compile(
+    r'<div class="team-logo"><img src="([^"]*)"\s*/?></div>\s*<div class="player-image"><img src="([^"]*)"\s*/?></div>'
+    r'\s*<div class="rank">#(\d+)</div>\s*<div class="point">(\d+)\s*<span>.*?<div class="mvp-ign[^"]*">(.*?)</div>',
+    re.S,
+)
+_TEAM_FIGURES = ("kills", "deaths", "assists", "gold", "damage", "lord", "tortoise", "tower")
+
+
+class _Statistics(NamedTuple):
+    teams: list[TeamStatistics]
+    players: PlayerStatisticsResponse
+    heroes: HeroStatisticsResponse
+    hero_pools: list[HeroPool]
+    player_pools: list[PlayerPool]
+    mvp: list[MvpStanding]
+    # Signed photo addresses on the league's file host, by (team id, file name), for ``get_player_photo``.
+    photos: dict[tuple[str, str], str]
+
+
+def _image_file(source: str) -> str:
+    return unquote(urlsplit(unquote(unescape(source)).split("url=", 1)[-1]).path.rsplit("/", 1)[-1]).casefold()
+
+
+def stat_hero(source: str, name: str | None = None) -> Hero:
+    source = unescape(source).strip()
+    # Pool images carry no alt text; the file is named after the hero ("Yi%20Sun-shin.jpg").
+    inner = unquote(source.split("url=", 1)[-1])
+    return Hero(name=name or inner.rsplit("/", 1)[-1].rsplit(".", 1)[0], image=source)
+
+
+class _StatsContext:
+    """Turns logos and photo addresses of the statistics page into teams and safe photo links."""
+
+    def __init__(self, teams: list[TeamStatistics]) -> None:
+        self.by_logo = {_image_file(row.team.logo or ""): row.team for row in teams if row.team.logo}
+        self.by_name = {row.team.name.casefold(): row.team for row in teams}
+        self.photos: dict[tuple[str, str], str] = {}
+
+    def team(self, logo: str | None = None, photo: str | None = None) -> Team | None:
+        folder = _PLAYER_FOLDER.search(photo or "")
+        if folder and folder[1].casefold() in self.by_name:
+            return self.by_name[folder[1].casefold()]
+        return self.by_logo.get(_image_file(logo)) if logo else None
+
+    def photo(self, source: str) -> str | None:
+        source = unescape(source).strip()
+        if not _is_league_file(source):
+            return source or None
+        folder = _PLAYER_FOLDER.search(source)
+        if not folder:
+            return None
+        team_id, name = folder[1].casefold(), _file_name(source)
+        self.photos[(team_id, name)] = source
+        return f"{config.API_URL}{PHOTO_PATH}{team_id}/{quote(name)}"
+
+
+def _stat_sections(html: str) -> dict[str, str]:
+    marks = sorted((html.find(f'class="tab-content clearfix" id="{name}"'), name) for name in _STAT_SECTIONS)
+    marks = [(start, name) for start, name in marks if start >= 0]
+    return {name: html[start : marks[index + 1][0] if index + 1 < len(marks) else len(html)] for index, (start, name) in enumerate(marks)}
+
+
+def _first_table(section: str) -> str:
+    table = _STAT_TABLE.search(section)
+    return table[0] if table else ""
+
+
+def _team_statistics(section: str) -> list[TeamStatistics]:
+    rows = []
+    for cells in table_rows(_first_table(section)):
+        names = _ROW_TEAM_NAMES.search(cells[0])
+        logo = _ROW_LOGO.search(cells[0])
+        team = Team(
+            name=_text(names[1]) if names else plain_text(cells[0]),
+            full_name=_text(names[2]) if names else None,
+            logo=unescape(logo[1]) if logo else None,
+        )
+        figures = dict(zip(_TEAM_FIGURES, (stat_int(plain_text(cell)) for cell in cells[1:])))
+        rows.append(TeamStatistics(team=team, **figures))
+    return rows
+
+
+def _boards(section: str, context: _StatsContext) -> list[Leaderboard]:
+    headings = list(_BOARD_HEADING.finditer(section))
+    boards = []
+    for index, heading in enumerate(headings):
+        end = headings[index + 1].start() if index + 1 < len(headings) else section.find("<table", heading.end())
+        block = section[heading.end() : end if end >= 0 else len(section)]
+        if heading[1] == "player":
+            entries = [
+                LeaderboardEntry(
+                    rank=rank, name=_text(name), team=context.team(logo, photo), photo=context.photo(photo), value=stat_float(_text(value)) or 0
+                )
+                for rank, (photo, logo, value, name) in enumerate(_PLAYER_ENTRY.findall(block), start=1)
+            ]
+        else:
+            entries = [
+                LeaderboardEntry(rank=rank, name=_text(name), hero=stat_hero(image, _text(name)), value=stat_float(_text(value)) or 0)
+                for rank, (image, value, name) in enumerate(_HERO_ENTRY.findall(block), start=1)
+            ]
+        boards.append(Leaderboard(title=_text(heading[2]), entries=entries))
+    return boards
+
+
+def _player_statistics(section: str, context: _StatsContext) -> PlayerStatisticsResponse:
+    # The first table holds every player; the tables after it repeat them team by team.
+    table = _first_table(section)
+    headers = table_headers(table)
+    players = []
+    for cells in table_rows(table):
+        logo = _ROW_LOGO.search(cells[0])
+        players.append(
+            PlayerStatistics(
+                name=plain_text(cells[0]),
+                team=context.team(logo[1] if logo else None),
+                role=normalize_role(plain_text(cells[1])) or None if "lanes" in headers else None,
+                **player_figures(headers, cells),
+            )
+        )
+    return PlayerStatisticsResponse(leaderboards=_boards(section, context), players=players)
+
+
+def _hero_statistics(section: str, context: _StatsContext) -> HeroStatisticsResponse:
+    heroes = []
+    for cells in table_rows(_first_table(section)):
+        image = _HERO_CELL.search(cells[0])
+        picks, bans, wins = (stat_int(plain_text(cell)) or 0 for cell in cells[1:4])
+        heroes.append(
+            HeroStatistics(
+                hero=stat_hero(image[1], unescape(image[2]).strip()) if image else Hero(name=plain_text(cells[0])),
+                picks=picks,
+                bans=bans,
+                wins=wins,
+                win_rate=stat_float(plain_text(cells[4])) if len(cells) > 4 else None,
+            )
+        )
+    return HeroStatisticsResponse(leaderboards=_boards(section, context), heroes=heroes)
+
+
+def _hero_pools(section: str, context: _StatsContext) -> list[HeroPool]:
+    pools = []
+    for cells in table_rows(_first_table(section)):
+        logo = _ROW_LOGO.search(cells[0])
+        pools.append(
+            HeroPool(
+                name=plain_text(cells[0]),
+                team=context.team(logo[1] if logo else None),
+                role=normalize_role(plain_text(cells[1])) or None,
+                total=stat_int(plain_text(cells[2])) or 0,
+                heroes=[PoolHero(hero=stat_hero(image), picks=int(picks), win_rate=stat_float(rate)) for image, picks, rate in _POOL_HERO.findall(cells[3])],
+            )
+        )
+    return pools
+
+
+def _player_pools(section: str, context: _StatsContext) -> list[PlayerPool]:
+    pools = []
+    for cells in table_rows(_first_table(section)):
+        image = _HERO_CELL.search(cells[0]) or _ROW_LOGO.search(cells[0])
+        name = plain_text(cells[0])
+        players = []
+        for photo, info, picks, rate in _POOL_PLAYER.findall(cells[2]):
+            # "NAVI - Zeonn": the team's short name, then the player.
+            team_name, _, player = _text(info).partition(" - ")
+            players.append(
+                PoolPlayer(
+                    name=player or team_name,
+                    team=context.team(photo=photo) or context.by_name.get(team_name.casefold()),
+                    photo=context.photo(photo),
+                    picks=int(picks),
+                    win_rate=stat_float(rate),
+                )
+            )
+        pools.append(PlayerPool(hero=stat_hero(image[1], name) if image else Hero(name=name), total=stat_int(plain_text(cells[1])) or 0, players=players))
+    return pools
+
+
+def _mvp(section: str, context: _StatsContext) -> list[MvpStanding]:
+    standings = []
+    for logo, photo, rank, points, name in _MVP_CARD.findall(section):
+        team = context.team(logo, photo)
+        name = _text(name)
+        # The card names the player after the team's short name ("TLID KEVIN").
+        if team and name.casefold().startswith(f"{team.name.casefold()} "):
+            name = name[len(team.name) + 1 :]
+        standings.append(MvpStanding(rank=int(rank), name=name, team=team, photo=context.photo(photo), points=int(points)))
+    return standings
+
+
+@ttl_cache(CACHE_SECONDS)
+def _statistics() -> _Statistics:
+    html = fetch_page(EsportsSourceProvider.get_id_base_url(), "/en/statistics").text
+    sections = _stat_sections(html)
+    teams = _team_statistics(sections.get("teams", ""))
+    context = _StatsContext(teams)
+    return _Statistics(
+        teams=teams,
+        players=_player_statistics(sections.get("players", ""), context),
+        heroes=_hero_statistics(sections.get("heroes", ""), context),
+        hero_pools=_hero_pools(sections.get("hero-pools", ""), context),
+        player_pools=_player_pools(sections.get("player-pools", ""), context),
+        mvp=_mvp(sections.get("mvp-standings", ""), context),
+        photos=context.photos,
+    )
+
+
+def get_team_statistics() -> TeamStatisticsResponse:
+    return TeamStatisticsResponse(teams=_statistics().teams)
+
+
+def get_player_statistics() -> PlayerStatisticsResponse:
+    return _statistics().players
+
+
+def get_hero_statistics() -> HeroStatisticsResponse:
+    return _statistics().heroes
+
+
+def get_hero_pools() -> HeroPoolsResponse:
+    return HeroPoolsResponse(players=_statistics().hero_pools)
+
+
+def get_player_pools() -> PlayerPoolsResponse:
+    return PlayerPoolsResponse(heroes=_statistics().player_pools)
+
+
+def get_mvp_standings() -> MvpStandingsResponse:
+    return MvpStandingsResponse(standings=_statistics().mvp)

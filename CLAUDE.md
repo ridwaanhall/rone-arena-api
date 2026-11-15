@@ -150,6 +150,33 @@ Four leagues today: Indonesia (`id`), the Philippines (`ph`), Malaysia (`my`) an
    `llms.py`, `web/credits.py` (`ESPORTS_SOURCES`), fixtures + tests + `season_snapshots.json`, this file, patch notes.
 7. **Credits name the league, never the host** (`web/credits.py`, shown in the footer, `/llms.txt` and the README).
 
+8. **Teams** (`/api/esports/{id,ph,my,kh}/teams` and `/teams/{team_id}`, plus `/api/esports/kh/players/{player_id}`): one shared answer (`TeamDetailResponse`); the
+   helpers in `common.py` (`social_links`, `normalize_role`, `find_team`, `find_standing`, `team_matches`) give every league
+   the same socials, role spelling, 404 `TEAM_NOT_FOUND`, standing row and match list (taken from the cached schedule,
+   never from the team page). `team_id` is the slug of the league's team page; `name` is the short name the schedule uses.
+   Indonesia: list `/en/teams`, page `/en/team/{id}` (roster only); player photos are on a subdomain of the league host,
+   so they are served by `/api/esports/id/images/{team_id}/{file}` (`indonesia.get_player_photo`). Philippines: list
+   `/teams`, page `/team/{id}` (description, achievements, roster from hidden inputs). Malaysia: the list comes from the
+   home page's standings links, page `/team/{id}` (about 330 KB: regexes only) has birth dates, nationality (from the
+   flag file), hometown, previous team, archetype, tier, socials and season stats per member. Cambodia: list = the cards
+   on `/teams` (same fetch as the standings, `_teams_page`; short names matched by full name), page `/teams/{id}` has
+   profile facts, a hand-typed achievement list (`_achievement` reads it best-effort), season and career team stats and
+   members with a `player_id`; `/players/{id}` has the biography, team history and stats. Icons on a league's own
+   host (roles, tiers) are dropped.
+
+9. **Season statistics** (`/api/esports/{id,ph,my,kh}/statistics/{teams,players,heroes}`, plus ID and KH `hero-pools`,
+   `player-pools`, `mvp` and MY `savage-maniac`): one fetch per league, parsed once and cached (`_statistics()` in each
+   module), read with patterns only. ID `/en/statistics` (1.9 MB, about 0.1 s to parse locally; its sections are tab
+   panes, and only the first player table is read, the rest repeat it per team) writes decimals with a comma ("2,31"):
+   `stat_float`/`stat_int` in `common.py` read both styles. Teams are found by logo file or by the photo's folder
+   (`/player/BTR/`), and photos are served by the same `/api/esports/id/images/` route (`get_player_photo` also looks in the
+   statistics page). PH `/data` (0.7 MB) has the rankings (averages) and the only pick and ban rates. MY's tables sit at
+   the bottom of `/teams` (0.8 MB): rows link the team page, the lane comes from the row's `col-player-role-*` class,
+   and there are no leaderboards. KH has one page per tab (`/statistics?tab=teams|players|heroes|hero-pools|player-pools|mvp`,
+   the pools about 0.9 MB each), the same sections as ID; teams are matched by logo file, a player pool's team comes from
+   the player table, and hero portraits (`heroes/square/`) go through `/api/esports/kh/images/` like logos and photos.
+   Standings are left to the existing standings endpoints.
+
 League notes:
 - **Malaysia**: one fetch of `/schedule` gives the 8 weeks and the playoff days (round names carry the series length,
   "(BO5)"), one of `/` the standings (the table marks 6 playoff and 2 eliminated rows). Match ids are the schedule's
@@ -162,7 +189,9 @@ League notes:
   left out, as is a game published without heroes (empty `alt`). A long team name is cut with dots in the fragment ("iG ........"); `_team_name` drops them.
 - **Cambodia**: single round robin, 10 teams, 5 weeks; one page per week (`?stage=regular&week=N`), streamed React
   markup (day headings hold `<template id="P:x">` placeholders filled by `<div hidden id="S:x">` cards later in the
-  page). Standings from `/teams`; playoffs from `?stage=playoffs` (empty until the bracket is published); seeds are the
+  page); since Nov 2026 a finished week is served whole, with the cards right under each heading, so `_days` reads both.
+  Images: the host resizes under `/cdn-cgi/image/<options>/`; logos moved into `teams/` (Nov 2026) and photos are in
+  `players/`, and `/api/esports/kh/images/{teams|players/}<file>` keeps that folder. Standings from `/teams`; playoffs from `?stage=playoffs` (empty until the bracket is published); seeds are the
   top 6 (`KH_ELIMINATED = 4`, the format of past seasons). Today's matches show LIVE instead of a time. No match details.
 
 ## Branding & Trademark Constraints
