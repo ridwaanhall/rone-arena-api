@@ -333,21 +333,26 @@ def _file_name(source: str) -> str:
     return unquote(urlsplit(source).path.rsplit("/", 1)[-1])
 
 
-class _TeamPage(NamedTuple):
-    detail: TeamDetailResponse
+class _Roster(NamedTuple):
+    """What a team page itself says: cheap to read (about 110 KB, patterns only) and enough to serve a photo."""
+
+    full_name: str | None
+    logo: str | None
+    season: int | None
+    socials: str
+    members: list[RosterMember]
     # Signed address of each player photo on the league's file host, by file name.
     photos: dict[str, str]
 
 
 @ttl_cache(CACHE_SECONDS)
-def _team_page(team_id: str) -> _TeamPage:
-    team = find_team(get_teams(), team_id)
+def _roster(team_id: str) -> _Roster:
+    find_team(get_teams(), team_id)
     html = fetch_page(EsportsSourceProvider.get_id_base_url(), f"/en/team/{team_id}").text
     roster = div_block(html, _ROSTER_MARKER)
     if not roster:
         raise AppError(status_code=404, code="TEAM_NOT_FOUND", message=f"No team {team_id!r} in this league.")
     heading = _TEAM_HEADING.search(html)
-    socials = div_block(html, 'class="d-flex flex-row justify-content-center align-items-center icon-socmed"')
     season = _ROSTER_SEASON.search(roster)
     photos: dict[str, str] = {}
     members = []
@@ -358,34 +363,43 @@ def _team_page(team_id: str) -> _TeamPage:
             photos[_file_name(source)] = source
             photo = f"{config.API_URL}{PHOTO_PATH}{team_id}/{quote(_file_name(source))}"
         members.append(RosterMember(name=_text(name), role=normalize_role(_text(role)), photo=photo))
+    return _Roster(
+        full_name=_text(heading[3]) if heading else None,
+        logo=unescape(heading[1]) if heading else None,
+        season=int(season[1]) if season else None,
+        socials=div_block(html, 'class="d-flex flex-row justify-content-center align-items-center icon-socmed"'),
+        members=members,
+        photos=photos,
+    )
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_team(team_id: str) -> TeamDetailResponse:
+    team = find_team(get_teams(), team_id)
+    roster = _roster(team_id)
     season_data = get_season("en")
     # The page heads with the full name; the schedule and standings use the short one from the team list.
     name = team.name
-    standing = find_standing(season_data.standings, name)
-    detail = TeamDetailResponse(
+    return TeamDetailResponse(
         team_id=team_id,
         name=name,
-        full_name=_text(heading[3]) if heading else None,
-        logo=unescape(heading[1]) if heading else team.logo,
-        season=int(season[1]) if season else None,
-        socials=social_links(socials),
-        players=[member for member in members if not is_staff(member.role)],
-        staff=[member for member in members if is_staff(member.role)],
-        standing=standing,
+        full_name=roster.full_name,
+        logo=roster.logo or team.logo,
+        season=roster.season,
+        socials=social_links(roster.socials),
+        players=[member for member in roster.members if not is_staff(member.role)],
+        staff=[member for member in roster.members if is_staff(member.role)],
+        standing=find_standing(season_data.standings, name),
         matches=team_matches(name, season_data.weeks, season_data.playoffs.days),
     )
-    return _TeamPage(detail, photos)
 
 
 def _team_photos(team_id: str) -> dict[str, str]:
+    """A team's photos from its own page only: serving a photo must not pay for the schedule (a 2.4 MB parse)."""
     try:
-        return _team_page(team_id).photos
+        return _roster(team_id).photos
     except AppError:
         return {}
-
-
-def get_team(team_id: str) -> TeamDetailResponse:
-    return _team_page(team_id).detail
 
 
 @ttl_cache(CACHE_SECONDS)

@@ -18,6 +18,14 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.7.4",
+        "date": "2026-11-15",
+        "summary": "Indonesian player photos load reliably on arena.rone.dev.",
+        "fixed": [
+            "Indonesian player photos no longer fail now and then on arena.rone.dev: a photo is now served from the team's own page without reading the whole season first.",
+        ],
+    },
+    {
         "version": "1.7.3",
         "date": "2026-11-15",
         "summary": "arena.rone.dev gets the latest fixes again.",
