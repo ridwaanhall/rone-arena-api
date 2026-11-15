@@ -4,10 +4,8 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from html import unescape
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 from urllib.parse import quote, unquote, urlsplit
-
-from bs4.element import Tag
 
 from app.core import config
 from app.core.exceptions import AppError
@@ -79,6 +77,9 @@ from app.services.esports.common import (
     to_int,
 )
 from app.utils.ttl_cache import ttl_cache
+
+if TYPE_CHECKING:
+    from bs4.element import Tag
 
 # The per-player "data" row has no labels, only icons; the icon names the figure.
 _STAT_BY_ICON = {"sword": "damage_dealt", "shield": "damage_taken", "tower": "tower_damage", "money": "gold"}

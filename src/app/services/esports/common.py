@@ -5,9 +5,9 @@ import re
 from html import unescape
 from urllib.parse import urlsplit
 
+from typing import TYPE_CHECKING
+
 import httpx
-from bs4 import BeautifulSoup
-from bs4.element import PageElement, Tag
 
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
@@ -21,6 +21,21 @@ from app.schemas.esports import (
     TeamMatch,
     TeamSummary,
 )
+
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+    from bs4.element import PageElement, Tag
+
+# BeautifulSoup is imported on first use, never at startup: the Worker snapshots the memory of everything imported
+# at startup, and bs4 (with soupsieve) is about 2.5 MB of it, enough to push the snapshot over Cloudflare's limit
+# (error 10021, "Python startup exceeded memory limits"). Keep heavy, request-only libraries out of module scope.
+
+
+def _tag_class() -> type[Tag]:
+    from bs4.element import Tag
+
+    return Tag
+
 
 # Upstream responses are parsed (and cached) for five minutes: long enough to absorb
 # bursts, short enough for live scores, and well under the six-hour life of the signed
@@ -51,7 +66,7 @@ def text_of(element: PageElement | None) -> str:
 
 def attr(element: PageElement | None, name: str) -> str | None:
     """An attribute as one string (``class`` lists are joined with spaces), or None when it is not there."""
-    if not isinstance(element, Tag):
+    if not isinstance(element, _tag_class()):
         return None
     value = element.get(name)
     if value is None:
@@ -75,7 +90,7 @@ def need[T](value: T | None, what: str = "an expected value") -> T:
 
 
 def need_tag(element: PageElement | None, what: str = "an expected element") -> Tag:
-    if not isinstance(element, Tag):
+    if not isinstance(element, _tag_class()):
         raise _page_changed(what)
     return element
 
@@ -134,6 +149,8 @@ def fetch_page(base_url: str, path: str) -> httpx.Response:
 
 
 def parse_html(html: str) -> BeautifulSoup:
+    from bs4 import BeautifulSoup
+
     return BeautifulSoup(html, "html.parser")
 
 
