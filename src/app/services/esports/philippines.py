@@ -1,16 +1,26 @@
-"""Scraper for the Philippine league site: schedule, standings and match details."""
+"""Scraper for the Philippine league site: schedule, standings, match details and teams."""
 from __future__ import annotations
 
 import re
 from datetime import UTC, datetime, timedelta, timezone
 from html import unescape
+from typing import NamedTuple
 
 from bs4.element import Tag
 
 from app.core.http import UpstreamHeaderBuilder, request_page
 from app.core.security import EsportsSourceProvider
 from app.schemas.esports import (
+    Achievement,
     Asset,
+    HeroStatistics,
+    HeroStatisticsResponse,
+    Leaderboard,
+    LeaderboardEntry,
+    PlayerStatistics,
+    PlayerStatisticsResponse,
+    TeamStatistics,
+    TeamStatisticsResponse,
     Game,
     GameTeam,
     Hero,
@@ -18,12 +28,15 @@ from app.schemas.esports import (
     PlayoffSeed,
     PlayoffsResponse,
     Player,
+    RosterMember,
     ScheduleDay,
     ScheduleMatch,
     ScheduleWeek,
     SequenceItem,
     Standing,
     Team,
+    TeamDetailResponse,
+    TeamSummary,
 )
 from app.services.esports.common import (
     CACHE_SECONDS,
@@ -35,13 +48,25 @@ from app.services.esports.common import (
     balanced_div,
     div_block,
     fetch_page,
+    find_standing,
+    find_team,
+    is_staff,
     kda_ratio,
     mark_finals,
     need,
     need_attr,
     need_tag,
+    normalize_role,
     parse_html,
     parse_record,
+    plain_text,
+    player_figures,
+    stat_float,
+    stat_int,
+    table_headers,
+    table_rows,
+    social_links,
+    team_matches,
     text_of,
     to_int,
 )
@@ -331,3 +356,207 @@ def get_match(slug: str) -> MatchDetailResponse:
             )
         )
     return MatchDetailResponse(match_id=slug, games=games)
+
+
+# ---- teams: the list page is about 120 KB and a team page about 140 KB, read with patterns like the match page
+
+_TEAM_CARD = re.compile(r'href="[^"]*/team/([\w-]+)"\s*class="team-ident"\s*>(.*?)</a>', re.S)
+_CARD_LOGO = re.compile(r'<img src="([^"]*)" alt="([^"]*?)(?: logo)?"')
+_CARD_NAME = re.compile(r'<span class="team-name3-orn"></span>(.*?)</span>', re.S)
+_DETAIL_LOGO = re.compile(r'<div class="team-logo mb-3">\s*<img src="([^"]*)"')
+_DETAIL_NAME = re.compile(r'<span class="team-detail-name">(.*?)</span>', re.S)
+_DESCRIPTION = re.compile(r'<div class="team-description[^"]*">(.*?)</div>', re.S)
+_PARAGRAPH = re.compile(r"<p\b[^>]*>(.*?)</p>", re.S)
+_ACHIEVEMENT = re.compile(r'<div class="mr-3"><b>(.*?)</b></div>\s*<div>(.*?)</div>', re.S)
+_PLACEMENT = re.compile(r"\s*-\s*(\d+(?:st|nd|rd|th))\s*$", re.I)
+_ROSTER_SEASON = re.compile(r"Roster for Season\s+(\d+)", re.I)
+_ROSTER_FIELD = re.compile(r'<input type="hidden" name="player-(\d+)-(ign|photo|role)" id="[^"]*" value="([^"]*)"')
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_teams() -> list[TeamSummary]:
+    html = fetch_page(EsportsSourceProvider.get_ph_base_url(), "/teams").text
+    teams: dict[str, TeamSummary] = {}
+    for team_id, card in _TEAM_CARD.findall(html):
+        logo = _CARD_LOGO.search(card)
+        name = _CARD_NAME.search(card)
+        teams.setdefault(
+            team_id,
+            TeamSummary(
+                team_id=team_id,
+                # The schedule and standings write the team as its id in capitals ("TLPH"), as the logo's alt text does.
+                name=unescape(logo[2]) if logo and logo[2] else team_id.upper(),
+                full_name=_plain(name[1]) if name else None,
+                logo=unescape(logo[1]) if logo else None,
+            ),
+        )
+    return list(teams.values())
+
+
+def _achievement(title: str, placement: str) -> Achievement:
+    title, placement = _plain(title), _plain(placement)
+    stated = _PLACEMENT.search(title)
+    if not placement and stated:
+        title, placement = title[: stated.start()], stated[1]
+    return Achievement(title=title, placement=placement or None)
+
+
+@ttl_cache(CACHE_SECONDS)
+def get_team(team_id: str) -> TeamDetailResponse:
+    team = find_team(get_teams(), team_id)
+    html = fetch_page(EsportsSourceProvider.get_ph_base_url(), f"/team/{team_id}").text
+    fields: dict[str, dict[str, str]] = {}
+    for player_id, field, value in _ROSTER_FIELD.findall(html):
+        fields.setdefault(player_id, {})[field] = unescape(value)
+    # The role icons live on the league's own site, so only the role's name is kept.
+    members = [
+        RosterMember(name=player["ign"].strip(), role=normalize_role(player.get("role", "")), photo=player.get("photo") or None)
+        for player in fields.values()
+        if player.get("ign")
+    ]
+    description = _DESCRIPTION.search(html)
+    paragraphs = [_plain(paragraph) for paragraph in _PARAGRAPH.findall(description[1])] if description else []
+    logo = _DETAIL_LOGO.search(html)
+    full_name = _DETAIL_NAME.search(html)
+    season = _ROSTER_SEASON.search(html)
+    weeks, playoff_days, _ = _schedule_page()
+    return TeamDetailResponse(
+        team_id=team_id,
+        name=team.name,
+        full_name=team.full_name or (_plain(full_name[1]) if full_name else None),
+        logo=unescape(logo[1]) if logo else team.logo,
+        season=int(season[1]) if season else None,
+        description="\n\n".join(paragraph for paragraph in paragraphs if paragraph) or (_plain(description[1]) if description else None) or None,
+        socials=social_links(div_block(html, 'class="team-social-media mt-2"')),
+        achievements=[_achievement(title, placement) for title, placement in _ACHIEVEMENT.findall(div_block(html, 'class="achievements"'))],
+        players=[member for member in members if not is_staff(member.role)],
+        staff=[member for member in members if is_staff(member.role)],
+        standing=find_standing(get_standings(), team.name),
+        matches=team_matches(team.name, weeks, playoff_days),
+    )
+
+
+# ---- season statistics: the data page (about 0.7 MB) holds the standings, team, player and hero tables and the
+# player and hero rankings; read with patterns only.
+
+_STAT_TABLE = re.compile(r"<table\b.*?</table>", re.S)
+_STYLE_IMAGE = re.compile(r"url\('([^']+)'\)")
+_RANKING_HEADING = re.compile(r"<span>\s*((?:[A-Z0-9 ]+ )?RANKING|TOP 5 HERO [A-Z ]+?)\s*</span>")
+_RANKED_PLAYER = re.compile(
+    r'<img class="top-player-logo" alt="[^"]*" src="\s*([^"]*?)\s*"\s*/>.*?<div class="top-team-logo team-logo">\s*<img src="\s*([^"]*?)\s*"\s*/>'
+    r'.*?<h5 class="top-player-name[^"]*">(.*?)</h5>\s*<p class="top-player-stats[^"]*">\s*(.*?)\s*</p>',
+    re.S,
+)
+_RANKED_HERO = re.compile(
+    r'<img class="top-hero-logo" alt="[^"]*" src="\s*([^"]*?)\s*"\s*/>\s*<h5 class="top-hero-name[^"]*">(.*?)</h5>\s*<p class="top-hero-stats[^"]*">\s*(.*?)\s*</p>',
+    re.S,
+)
+_DATA_ORDER = re.compile(r'data-order="([^"]*)"')
+_TEAM_FIGURES = ("kills", "deaths", "assists", "gold", "damage", "lord", "tortoise", "tower")
+
+
+def _logo_file(source: str) -> str:
+    return unescape(source).strip().rsplit("/", 1)[-1].split("?", 1)[0].casefold()
+
+
+class _DataPage(NamedTuple):
+    teams: list[TeamStatistics]
+    players: PlayerStatisticsResponse
+    heroes: HeroStatisticsResponse
+
+
+def _stat_team(name: str, teams: list[TeamSummary], logo: str | None = None) -> Team:
+    """A team from its short or full name (or its logo), with the names and logo of the team list."""
+    wanted = name.casefold()
+    for team in teams:
+        if wanted in (team.name.casefold(), (team.full_name or "").casefold()) or (logo and team.logo and _logo_file(team.logo) == _logo_file(logo)):
+            return Team(name=team.name, full_name=team.full_name, logo=team.logo)
+    return Team(name=name, logo=unescape(logo).strip() if logo else None)
+
+
+def _rankings(html: str, teams: list[TeamSummary]) -> tuple[list[Leaderboard], list[Leaderboard]]:
+    headings = list(_RANKING_HEADING.finditer(html))
+    players, heroes = [], []
+    for index, heading in enumerate(headings):
+        block = html[heading.end() : headings[index + 1].start() if index + 1 < len(headings) else html.find("<table", heading.end())]
+        # "KILLS RANKING" -> "Kills Ranking", "TOP 5 HERO PICK" -> "Top 5 Hero Pick", as the other leagues write them.
+        title = " ".join(word if word == "KDA" else word.capitalize() for word in heading[1].split())
+        if "Hero" in title:
+            entries = [
+                LeaderboardEntry(rank=rank, name=_plain(name), hero=Hero(name=_plain(name), image=unescape(image)), value=stat_float(_plain(value)) or 0)
+                for rank, (image, name, value) in enumerate(_RANKED_HERO.findall(block), start=1)
+            ]
+            heroes.append(Leaderboard(title=title, entries=entries))
+        else:
+            entries = []
+            for rank, (photo, logo, name, value) in enumerate(_RANKED_PLAYER.findall(block), start=1):
+                team = next((item for item in teams if item.logo and _logo_file(item.logo) == _logo_file(logo)), None)
+                entries.append(
+                    LeaderboardEntry(
+                        rank=rank,
+                        name=_plain(name),
+                        team=Team(name=team.name, full_name=team.full_name, logo=team.logo) if team else None,
+                        photo=unescape(photo) or None,
+                        value=stat_float(_plain(value)) or 0,
+                    )
+                )
+            players.append(Leaderboard(title=title, entries=entries))
+    return players, heroes
+
+
+@ttl_cache(CACHE_SECONDS)
+def _statistics() -> _DataPage:
+    html = fetch_page(EsportsSourceProvider.get_ph_base_url(), "/data").text
+    teams = get_teams()
+    tables = {}
+    for table in _STAT_TABLE.findall(html):
+        headers = table_headers(table)
+        kind = "heroes" if "hero" in headers else "players" if "player" in headers else "standings" if "match point" in headers else "teams"
+        tables.setdefault(kind, (headers, table))
+
+    team_rows = []
+    for cells in table_rows(tables.get("teams", ([], ""))[1]):
+        logo = _STYLE_IMAGE.search(cells[0])
+        figures = dict(zip(_TEAM_FIGURES, (stat_int(plain_text(cell)) for cell in cells[1:])))
+        team_rows.append(TeamStatistics(team=_stat_team(plain_text(cells[0]), teams, logo[1] if logo else None), **figures))
+
+    headers, table = tables.get("players", ([], ""))
+    players = [
+        PlayerStatistics(name=plain_text(cells[0]), team=_stat_team(plain_text(cells[1]), teams) if plain_text(cells[1]) else None, **player_figures(headers, cells))
+        for cells in table_rows(table)
+    ]
+
+    headers, table = tables.get("heroes", ([], ""))
+    column = {header: index for index, header in enumerate(headers)}
+    heroes = []
+    for cells in table_rows(table):
+        def figure(name: str) -> str:
+            return plain_text(cells[column[name]]) if name in column else ""
+
+        image = _STYLE_IMAGE.search(cells[0])
+        order = _DATA_ORDER.search(cells[0])
+        heroes.append(
+            HeroStatistics(
+                hero=Hero(name=unescape(order[1]) if order else plain_text(cells[0]), image=unescape(image[1]) if image else None),
+                picks=stat_int(figure("pick")) or 0,
+                bans=stat_int(figure("ban")) or 0,
+                wins=stat_int(figure("win")) or 0,
+                pick_rate=stat_float(figure("pick rate")),
+                ban_rate=stat_float(figure("ban rate")),
+                win_rate=stat_float(figure("win rate")),
+            )
+        )
+    player_boards, hero_boards = _rankings(html, teams)
+    return _DataPage(team_rows, PlayerStatisticsResponse(leaderboards=player_boards, players=players), HeroStatisticsResponse(leaderboards=hero_boards, heroes=heroes))
+
+
+def get_team_statistics() -> TeamStatisticsResponse:
+    return TeamStatisticsResponse(teams=_statistics().teams)
+
+
+def get_player_statistics() -> PlayerStatisticsResponse:
+    return _statistics().players
+
+
+def get_hero_statistics() -> HeroStatisticsResponse:
+    return _statistics().heroes

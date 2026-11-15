@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import re
+from html import unescape
+from urllib.parse import urlsplit
 
 import httpx
 from bs4 import BeautifulSoup
@@ -9,7 +11,16 @@ from bs4.element import PageElement, Tag
 
 from app.core.exceptions import AppError
 from app.core.http import UpstreamHeaderBuilder, request_page
-from app.schemas.esports import Record, ScheduleDay, ScheduleResponse, ScheduleWeek
+from app.schemas.esports import (
+    Record,
+    ScheduleDay,
+    ScheduleResponse,
+    ScheduleWeek,
+    SocialLink,
+    Standing,
+    TeamMatch,
+    TeamSummary,
+)
 
 # Upstream responses are parsed (and cached) for five minutes: long enough to absorb
 # bursts, short enough for live scores, and well under the six-hour life of the signed
@@ -155,3 +166,157 @@ def mark_finals(days: list[ScheduleDay]) -> None:
 def _is_final(label: str | None) -> bool:
     name = (label or "").casefold()
     return "grand final" in name or ("lower bracket final" in name and "semi" not in name)
+
+
+# ---- teams
+
+_HREF = re.compile(r'<a\b[^>]*?\bhref="(https?://[^"]+)"')
+_PLATFORM_ALIASES = {"twitter": "x", "fb": "facebook", "youtu": "youtube"}
+_STAFF_ROLES = ("coach", "analyst", "manager")
+
+
+def social_links(markup: str) -> list[SocialLink]:
+    """Every link in ``markup``, named after its site (``facebook``, ``instagram``, ``x``...), first of each URL kept."""
+    links = []
+    for url in dict.fromkeys(unescape(found) for found in _HREF.findall(markup)):
+        host = (urlsplit(url).hostname or "").removeprefix("www.").removeprefix("m.")
+        name = host.split(".", 1)[0]
+        links.append(SocialLink(platform=_PLATFORM_ALIASES.get(name, name), url=url))
+    return links
+
+
+# Each league spells the roles its own way ("Jungle", "Jungler", "MId Lane", "Goldlane", "Asst. Coach"); answers use one set.
+_ROLES = (
+    (re.compile(r"^(?:asst\.?|assistant)\s*coach$"), "Assistant Coach"),
+    (re.compile(r"^(?:head\s*)?coach$"), "Coach"),
+    (re.compile(r"^analyst$"), "Analyst"),
+    (re.compile(r"^(?:team\s*)?manager$"), "Manager"),
+    (re.compile(r"^gold(?:\s*lane(?:r)?)?$"), "Gold Lane"),
+    (re.compile(r"^exp(?:\s*lane(?:r)?)?$"), "EXP Lane"),
+    (re.compile(r"^mid(?:\s*lane(?:r)?)?$"), "Mid Lane"),
+    (re.compile(r"^jungle(?:r)?$"), "Jungle"),
+    (re.compile(r"^roam(?:er|ing)?$"), "Roam"),
+)
+
+
+def normalize_role(label: str) -> str:
+    """The role in the shared spelling: Gold Lane, EXP Lane, Mid Lane, Jungle, Roam, Coach, Assistant Coach, Analyst."""
+    text = " ".join(label.split())
+    key = text.casefold()
+    return next((role for pattern, role in _ROLES if pattern.match(key)), text)
+
+
+def is_staff(role: str) -> bool:
+    return any(word in role.casefold() for word in _STAFF_ROLES)
+
+
+def find_team(teams: list[TeamSummary], team_id: str) -> TeamSummary:
+    """The team ``team_id`` names, or 404 TEAM_NOT_FOUND listing the league's teams."""
+    for team in teams:
+        if team.team_id == team_id:
+            return team
+    raise AppError(
+        status_code=404,
+        code="TEAM_NOT_FOUND",
+        message=f"No team {team_id!r} in this league. Available teams: {', '.join(team.team_id for team in teams) or 'none'}.",
+    )
+
+
+def find_standing(table: list[Standing], name: str) -> Standing | None:
+    wanted = name.casefold()
+    return next((row for row in table if row.team.name.casefold() == wanted), None)
+
+
+def team_matches(name: str, weeks: list[ScheduleWeek], playoff_days: list[ScheduleDay]) -> list[TeamMatch]:
+    """Every regular-season and playoff match of the team named ``name`` (as the schedule writes it)."""
+    wanted = name.casefold()
+    found: list[TeamMatch] = []
+    stages = [("regular_season", week.week, week.days) for week in weeks] + [("playoffs", None, playoff_days)]
+    for stage, week, days in stages:
+        for day in days:
+            for match in day.matches:
+                sides = (match.team1.name.casefold(), match.team2.name.casefold())
+                if wanted not in sides:
+                    continue
+                first = sides[0] == wanted
+                result = None
+                if match.winner is not None:
+                    result = "win" if (match.winner == "team1") == first else "loss"
+                found.append(
+                    TeamMatch(
+                        **match.model_dump(exclude={"status", "winner"}),
+                        stage=stage,
+                        week=week,
+                        day_label=day.label,
+                        opponent=match.team2 if first else match.team1,
+                        result=result,
+                    )
+                )
+    return found
+
+
+# ---- statistics tables
+
+_TABLE_TAG = re.compile(r"<!--.*?-->|<[^>]+>", re.S)
+_HEADER_CELL = re.compile(r"<th\b[^>]*>(.*?)</th>", re.S)
+_BODY_ROW = re.compile(r"<tr\b[^>]*>(.*?)</tr>", re.S)
+_BODY_CELL = re.compile(r"<td\b[^>]*>(.*?)</td>", re.S)
+_DECIMAL_COMMA = re.compile(r"^-?\d+,\d{1,2}$")
+
+# Column labels of the player tables, as the leagues write them, and the field each fills.
+PLAYER_COLUMNS = {
+    "total games": "games",
+    "games": "games",
+    "total kills": "kills",
+    "avg kills": "avg_kills",
+    "total deaths": "deaths",
+    "avg deaths": "avg_deaths",
+    "total assists": "assists",
+    "avg assists": "avg_assists",
+    "avg kda": "kda",
+    "kda ratio": "kda",
+    "kill participation": "kill_participation",
+}
+PLAYER_INT_FIELDS = {"games", "kills", "deaths", "assists"}
+
+
+def plain_text(markup: str) -> str:
+    return unescape(" ".join(_TABLE_TAG.sub(" ", markup).split())).replace("\xa0", " ").strip()
+
+
+def table_headers(table: str) -> list[str]:
+    # Sortable tables add arrows to each label ("Kills ▲ ▼").
+    return [plain_text(cell).replace("▲", "").replace("▼", "").strip().casefold() for cell in _HEADER_CELL.findall(table)]
+
+
+def table_rows(table: str) -> list[list[str]]:
+    """The cells (markup) of each body row."""
+    body = table[table.find("<tbody") :] if "<tbody" in table else table
+    return [cells for row in _BODY_ROW.findall(body) if (cells := _BODY_CELL.findall(row))]
+
+
+def stat_int(text: str) -> int | None:
+    """A count such as ``3,502,761``, ``843`` or ``-``(none)."""
+    digits = re.sub(r"[.,\s]", "", text.strip())
+    return int(digits) if re.fullmatch(r"-?\d+", digits) else None
+
+
+def stat_float(text: str) -> float | None:
+    """An average, ratio or percentage: ``2,31`` (decimal comma), ``1.54``, ``78%`` or ``80.71%``; ``-`` is none."""
+    value = text.strip().rstrip("%").strip()
+    value = value.replace(",", ".") if _DECIMAL_COMMA.match(value) else value.replace(",", "")
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
+def player_figures(headers: list[str], cells: list[str]) -> dict[str, int | float | None]:
+    """The player-table figures of one row, by field name, from the columns the league labels."""
+    figures: dict[str, int | float | None] = {}
+    for header, cell in zip(headers, cells):
+        field = PLAYER_COLUMNS.get(header)
+        if field:
+            text = plain_text(cell)
+            figures[field] = stat_int(text) if field in PLAYER_INT_FIELDS else stat_float(text)
+    return figures

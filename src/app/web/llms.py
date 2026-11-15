@@ -28,7 +28,7 @@ from app.web.showcase import SHOWCASE, SUBMIT_URL
 
 SUMMARY = (
     "Free, unofficial REST API for Mobile Legends: Bang Bang game data: heroes, win rates, "
-    "builds, counters, academy guides, player records and pro league results, returned as JSON, "
+    "builds, counters, academy guides, player records, pro league results and team rosters, returned as JSON, "
     "with an interactive web playground."
 )
 

@@ -18,6 +18,24 @@ SECTIONS: tuple[tuple[str, str], ...] = (
 
 PATCH_NOTES: list[dict[str, Any]] = [
     {
+        "version": "1.7.0",
+        "date": "2026-11-15",
+        "summary": "Teams, players and season statistics for the Indonesian, Philippine, Malaysian and Cambodian leagues.",
+        "new": [
+            "See every team in the Indonesian, Philippine, Malaysian and Cambodian leagues, with its short name, full name and logo.",
+            "Open a team to see its players and coaches, their roles and photos, its social media, its place in the table and all its matches with the result.",
+            "Philippine teams also show the league's write-up and their trophies; Cambodian teams show their trophies with dates and prize money, their owner and home city, and their season and career totals.",
+            "Malaysian teams also show their slogan, team photo, gallery and entrance music, and each player's birthday, age, home country and state, last team, play style, rating and season kills, deaths and assists.",
+            "Open any Cambodian player to see their real name, home country, past teams and their own season numbers.",
+            "Season statistics for all four leagues: every team's totals, every player's numbers (games, kills, deaths, assists, KDA and how often they join their team's kills) and every hero's picks, bans and wins, with the leagues' top-5 boards.",
+            "Indonesia and Cambodia also show each player's hero pool, the players behind each hero, and the MVP race; Malaysia shows how many savages and maniacs each player has.",
+        ],
+        "fixed": [
+            "The Cambodian schedule shows its matches again: the league changed how it shows finished weeks.",
+            "Cambodian team logos show again after the league moved its pictures.",
+        ],
+    },
+    {
         "version": "1.6.2",
         "date": "2026-10-25",
         "summary": "Malaysian team names read cleanly in match details.",

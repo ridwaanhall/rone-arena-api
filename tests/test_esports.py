@@ -43,6 +43,14 @@ def upstream(monkeypatch):
         f"{ID_BASE}/en/schedule": "id_schedule_en.html",
         f"{ID_BASE}/id/schedule": "id_schedule.html",
         f"{ID_BASE}/match-detail/1036": "id_match.html",
+        f"{ID_BASE}/en/teams": "id_teams.html",
+        f"{ID_BASE}/en/team/onic": "id_team.html",
+        f"{PH_BASE}/teams": "ph_teams.html",
+        f"{PH_BASE}/team/onic": "ph_team.html",
+        f"{MY_BASE}/team/rrq-tora": "my_team.html",
+        f"{MY_BASE}/teams": "my_teams.html",
+        f"{ID_BASE}/en/statistics": "id_statistics.html",
+        f"{PH_BASE}/data": "ph_data.html",
         f"{PH_BASE}/": "ph_home.html",
         f"{PH_BASE}/schedule": "ph_schedule.html",
         f"{PH_BASE}/data/match/{PH_SLUG}": "ph_match.html",
@@ -50,6 +58,9 @@ def upstream(monkeypatch):
         f"{MY_BASE}/schedule": "my_schedule.html",
         f"{MY_BASE}/ajax/rating/match-detail?matchId=278&isShowDetail=false": "my_match.html",
         f"{KH_BASE}/teams": "kh_teams.html",
+        f"{KH_BASE}/teams/pro-esports": "kh_team.html",
+        f"{KH_BASE}/players/d7": "kh_player.html",
+        **{f"{KH_BASE}/statistics?tab={tab}": f"kh_statistics_{tab}.html" for tab in ("teams", "players", "heroes", "hero-pools", "player-pools", "mvp")},
         f"{KH_BASE}/schedule?stage=playoffs": "kh_playoffs.html",
         # Only weeks 1 and 4 are saved; the other weeks reuse week 4's page.
         **{f"{KH_BASE}/schedule?stage=regular&week={week}": f"kh_week{1 if week == 1 else 4}.html" for week in range(1, 6)},
@@ -70,6 +81,7 @@ def upstream(monkeypatch):
     monkeypatch.setattr(philippines, "request_page", fake_request_page)
     monkeypatch.setattr(EsportsSourceProvider, "get_id_base_url", classmethod(lambda cls: ID_BASE))
     monkeypatch.setattr(cambodia, "request_page", fake_request_page)
+    monkeypatch.setattr(indonesia, "request_page", fake_request_page)
     monkeypatch.setattr(EsportsSourceProvider, "get_ph_base_url", classmethod(lambda cls: PH_BASE))
     monkeypatch.setattr(EsportsSourceProvider, "get_my_base_url", classmethod(lambda cls: MY_BASE))
     monkeypatch.setattr(EsportsSourceProvider, "get_kh_base_url", classmethod(lambda cls: KH_BASE))
@@ -80,12 +92,29 @@ def upstream(monkeypatch):
         philippines._schedule_page,
         philippines.get_match,
         malaysia.get_season,
-        malaysia._standings,
+        malaysia._home,
         malaysia.get_match,
         cambodia._week,
-        cambodia.get_standings,
+        cambodia._teams_page,
+        cambodia.get_team,
+        cambodia.get_player,
+        cambodia.get_team_statistics,
+        cambodia.get_player_statistics,
+        cambodia.get_hero_statistics,
+        cambodia.get_hero_pools,
+        cambodia.get_player_pools,
+        cambodia.get_mvp_standings,
         cambodia.get_playoffs,
         cambodia.get_image,
+        indonesia.get_teams,
+        indonesia._team_page,
+        indonesia.get_player_photo,
+        philippines.get_teams,
+        philippines.get_team,
+        malaysia.get_team,
+        malaysia._statistics,
+        indonesia._statistics,
+        philippines._statistics,
     ):
         cached.cache_clear()
     return calls
@@ -665,12 +694,392 @@ def test_kh_logos_are_served_through_the_api_so_the_image_host_stays_hidden(monk
     assert client.get("/api/esports/kh/images/notes.txt").status_code == 422
 
 
+def test_kh_teams_list_maps_full_names_to_the_schedule_short_names() -> None:
+    teams = client.get("/api/esports/kh/teams").json()["teams"]
+
+    assert len(teams) == 10
+    pro = next(team for team in teams if team["team_id"] == "pro-esports")
+    assert (pro["name"], pro["full_name"]) == ("PRO", "PRO Esports")
+    assert "kh.test" not in pro["logo"] and "/api/esports/kh/images/teams/_0010_pro-esports.webp" in pro["logo"]
+
+
+def test_kh_team_reads_profile_achievements_stats_and_roster() -> None:
+    team = client.get("/api/esports/kh/teams/pro-esports").json()
+
+    assert (team["name"], team["full_name"], team["season"]) == ("PRO", "PRO Esports", 11)
+    assert team["description"] == "PRO Esports is a Cambodian organization."
+    assert team["profile"] == {"region": "Phnom Penh, Cambodia", "owner": "Seav Chhuon Ing", "manager": "Sambo"}
+    assert team["achievements"][0] == {
+        "title": "Games of the Future 2026",
+        "placement": "5th - 8th",
+        "date": "2026-08-07",
+        "tier": "S-Tier",
+        "prize": None,
+    }
+    season, career = team["stats"]
+    assert (season["label"], career["label"]) == ("MPL KH S11", "Career")
+    assert season["match_wl"] == {"win": 6, "lose": 4} and season["win_rate"] == 60.0
+    assert (season["kills"], season["gold"], season["lord"], season["tortoise"], season["tower"]) == (337, 1280676, 27, 51, 155)
+    assert [(member["player_id"], member["role"]) for member in team["staff"]] == [("imbadeejay", "Coach"), ("catgod", "Coach")]
+    assert team["players"][0]["player_id"] == "ez" and team["players"][0]["role"] == "Roam"
+    assert "/api/esports/kh/images/players/EZ.webp" in team["players"][0]["photo"]
+    assert team["standing"]["team"]["name"] == "PRO"
+    assert "kh.test" not in json.dumps(team)
+
+
+@pytest.mark.parametrize(
+    ("typed", "expected"),
+    [
+        ("2026-05-17 4<strong>st</strong> A-Tier MPL Cambodia Season 10", ("MPL Cambodia Season 10", "4th", "2026-05-17", "A-Tier", None)),
+        ("2025-11-16 2ndA-Tier MPL Cambodia Season 9", ("MPL Cambodia Season 9", "2nd", "2025-11-16", "A-Tier", None)),
+        ("4th C-Tier Esports National Championship 2025$248.14", ("Esports National Championship 2025", "4th", None, "C-Tier", "$248.14")),
+        ("Champions of the city cup", ("Champions of the city cup", None, None, None, None)),
+    ],
+)
+def test_kh_achievements_typed_by_hand_are_read(typed, expected) -> None:
+    item = cambodia._achievement(typed)
+    assert (item.title, item.placement, item.date, item.tier, item.prize) == expected
+
+
+def test_kh_player_reads_biography_history_and_stats() -> None:
+    player = client.get("/api/esports/kh/players/d7").json()
+
+    assert (player["name"], player["role"], player["team"]["team_id"]) == ("D7", "Roam", "vigor-apex")
+    assert player["profile"] == {"full_name": "D7", "based": "Cambodia"}
+    assert player["team_history"] == [{"team_id": "vigor-apex", "name": "Vigor Apex", "period": "2026 – Present"}]
+    season = player["stats"][0]
+    assert (season["label"], season["matches_played"], season["assists"], season["gold_per_min"], season["tower_damage"]) == (
+        "MPL KH S11",
+        3,
+        68,
+        555,
+        2252,
+    )
+    assert "/api/esports/kh/images/players/D7.webp" in player["photo"]
+    assert client.get("/api/esports/kh/players/nobody").json()["code"] == "PLAYER_NOT_FOUND"
+
+
+def test_kh_week_served_whole_is_read_like_a_streamed_one() -> None:
+    days = cambodia._days(fixture("kh_week_whole.html"), 3)
+
+    assert [day.label for day in days] == ["Friday, 18 September 2026", "Saturday, 19 September 2026"]
+    first = days[0].matches[0]
+    assert (first.team1.name, first.score1, first.score2, first.team2.name) == ("PRO", 2, 1, "GXL")
+    assert first.start_at == "2026-09-18T06:00:00+00:00"
+    assert first.replay_url.startswith("https://www.youtube.com/")
+
+
+def test_kh_image_paths_keep_their_folder_and_drop_other_assets(monkeypatch) -> None:
+    fetched = []
+
+    def image(*, method, url, headers, payload=None):
+        fetched.append(url)
+        return SimpleNamespace(content=b"RIFF", headers={"content-type": "image/webp"})
+
+    monkeypatch.setattr(cambodia, "request_page", image)
+    assert client.get("/api/esports/kh/images/players/Zee%20x3.webp").status_code == 200
+    assert client.get("/api/esports/kh/images/teams/_0001_valhalla.webp").status_code == 200
+    assert fetched == ["https://cdn.kh.test/players/Zee%20x3.webp", "https://cdn.kh.test/teams/_0001_valhalla.webp"]
+    assert client.get("/api/esports/kh/images/site/ROAM-6.webp").status_code == 422
+    assert cambodia._logo("https://cdn.kh.test/cdn-cgi/image/width=96,quality=75,format=auto/site/ROAM-6.webp") is None
+
+
 def test_simulator_reads_the_new_leagues_live_seasons() -> None:
     my = client.post("/api/esports/my/standings/simulate", json={"results": []}).json()
     assert (my["teams"], my["playoff_spots"], my["standings"][0]["team"]["name"]) == (8, 6, "SRG")
 
     kh = client.post("/api/esports/kh/standings/simulate", json={"results": []}).json()
     assert (kh["teams"], kh["eliminated"]) == (10, 4)
+
+
+# ---- teams
+
+
+def test_id_teams_list_ids_short_names_and_logos() -> None:
+    teams = client.get("/api/esports/id/teams").json()["teams"]
+
+    assert [team["team_id"] for team in teams] == ["ae", "btr", "dewa", "evos", "geek", "navi", "onic", "rrq", "tlid"]
+    assert teams[6]["name"] == "ONIC"
+    assert teams[6]["logo"].startswith("https://wsrv.nl/?url=")
+
+
+def test_id_team_reads_roster_socials_standing_and_matches() -> None:
+    team = client.get("/api/esports/id/teams/onic").json()
+
+    assert (team["name"], team["full_name"], team["season"]) == ("ONIC", "ONIC", 18)
+    assert [link["platform"] for link in team["socials"]] == ["facebook", "instagram", "youtube"]
+    assert [(member["name"], member["role"]) for member in team["staff"]] == [("CW", "Coach")]
+    assert [(member["name"], member["role"]) for member in team["players"]][:2] == [("KIBOY", "Roam"), ("SANZ", "Mid Lane")]
+    # "Midlane" is written in the shared spelling.
+    assert team["players"][-1]["role"] == "Mid Lane"
+    # The saved standings table is trimmed to rows without ONIC.
+    assert team["standing"] is None
+    assert team["matches"] and all("ONIC" in (match["team1"]["name"], match["team2"]["name"]) for match in team["matches"])
+    first = team["matches"][0]
+    # The saved schedule holds weeks 1 and 8; ONIC plays in week 8.
+    assert first["stage"] == "regular_season" and first["week"] == 8
+    assert first["opponent"]["name"] != "ONIC"
+    for match in team["matches"]:
+        if match["winner"] is None:
+            assert match["result"] is None
+        else:
+            ours = "team1" if match["team1"]["name"] == "ONIC" else "team2"
+            assert match["result"] == ("win" if match["winner"] == ours else "loss")
+
+
+def test_id_player_photos_are_served_through_the_api_so_the_league_host_stays_hidden(monkeypatch) -> None:
+    photo = client.get("/api/esports/id/teams/onic").json()["players"][0]["photo"]
+    assert "id.test" not in photo and "/api/esports/id/images/onic/Kiboy.png" in photo
+
+    fetched = []
+
+    def image(*, method, url, headers, payload=None):
+        fetched.append(url)
+        return SimpleNamespace(content=b"PNG", headers={"content-type": "image/png"})
+
+    monkeypatch.setattr(indonesia, "request_page", image)
+    response = client.get("/api/esports/id/images/onic/Kiboy.png")
+    assert response.status_code == 200 and response.content == b"PNG"
+    assert fetched == ["https://cdn.id.test/season18/player/ONIC/Kiboy.png"]
+    assert client.get("/api/esports/id/images/onic/Nobody.png").json()["code"] == "IMAGE_NOT_FOUND"
+    assert client.get("/api/esports/id/images/onic/notes.txt").status_code == 422
+
+
+def test_ph_teams_list_short_and_full_names() -> None:
+    teams = client.get("/api/esports/ph/teams").json()["teams"]
+
+    assert ("tlph", "TLPH", "Team Liquid PH") in [(team["team_id"], team["name"], team["full_name"]) for team in teams]
+    assert len(teams) == 8
+
+
+def test_ph_team_reads_description_achievements_and_roster() -> None:
+    team = client.get("/api/esports/ph/teams/onic").json()
+
+    assert (team["name"], team["full_name"], team["season"]) == ("ONIC", "ONIC PH", 18)
+    assert team["description"].startswith("The OGs of MPL PH")
+    assert [link["platform"] for link in team["socials"]] == ["facebook", "instagram", "youtube", "x", "tiktok"]
+    # "MPL Philippines Season 17-3rd" carries its placement in the title; others put it in the second column.
+    assert [(item["title"], item["placement"]) for item in team["achievements"][:2]] == [
+        ("MPL Philippines Season 17", "3rd"),
+        ("MLBB Mid Season Cup 2025", "3rd"),
+    ]
+    assert [member["role"] for member in team["staff"]] == ["Coach", "Coach"]
+    assert len(team["players"]) == 7
+    assert {member["role"] for member in team["players"]} <= {"Roam", "EXP Lane", "Jungle", "Gold Lane", "Mid Lane"}
+    assert team["players"][0]["photo"].startswith("https://wsrv.nl/?url=")
+    # The saved standings table has two other teams.
+    assert team["standing"] is None
+    assert team["matches"][0]["match_id"] == PH_SLUG and team["matches"][0]["result"] == "win"
+
+
+def test_my_teams_come_from_the_standings_links() -> None:
+    teams = client.get("/api/esports/my/teams").json()["teams"]
+
+    assert ("rrq-tora", "RRQ", "RRQ TORA") in [(team["team_id"], team["name"], team["full_name"]) for team in teams]
+    assert len(teams) == 8
+
+
+def test_my_team_reads_profiles_stats_and_media() -> None:
+    team = client.get("/api/esports/my/teams/rrq-tora").json()
+
+    assert (team["name"], team["full_name"], team["season"], team["tagline"]) == ("RRQ", "RRQ TORA", 18, "VIVA RRQ")
+    assert team["description"].startswith("Rex Regum Qeon")
+    assert [link["platform"] for link in team["socials"]] == ["facebook", "instagram", "youtube", "tiktok"]
+    assert team["team_photo"] and team["gallery"] and team["entrance_music"].endswith(".mp3")
+    coach, assistant, analyst = team["staff"]
+    assert (coach["name"], coach["role"], coach["birth_date"], coach["age"], coach["nationality"], coach["hometown"]) == (
+        "Sasa",
+        "Coach",
+        "1996-08-21",
+        30,
+        "Malaysia",
+        "Perak",
+    )
+    assert coach["previous_team"]["name"] == "DFYG (Free Agent)"
+    assert (assistant["role"], analyst["role"]) == ("Assistant Coach", "Analyst")
+    player = team["players"][0]
+    assert (player["name"], player["role"], player["archetype"], player["secondary_role"], player["tier"]) == (
+        "SUPERKENN",
+        "Jungle",
+        "Flex Jungler",
+        "Mid Lane",
+        "A",
+    )
+    assert (player["nationality"], player["hometown"]) == ("Indonesia", None)
+    assert player["stats"] == {"matches": 22, "kills": 74, "deaths": 49, "assists": 66, "kda": 2.86, "savage": 0, "maniac": 0}
+    assert team["standing"]["team"]["name"] == "RRQ"
+    assert all("RRQ" in (match["team1"]["name"], match["team2"]["name"]) for match in team["matches"])
+    # Icons on the league's own site are never passed on.
+    assert "my.test" not in json.dumps(team)
+
+
+@pytest.mark.parametrize("league", ["id", "ph", "my", "kh"])
+def test_unknown_team_is_404_with_the_league_ids(league) -> None:
+    body = client.get(f"/api/esports/{league}/teams/no-such-team").json()
+
+    assert body["code"] == "TEAM_NOT_FOUND"
+    assert "Available teams:" in body["message"]
+    assert client.get(f"/api/esports/{league}/teams/Bad_Id").status_code == 422
+
+
+# ---- season statistics
+
+
+@pytest.mark.parametrize(
+    ("text", "integer", "decimal"),
+    [("3,502,761", 3502761, 3502761.0), ("2,31", 231, 2.31), ("1.54", 154, 1.54), ("78%", None, 78.0), ("80.71%", None, 80.71), ("-", None, None)],
+)
+def test_statistics_numbers_read_both_decimal_styles(text, integer, decimal) -> None:
+    assert common.stat_float(text) == decimal
+    if integer is not None:
+        assert common.stat_int(text) == integer
+
+
+@pytest.mark.parametrize("league", ["id", "ph", "my", "kh"])
+def test_team_statistics_have_every_total_and_team_names(league) -> None:
+    teams = client.get(f"/api/esports/{league}/statistics/teams").json()["teams"]
+
+    assert len(teams) == {"id": 9, "ph": 8, "my": 8, "kh": 10}[league]
+    for row in teams:
+        assert row["team"]["name"] and row["team"]["full_name"] and row["team"]["logo"]
+        assert all(isinstance(row[key], int) for key in ("kills", "deaths", "assists", "gold", "damage", "lord", "tortoise", "tower"))
+
+
+def test_id_statistics_read_players_boards_and_comma_decimals() -> None:
+    body = client.get("/api/esports/id/statistics/players").json()
+
+    assert [board["title"] for board in body["leaderboards"]] == ["Top 5 Kills", "Top 5 Assists", "Top 5 Avg KDA"]
+    top = body["leaderboards"][0]["entries"][0]
+    assert (top["rank"], top["name"], top["team"]["name"], top["value"]) == (1, "NNAEL", "BTR", 305)
+    # Photos sit on the league's own file host, so they are served through this API.
+    assert "id.test" not in top["photo"] and top["photo"].endswith("/api/esports/id/images/btr/Nnael.png")
+    player = body["players"][0]
+    assert (player["name"], player["team"]["name"], player["role"], player["games"]) == ("MORENOOO", "BTR", "Mid Lane", 67)
+    assert (player["avg_kills"], player["kda"], player["kill_participation"]) == (2.31, 6.06, 78.0)
+
+
+def test_id_statistics_read_heroes_pools_and_mvp() -> None:
+    heroes = client.get("/api/esports/id/statistics/heroes").json()
+    assert [board["title"] for board in heroes["leaderboards"]] == ["Top 5 Pick", "Top 5 Ban", "Top 5 Win Rate"]
+    assert heroes["heroes"][0] == {
+        "hero": {"name": "Miya", "image": "https://wsrv.nl?url=https://ik.imagekit.io/nloe8dhf7w/mlbb/heroes/Miya.jpg"},
+        "picks": 27,
+        "bans": 18,
+        "wins": 17,
+        "pick_rate": None,
+        "ban_rate": None,
+        "win_rate": 63.0,
+    }
+
+    pool = client.get("/api/esports/id/statistics/hero-pools").json()["players"][0]
+    assert (pool["name"], pool["team"]["name"], pool["total"], len(pool["heroes"])) == ("MORENOOO", "BTR", 12, 12)
+    # Pool images carry no alt text: the hero is named after the image file.
+    assert pool["heroes"][0]["hero"]["name"] == "Selena" and pool["heroes"][0]["picks"] == 18 and pool["heroes"][0]["win_rate"] == 33.0
+
+    miya = client.get("/api/esports/id/statistics/player-pools").json()["heroes"][0]
+    assert (miya["hero"]["name"], miya["total"], len(miya["players"])) == ("Miya", 10, 10)
+    assert (miya["players"][0]["name"], miya["players"][0]["team"]["name"], miya["players"][0]["picks"]) == ("Zeonn", "NAVI", 7)
+
+    mvp = client.get("/api/esports/id/statistics/mvp").json()["standings"]
+    # The card writes "TLID KEVIN"; the team's short name is moved to the team.
+    assert (mvp[0]["rank"], mvp[0]["name"], mvp[0]["team"]["name"], mvp[0]["points"]) == (1, "KEVIN", "TLID", 151)
+    assert len(mvp) == 8
+
+
+def test_id_statistics_photo_of_a_player_off_the_team_pages_is_served(monkeypatch) -> None:
+    photo = client.get("/api/esports/id/statistics/mvp").json()["standings"][1]["photo"]
+    fetched = []
+
+    def image(*, method, url, headers, payload=None):
+        fetched.append(url)
+        return SimpleNamespace(content=b"PNG", headers={"content-type": "image/png"})
+
+    monkeypatch.setattr(indonesia, "request_page", image)
+    response = client.get(urlsplit(photo).path)
+    assert response.status_code == 200
+    assert fetched == ["https://cdn.id.test/season18/player/BTR/Nnael.png"]
+
+
+def test_ph_statistics_read_rankings_rates_and_unplayed_subs() -> None:
+    players = client.get("/api/esports/ph/statistics/players").json()
+    assert [board["title"] for board in players["leaderboards"]] == ["Kills Ranking", "Assists Ranking", "KDA Ranking"]
+    top = players["leaderboards"][0]["entries"][0]
+    assert (top["name"], top["team"]["name"], top["value"]) == ("KarlTzy", "TLPH", 4.36)
+    first = players["players"][0]
+    assert (first["name"], first["team"]["name"], first["team"]["full_name"]) == ("SuperFrince", "ONIC", "ONIC PH")
+    assert (first["kills"], first["avg_kills"], first["kda"], first["kill_participation"], first["games"]) == (71, 1.54, 6.24, 80.71, None)
+
+    heroes = client.get("/api/esports/ph/statistics/heroes").json()
+    assert [board["title"] for board in heroes["leaderboards"]] == ["Top 5 Hero Pick", "Top 5 Hero Ban", "Top 5 Hero Win Rate"]
+    saber = heroes["heroes"][1]
+    assert (saber["hero"]["name"], saber["picks"], saber["pick_rate"], saber["bans"], saber["ban_rate"], saber["win_rate"]) == (
+        "Saber",
+        2,
+        1.16,
+        3,
+        1.74,
+        50.0,
+    )
+
+
+def test_ph_substitute_without_games_has_null_figures() -> None:
+    cells = ["<td>Dann.</td>", "<td>ONIC PH</td>"] + ["<td>-</td>"] * 8
+    headers = ["player", "team", "total kills", "avg kills", "total deaths", "avg deaths", "total assists", "avg assists", "kda ratio", "kill participation"]
+    assert set(common.player_figures(headers, cells).values()) == {None}
+
+
+def test_my_statistics_read_roles_from_the_lane_filter_and_savage_maniac() -> None:
+    players = client.get("/api/esports/my/statistics/players").json()
+    assert players["leaderboards"] == []
+    first = players["players"][0]
+    assert (first["name"], first["team"]["name"], first["role"], first["games"], first["avg_kills"], first["kda"]) == (
+        "Sekysss",
+        "SRG",
+        "Jungle",
+        45,
+        4.47,
+        5.02,
+    )
+    savage = client.get("/api/esports/my/statistics/savage-maniac").json()["players"]
+    assert savage[1] == {**savage[1], "name": "Innocent", "savage": 1, "maniac": 1}
+    assert savage[1]["team"]["full_name"] == "SELANGOR RED GIANTS"
+    heroes = client.get("/api/esports/my/statistics/heroes").json()
+    assert heroes["leaderboards"] == [] and heroes["heroes"][0]["hero"]["name"] == "Alpha"
+    assert "my.test" not in json.dumps([players, savage, heroes])
+
+
+def test_kh_statistics_read_every_tab_and_serve_images_through_the_api() -> None:
+    players = client.get("/api/esports/kh/statistics/players").json()
+    assert [board["title"] for board in players["leaderboards"]] == ["Top 5 Kills", "Top 5 Assists", "Top 5 Avg KDA"]
+    top = players["leaderboards"][0]["entries"][0]
+    assert (top["name"], top["team"]["name"], top["value"]) == ("VBEN", "RVZ", 165)
+    alfonso = players["players"][1]
+    assert (alfonso["name"], alfonso["team"]["name"], alfonso["role"], alfonso["games"], alfonso["kda"], alfonso["kill_participation"]) == (
+        "Alfonso",
+        "TNR",
+        "Jungle",
+        33,
+        3.6,
+        55.0,
+    )
+
+    heroes = client.get("/api/esports/kh/statistics/heroes").json()
+    assert [board["title"] for board in heroes["leaderboards"]] == ["Top 5 Pick", "Top 5 Ban", "Top 5 Win Rate"]
+    alice = heroes["heroes"][0]
+    assert (alice["hero"]["name"], alice["picks"], alice["bans"], alice["wins"], alice["win_rate"]) == ("Alice", 41, 32, 15, 37.0)
+    assert "/api/esports/kh/images/heroes/square/hero-4-square.webp" in alice["hero"]["image"]
+
+    pool = client.get("/api/esports/kh/statistics/hero-pools").json()["players"][1]
+    assert (pool["name"], pool["team"]["name"], pool["total"], pool["heroes"][0]["hero"]["name"], pool["heroes"][0]["picks"]) == ("Alfonso", "TNR", 6, "Nolan", 11)
+
+    paquito = client.get("/api/esports/kh/statistics/player-pools").json()["heroes"][0]
+    assert (paquito["hero"]["name"], paquito["total"]) == ("Paquito", 61)
+    # A pool names the player only; the team comes from the player table.
+    assert next(player for player in paquito["players"] if player["name"] == "Alfonso")["team"]["name"] == "TNR"
+
+    mvp = client.get("/api/esports/kh/statistics/mvp").json()["standings"]
+    assert (mvp[0]["rank"], mvp[0]["name"], mvp[0]["team"]["name"], mvp[0]["points"]) == (1, "Vincen6", "VGR", 9)
+    assert "kh.test" not in json.dumps([players, heroes, pool, paquito, mvp])
 
 
 # ---- encryption and secrecy
@@ -735,7 +1144,28 @@ def test_upstream_hosts_and_secret_never_appear_in_the_repository() -> None:
 def _rendered() -> list[str]:
     pages = [client.get(url).text for url in ("/api/openapi.json", "/web/esports", "/", "/llms.txt", "/tools/standings")]
     pages.append(json.dumps(client.get("/api").json()))
-    pages += [client.get(f"/api/esports/{path}").text for path in ("my/standings", "my/schedule", "my/matches/278", "kh/standings", "kh/schedule?week=1")]
+    pages += [
+        client.get(f"/api/esports/{path}").text
+        for path in (
+            "my/standings",
+            "my/schedule",
+            "my/matches/278",
+            "kh/standings",
+            "kh/schedule?week=1",
+            "id/teams",
+            "id/teams/onic",
+            "ph/teams",
+            "ph/teams/onic",
+            "my/teams",
+            "my/teams/rrq-tora",
+            "kh/teams",
+            "kh/teams/pro-esports",
+            "kh/players/d7",
+            *(f"{league}/statistics/{part}" for league in ("id", "ph", "my", "kh") for part in ("teams", "players", "heroes")),
+            *(f"{league}/statistics/{part}" for league in ("id", "kh") for part in ("hero-pools", "player-pools", "mvp")),
+            "my/statistics/savage-maniac",
+        )
+    ]
     return pages
 
 
